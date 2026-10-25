@@ -1,0 +1,53 @@
+[package]
+name = "cfa4-engine"
+description = "CFA4 engine façade: session, command registry, history, media pool"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+default = []
+# Speech-to-text with Whisper (candle, CPU). Off by default and in wasm builds.
+whisper = ["cfa4-speech/whisper"]
+# Speech-model downloads over HTTPS.
+speech-download = ["cfa4-speech/download"]
+# Natural voices for Text to Speech: Kokoro-82M on candle (CPU) and their download.
+neural-voices = ["cfa4-tts/kokoro", "speech-download"]
+
+[dependencies]
+cfa4-time = { workspace = true }
+cfa4-geom = { workspace = true }
+cfa4-color = { workspace = true }
+cfa4-frame = { workspace = true }
+cfa4-media = { workspace = true }
+cfa4-codecs = { workspace = true }
+cfa4-project = { workspace = true }
+cfa4-edit = { workspace = true }
+cfa4-render = { workspace = true }
+cfa4-scopes = { workspace = true }
+cfa4-text = { workspace = true }
+cfa4-audio-dsp = { workspace = true }
+cfa4-export = { workspace = true }
+cfa4-mxf = { workspace = true }
+cfa4-format = { workspace = true }
+cfa4-interchange = { workspace = true }
+cfa4-captions = { workspace = true }
+cfa4-credits = { workspace = true }
+cfa4-speech = { workspace = true }
+cfa4-tts = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+log = { workspace = true }
+cfa4-docpath = { workspace = true }
+web-time = "1"
+
+[dev-dependencies]
+cfa4-testkit = { workspace = true }
+cfa4-dng = { workspace = true, features = ["writer"] }
+cfa4-isobmff = { workspace = true }
+image = { version = "0.25", default-features = false, features = ["png", "gif"] }

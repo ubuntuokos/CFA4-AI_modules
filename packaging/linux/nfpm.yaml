@@ -1,0 +1,70 @@
+# .deb packaging on Ubuntu 26.04 AMD64 (nfpm: https://nfpm.goreleaser.com). package.sh stages
+# the file tree, substitutes its path for ${STAGE} (nfpm doesn't expand env vars in `src`) and
+# exports VERSION. The architecture is fixed to amd64 (Linux x86_64).
+#
+#   nfpm package -f packaging/linux/nfpm.yaml -p deb -t dist/release/
+name: cfa4
+arch: amd64
+platform: linux
+version: ${VERSION}
+# semver: 0.2.0-rc.1 becomes 0.2.0~rc.1 in deb, so pre-releases sort before the release.
+version_schema: semver
+release: 1
+section: video
+priority: optional
+maintainer: ${CFA4_MAINTAINER}
+vendor: CFA4 contributors
+homepage: https://github.com/ubuntuokos/CinemaFundArchitecture4
+license: GPL-3.0-or-later
+description: |-
+  Open-source, native video editor: edit video, color and sound.
+  Timeline editing with source and program monitors, color grading and scopes,
+  effects and keyframes, titles and captions, audio mixing with loudness meters,
+  and export; GPU compositing (wgpu).
+  Includes cfa4-cli, a headless command runner, MCP server and exporter.
+
+# The binaries link only glibc and libgcc_s directly. Windowing (X11/Wayland, xkbcommon) and the
+# GPU (Vulkan, EGL/GL) are loaded at runtime, so they are dependencies/recommendations here
+# rather than ELF NEEDED entries. Measured on Ubuntu 26.04: docs/audit/F2-01-RUNTIME-DEPS-2026-10-25.md.
+overrides:
+  deb:
+    depends:
+      - libc6 (>= 2.43)
+      - libgcc-s1
+      - libxkbcommon0
+      - libvulkan1 | libegl1
+      - libasound2 | libasound2t64
+    recommends:
+      - libwayland-client0
+      - libx11-6
+      - libx11-xcb1
+      - libxcursor1
+      - libxi6
+      - libxrandr2
+      - libwayland-egl1
+      - libxkbcommon-x11-0
+      - libdbus-1-3
+      # VA-API hardware decoding; loaded only when present.
+      - libva2
+      - libva-drm2
+      - mesa-vulkan-drivers
+      # Local HEIF/HEIC import/export via system libheif tools (not bundled).
+      # GPL/LGPL redistribution remains a separate release audit gate.
+      - libheif-examples
+      - libheif-plugin-libde265
+      - libheif-plugin-x265
+      - xdg-desktop-portal
+contents:
+  - src: ${STAGE}/usr/bin/cfa4
+    dst: /usr/bin/cfa4
+    file_info: { mode: 0755 }
+  - src: ${STAGE}/usr/bin/cfa4-cli
+    dst: /usr/bin/cfa4-cli
+    file_info: { mode: 0755 }
+  - src: ${STAGE}/usr/share/
+    dst: /usr/share/
+    type: tree
+
+scripts:
+  postinstall: packaging/linux/postinst.sh
+  postremove: packaging/linux/postinst.sh

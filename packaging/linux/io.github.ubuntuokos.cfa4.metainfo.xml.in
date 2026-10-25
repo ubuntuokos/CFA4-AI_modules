@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- AppStream metadata (software centres, Flathub). Template: package.sh and the Flatpak
+     manifest substitute @VERSION@ and @DATE@ from Cargo.toml and the build date. -->
+<component type="desktop-application">
+  <id>io.github.ubuntuokos.cfa4</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>CFA4 (development)</name>
+  <summary>Linux video editor under development</summary>
+  <developer id="io.github.ubuntuokos">
+    <name>CFA4 contributors</name>
+  </developer>
+  <description>
+    <p>
+      CFA4 is a native video editor under development for Ubuntu 26.04 on
+      AMD64 systems. It provides a timeline editing interface, local media
+      import and export, and tools for working with picture and sound.
+      The application is developed separately from its upstream parent,
+      and this development build is not yet approved for general release.
+    </p>
+  </description>
+  <launchable type="desktop-id">io.github.ubuntuokos.cfa4.desktop</launchable>
+  <icon type="stock">io.github.ubuntuokos.cfa4</icon>
+  <!-- Use portable AppStream URL types; CFA4 validation targets Ubuntu 26.04. -->
+  <url type="homepage">https://github.com/ubuntuokos/CinemaFundArchitecture4</url>
+  <url type="bugtracker">https://github.com/ubuntuokos/CinemaFundArchitecture4/issues</url>
+  <url type="help">https://github.com/ubuntuokos/CinemaFundArchitecture4</url>
+  <categories>
+    <category>AudioVideo</category>
+    <category>Video</category>
+    <category>AudioVideoEditing</category>
+  </categories>
+  <keywords>
+    <keyword>video</keyword>
+    <keyword>video editor</keyword>
+    <keyword>timeline</keyword>
+    <keyword>color grading</keyword>
+    <keyword>nle</keyword>
+  </keywords>
+  <branding>
+    <color type="primary" scheme_preference="light">#9fd0ff</color>
+    <color type="primary" scheme_preference="dark">#1f64ba</color>
+  </branding>
+  <requires>
+    <display_length compare="ge">760</display_length>
+  </requires>
+  <supports>
+    <control>keyboard</control>
+    <control>pointing</control>
+    <control>tablet</control>
+  </supports>
+  <provides>
+    <binary>cfa4</binary>
+    <mediatype>application/x-cfa4</mediatype>
+  </provides>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="@VERSION@" date="@DATE@"/>
+  </releases>
+</component>

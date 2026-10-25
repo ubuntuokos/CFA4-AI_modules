@@ -1,0 +1,30 @@
+[package]
+name = "cfa4-gpu"
+description = "wgpu compositor: YUV/RGB layer sampling, linear-light premultiplied compositing in WGSL"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+cfa4-color = { workspace = true }
+cfa4-frame = { workspace = true }
+cfa4-geom = { workspace = true }
+cfa4-project = { workspace = true }
+cfa4-render = { workspace = true }
+cfa4-time = { workspace = true }
+wgpu = { version = "30", default-features = false, features = ["wgsl"] }
+log = { workspace = true }
+pollster = "0.4"
+rayon = { workspace = true }
+
+[dev-dependencies]
+pollster = "0.4"
+cfa4-export = { workspace = true }
+image = { version = "0.25", default-features = false, features = ["png"] }
+wgpu = { version = "30", features = ["wgsl", "metal", "vulkan", "dx12", "gles"] }
+cfa4-media = { workspace = true }
+cfa4-time = { workspace = true }

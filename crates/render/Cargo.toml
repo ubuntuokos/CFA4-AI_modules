@@ -1,0 +1,31 @@
+[package]
+name = "cfa4-render"
+description = "Sequence evaluation and CPU reference compositor (linear-light premultiplied f32)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+cfa4-time = { workspace = true }
+cfa4-geom = { workspace = true }
+cfa4-color = { workspace = true }
+cfa4-frame = { workspace = true }
+cfa4-media = { workspace = true }
+cfa4-project = { workspace = true }
+cfa4-audio-dsp = { workspace = true }
+cfa4-captions = { workspace = true }
+cfa4-text = { workspace = true }
+rayon = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+image = { version = "0.25", default-features = false, features = ["png"] }
+
+# Thread CPU clock for load-robust performance tests.
+[target.'cfg(unix)'.dev-dependencies]
+rustix = { version = "1", default-features = false, features = ["std", "time"] }
