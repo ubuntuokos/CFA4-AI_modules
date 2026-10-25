@@ -79,10 +79,11 @@ Egyikük sem az AI-réteg motorja.
 - **Kézfogás:** `hello`/`caps`, benne a protokollverzió, a képességek és a korlátok.
 - **Üzenetek:** `load`, `run`, `cancel`, `unload`, `progress`, `result`, `stats` és `error`.
   Az `error` kódjai: `oom`, `invalid_input`, `model_error`, `crash`.
-- **GPU-azonosító:** minden üzenetben benne van, így később a több GPU is működik.
+- **Eszköz:** a `load` és a `run` megnevezi (`"cpu"` vagy GPU-index), így a CPU-s visszalépés és később a több GPU is működik.
 - **Kódolás:** MessagePackre csak akkor váltunk, ha a mérések ezt indokolják.
 
-**A protokoll leírása, a manifest JSON Schemája és a worker SDK külön repóban készül**,
+**A protokoll leírása, a manifest JSON Schemája és a worker SDK külön repóban készül**
+([CFA4-sdk](https://github.com/ubuntuokos/CFA4-sdk)),
 megengedő licenccel (MIT OR Apache-2.0, frissen írt kóddal). Erre azért van szükség, mert
 a fizetős workerek vegyesek: van köztük GPL-es és zárt is. A CFA4 ebben a repóban csak
 fogyasztja a sémát.
