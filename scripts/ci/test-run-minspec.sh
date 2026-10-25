@@ -61,7 +61,9 @@ run env CFA4_REF_VENDOR=amd CFA4_REF_GPU=2
 grep -qx 'ROCR_VISIBLE_DEVICES=2' "$WORK/log.env" || fail "AMD card not selected"
 grep -qx 'CUDA_VISIBLE_DEVICES=' "$WORK/log.env" || fail "AMD run must hide CUDA devices"
 run env CFA4_REF_VENDOR=intel CFA4_REF_GPU=3
-grep -qx 'ONEAPI_DEVICE_SELECTOR=level_zero:3' "$WORK/log.env" || fail "Intel card not selected"
+grep -qx 'ZE_AFFINITY_MASK=3' "$WORK/log.env" || fail "Intel card not selected"
+# The mask renumbers the card to 0, so the SYCL selector must use 0.
+grep -qx 'ONEAPI_DEVICE_SELECTOR=level_zero:0' "$WORK/log.env" || fail "SYCL selector must use the remapped index 0"
 if run env CFA4_REF_VENDOR=amd; then fail "AMD without CFA4_REF_GPU must fail"; fi
 if run env CFA4_REF_VENDOR=other CFA4_REF_GPU=0; then fail "unknown vendor must fail"; fi
 

@@ -13,7 +13,7 @@
 #   CFA4_REF_VENDOR  nvidia | amd | intel (alap: nvidia)
 #   CFA4_REF_GPU     a kártya indexe az adott gyártó saját számozásában.
 #                    NVIDIA-n elhagyható: az első RTX 3060 legalább 12 GB-tal (nvidia-smi index).
-#                    AMD-n és Intelen kötelező (rocm-smi / sycl-ls szerinti index).
+#                    AMD-n és Intelen kötelező (AMD: rocm-smi, Intel: Level Zero szerinti fizikai index).
 set -euo pipefail
 
 MIN_RAM="${CFA4_MIN_RAM:-32G}"
@@ -43,7 +43,9 @@ case "$VENDOR" in
     GPU_ENV=("ROCR_VISIBLE_DEVICES=$REF_GPU" "HIP_VISIBLE_DEVICES=0" CUDA_VISIBLE_DEVICES=)
     ;;
   intel)
-    GPU_ENV=("ONEAPI_DEVICE_SELECTOR=level_zero:$REF_GPU" "ZE_AFFINITY_MASK=$REF_GPU" CUDA_VISIBLE_DEVICES=)
+    # ZE_AFFINITY_MASK keeps only the physical card and renumbers it to 0,
+    # so the SYCL selector must name the remapped index.
+    GPU_ENV=("ZE_AFFINITY_MASK=$REF_GPU" "ONEAPI_DEVICE_SELECTOR=level_zero:0" CUDA_VISIBLE_DEVICES=)
     ;;
   *)
     echo "Ismeretlen CFA4_REF_VENDOR: $VENDOR (nvidia | amd | intel)" >&2
