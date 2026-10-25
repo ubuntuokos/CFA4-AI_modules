@@ -1,0 +1,108 @@
+Azonosító,GitHub,Nyelv,Python 3.14 (feltöltött lista szerint),Motorcsalád,Javaslat,"Megjegyzés (licenc: emlékezetből, ellenőrizendő)"
+FRAMEPACK,https://github.com/lllyasviel/FramePack,Python,nem igazolt,M1,Elsődleges,"kis VRAM-igényű, hosszú I2V; licenc ellenőrizendő"
+WAN,https://github.com/Wan-Video/Wan2.1,Python,nem igazolt,M1,Elsődleges,Apache-2.0; 1.3B 12 GB-on is fut; a VACE-ág a 71–80-hoz
+WAN22,https://github.com/Wan-Video/Wan2.2,Python,nem igazolt,M1,Elsődleges,"Apache-2.0; TI2V-5B és A14B, 12 GB-on offloaddal/kvantálva"
+LAT,https://github.com/bytedance/LatentSync,Python,nem igazolt,M2,Elsődleges,"LatentSync, lip-sync"
+SONIC,https://github.com/jixiaozhong/Sonic,Python,nem igazolt,M2,Elsődleges,hangvezérelt portré-animáció; licenc ellenőrizendő
+MIMIC,https://github.com/TencentARC/MimicMotion,Python,nem igazolt,M3,Elsődleges,pózvezérelt emberi videó
+DENO,https://github.com/swz30/Restormer,Python,nem igazolt,M4,Elsődleges,"Restormer (zaj, elmosódás, eső)"
+REALER,https://github.com/xinntao/Real-ESRGAN,Python,nem igazolt,M4,Elsődleges,"Real-ESRGAN, ONNX-exporttal; BSD-3"
+PRRIFE,https://github.com/hankhank10/Practical-RIFE,Python,nem igazolt,M5,Elsődleges,"Practical-RIFE, ONNX-képes"
+DIFFUER,https://github.com/lixiaowen-xw/DiffuEraser,Python,nem igazolt,M6,Elsődleges,diffúziós objektumeltávolítás
+MANIM,https://github.com/ManimCommunity/manim,Python,nem igazolt,M7,Elsődleges,matematikai/infografikus animáció; MIT
+NERF,https://github.com/nerfstudio-project/nerfstudio,Python,nem igazolt,M9,Elsődleges,nerfstudio; Apache-2.0
+BRAIN,https://github.com/swedishembedded/brain,Rust,nem releváns (Rust),M1,Értékelendő (Rust),"Rust; 34 helyen szerepel, AI-generálása nem igazolt"
+CV,https://github.com/FerrisMind/candle-video,Rust,nem releváns (Rust),M1,Értékelendő (Rust),"candle-video: a CFA4 is candle-t használ, ezért ez a legígéretesebb Rust jelölt"
+MOLD,https://github.com/utensils/mold,Rust,nem releváns (Rust),M1,Értékelendő (Rust),"Rust; 32 helyen szerepel, ténylegesen milyen modelleket futtat, ellenőrizendő"
+MERC,https://github.com/antutroll27/mercury-motion,Rust,nem releváns (Rust),M7,Értékelendő (Rust),Rust mozgásgrafika; érettsége ismeretlen
+NFRAME,https://github.com/ChaosRealmsAI/NextFrame,Rust,nem releváns (Rust),M7,Értékelendő (Rust),Rust; érettsége ismeretlen
+ONDA,https://github.com/onda-engine/onda-engine,Rust,nem releváns (Rust),M7,Értékelendő (Rust),Rust motor; AI-funkciója nem igazolt
+RUSTMOTION,https://github.com/sjkim1127/rust-motion,Rust,nem releváns (Rust),M7,Értékelendő (Rust),Rust; érettsége ismeretlen
+VCR,https://github.com/coltonbatts/VCR,Rust,nem releváns (Rust),M7,Értékelendő (Rust),Rust; érettsége ismeretlen
+VIDGEN,https://github.com/RaaSaaR-org/vidgen,Rust,nem releváns (Rust),M7,Értékelendő (Rust),"Rust; 25 helyen szerepel, de AI-funkciója nem igazolt"
+REEL,https://github.com/spunkytensor/reel-maestro,Rust,nem releváns (Rust),M8,Értékelendő (Rust),"Rust; 28 helyen szerepel, de AI-funkciója nem igazolt"
+COG,https://github.com/zai-org/CogVideo,Python,nem igazolt,M1,Tartalék,"CogVideoX; a nagyobb modellek licence korlátozó, ellenőrizendő"
+LTX,https://github.com/Lightricks/LTX-Video,Python,nem igazolt,M1,Tartalék,"gyors, kis VRAM; saját open-weights licenc, ellenőrizendő"
+MOTIONCTRL,https://github.com/TencentARC/MotionCtrl,Python,nem igazolt,M1,Tartalék,kamera- és objektummozgás-vezérlés
+OUT,https://github.com/alimama-creative/M3DDM-Video-Outpainting,Python,nem igazolt,M1,Tartalék,outpainting; VACE kiválthatja
+PYRAMID,https://github.com/jy0205/Pyramid-Flow,Python,nem igazolt,M1,Tartalék,flow-matching; ellenőrizendő
+ECHO2,https://github.com/antgroup/echomimic_v2,Python,nem igazolt,M2,Tartalék,félalakos hangvezérelt animáció
+HALLO2,https://github.com/fudan-generative-vision/hallo2,Python,nem igazolt,M2,Tartalék,hosszú talking head
+INFINITE,https://github.com/MeiGen-AI/InfiniteTalk,Python,nem igazolt,M2,Tartalék,hosszú talking video; nagy VRAM
+LIVE,https://github.com/KwaiVGI/LivePortrait,Python,nem igazolt,M2,Tartalék,"LivePortrait, gyors reenactment; a használt arcdetektor-modellek licence ellenőrizendő"
+POSE,https://github.com/TMElyralab/MusePose,Python,nem igazolt,M3,Tartalék,MusePose; függőségei ellenőrizendők
+DEOLD,https://github.com/jantic/DeOldify,Python,nem igazolt,M4,Tartalék,DeOldify színezés
+FASTDVD,https://github.com/m-tassano/fastdvdnet,Python,nem igazolt,M4,Tartalék,"gyors videózajszűrés, ONNX-képes"
+REALVSR,https://github.com/ckkelvinchan/RealBasicVSR,Python,nem igazolt,M4,Tartalék,RealBasicVSR
+VSR,https://github.com/ckkelvinchan/BasicVSR_PlusPlus,Python,nem igazolt,M4,Tartalék,BasicVSR++; ONNX-export ellenőrizendő
+AMT,https://github.com/MCG-NKU/AMT,Python,nem igazolt,M5,Tartalék,interpoláció
+FILM,https://github.com/google-research/frame-interpolation,Python,nem igazolt,M5,Tartalék,"nagy mozgásokra; TensorFlow, ezért külön környezetet kérne"
+IFR,https://github.com/ltkong218/IFRNet,Python,nem igazolt,M5,Tartalék,könnyű interpoláció
+SVOR,https://github.com/xiaomi-research/svor,Python,nem igazolt,M6,Tartalék,objektumeltávolítás
+VANISH,https://github.com/calledit/VideoVanish,Python,nem igazolt,M6,Tartalék,objektumeltávolító lánc
+FOURD,https://github.com/hustvl/4DGaussians,Python,nem igazolt,M9,Tartalék,dinamikus Gaussian splatting
+MDV,https://github.com/calledit/metric_depth_video_toolbox,Python,nem igazolt,M9,Tartalék,mélységvideó-eszközök
+STEREO,https://github.com/TencentARC/StereoCrafter,Python,más környezetet dokumentál,M9,Tartalék,"StereoCrafter, sztereó videó; eltérő környezet"
+COSMOS,https://github.com/NVIDIA/Cosmos,Python,nem igazolt,M11,Tartalék,NVIDIA Cosmos; nagy VRAM; licenc ellenőrizendő
+COSMOSP,https://github.com/nvidia-cosmos/cosmos-predict2,Python,nem igazolt,M11,Tartalék,Cosmos Predict2
+COSMOT,https://github.com/nvidia-cosmos/cosmos-transfer2,Python,nem igazolt,M11,Tartalék,Cosmos Transfer2 (vezérelt V2V is)
+ANID,https://github.com/guoyww/AnimateDiff,Python,nem igazolt,M1,Referencia,"AnimateDiff, SD 1.5 alapú; a diffusers-ben elérhető, nem kell külön repo"
+ANILCM,https://github.com/G-U-N/AnimateLCM,Python,nem igazolt,M1,Referencia,AnimateDiff-gyorsítás; diffusers-ben
+CTRVIDEO,https://github.com/YBYBZhang/ControlVideo,Python,más környezetet dokumentál,M1,Referencia,"régi, eltérő környezet"
+DRAGNUWA,https://github.com/ProjectNUWA/DragNUWA,Python,nem igazolt,M1,Referencia,"trajektóriavezérlés, régi"
+DYNINTER,https://github.com/Z1zi/dynamicrafter,Python,más környezetet dokumentál,M1,Referencia,régebbi I2V
+FATE,https://github.com/ChenyangQiQi/FateZero,Python,nem igazolt,M1,Referencia,régi szerkesztési módszer
+RAVE,https://github.com/rehg-lab/RAVE,Python,nem igazolt,M1,Referencia,régi szerkesztési módszer
+SEEN,https://github.com/InSeokJeon/Seen_to_Scene,Python,nem igazolt,M1,Referencia,kutatási kód
+VIDCOMP,https://github.com/ali-vilab/videocomposer,Python,nem igazolt,M1,Referencia,régi (2023) kompozicionális modell
+VIDTOKEN,https://github.com/TokenFlow-Vid/TokenFlow,Python,nem igazolt,M1,Referencia,régi szerkesztési módszer
+ANIPOR,https://github.com/Zejun-Yang/AniPortrait,Python,nem igazolt,M2,Referencia,régebbi
+AVATARMC,https://github.com/ruslanmv/avatar-renderer-mcp,Python,nem igazolt,M2,Referencia,"MCP-burkoló, nem modell"
+FOMM,https://github.com/AliaksandrSiarohin/first-order-model,Python,nem igazolt,M2,Referencia,"2019-es, elavult"
+HALLO,https://github.com/fudan-generative-vision/hallo,Python,más környezetet dokumentál,M2,Referencia,a Hallo2 kiváltja
+JOY,https://github.com/jdh-algo/JoyVASA,Python,nem igazolt,M2,Referencia,kutatási kód
+SADT,https://github.com/OpenTalker/SadTalker,Python,nem igazolt,M2,Referencia,"régi (2023), elavult"
+TALKPIPE,https://github.com/michael-borck/talking-head,Python,nem igazolt,M2,Referencia,pipeline-minta
+THIN,https://github.com/yoyo-nb/Thin-Plate-Spline-Motion-Model,Python,nem igazolt,M2,Referencia,"2022-es, elavult"
+VEX,https://github.com/tlkh/v-express,Python,nem igazolt,M2,Referencia,régebbi
+W2L,https://github.com/OpenTalker/video-retalking,Python,nem igazolt,M2,Referencia,régi
+ANYONE,https://github.com/MooreThreads/Moore-AnimateAnyone,Python,nem igazolt,M3,Referencia,régebbi
+DANCE,https://github.com/LiansongX/Dance-Any-One,Python,nem igazolt,M3,Referencia,kutatási kód
+MAGIC,https://github.com/magic-research/magic-animate,Python,nem igazolt,M3,Referencia,régebbi
+DEEPREM,https://github.com/satoshiiizuka/siggraphasia2019_remastering,Python,nem igazolt,M4,Referencia,2019-es
+DVD,https://github.com/m-tassano/denoising-flash,Python,nem igazolt,M4,Referencia,kutatási kód
+EDVR,https://github.com/xinntao/EDVR,Python,nem igazolt,M4,Referencia,2019-es
+ENH,https://github.com/TNTwise/REAL-Video-Enhancer,Python,nem igazolt,M4,Referencia,"kész alkalmazás, nem könyvtár; mintának jó"
+ESTRNN,https://github.com/sbunn3/ESTRNN,Python,nem igazolt,M4,Referencia,kutatási kód
+RVRT,https://github.com/JingyunLiang/RVRT,Python,nem igazolt,M4,Referencia,"nehéz, lassú"
+TCVC,https://github.com/zhangmozhe/Deep-Exemplar-based-Video-Colorization,Python,nem igazolt,M4,Referencia,"példaalapú színezés, régi"
+VRT,https://github.com/JingyunLiang/VRT,Python,nem igazolt,M4,Referencia,"nehéz, lassú"
+RIFE,https://github.com/hzwer/ECCV2022-RIFE,Python,nem igazolt,M5,Referencia,az eredeti RIFE; a Practical-RIFE kiváltja
+E2FGVI,https://github.com/MCG-NKU/E2FGVI,Python,nem igazolt,M6,Referencia,régebbi inpainting
+FUSE,https://github.com/ruiliu-ai/FuseFormer,Python,nem igazolt,M6,Referencia,régebbi inpainting
+STTN,https://github.com/researchmm/STTN,Python,nem igazolt,M6,Referencia,régebbi inpainting
+VREMOVE,https://github.com/oguzakif/video-object-remover,Python,nem igazolt,M6,Referencia,régi
+MONEY,https://github.com/harry0703/MoneyPrinterTurbo,Python,nem igazolt,M8,Referencia,"MoneyPrinterTurbo: külső API-kra (LLM, stockvideó) épül; mintának jó"
+OPENM,https://github.com/calesthio/OpenMontage,Python,nem igazolt,M8,Referencia,30 helyen szerepel; pipeline-minta
+PIXELLE,https://github.com/AiuniAI/Pixelle-Video,Python,nem igazolt,M8,Referencia,26 helyen szerepel; pipeline-minta
+SCRIPTV,https://github.com/trilogy-group/ttv-pipeline,Python,nem igazolt,M8,Referencia,pipeline-minta
+SHORT,https://github.com/RayVentura/ShortGPT,Python,nem igazolt,M8,Referencia,ShortGPT: külső API-k
+VIDEDITOR,https://github.com/showlab/VideoDirectorGPT,Python,nem igazolt,M8,Referencia,kutatási kód (LLM-tervezés)
+DREAMG,https://github.com/dreamgaussian/dreamgaussian4d,Python,nem igazolt,M9,Referencia,kutatási kód
+NVS,https://github.com/graphdeco-inria/on-the-fly-nvs,Python,nem igazolt,M9,Referencia,kutatási kód
+SPLAT,https://github.com/guanjunwu/4DGaussian-Splatting,Python,nem igazolt,M9,Referencia,a 4DGaussians másik ága
+EDDEN,https://github.com/facebookresearch/denoiser,Python,nem igazolt,M10,Referencia,hangzajszűrés; a DeepFilterNet jobb választás
+DIAM,https://github.com/eloialonso/diamond,Python,nem igazolt,M11,Referencia,kutatási kód
+DREAMFOR,https://github.com/NVlabs/DriveDreamer,Python,nem igazolt,M11,Referencia,"vezetési jelenet, kutatási"
+DRIVE,https://github.com/OpenDriveLab/DriveDreamer,Python,nem igazolt,M11,Referencia,"vezetési jelenet, kutatási"
+OASIS,https://github.com/etched-ai/open-oasis,Python,nem igazolt,M11,Referencia,"interaktív világmodell, kísérleti"
+COMFY,https://github.com/comfyanonymous/ComfyUI,Python,nem igazolt,M1,Kihagyás,"saját környezet, böngészős UI, custom node-függőségek; helyette diffusers közvetlenül"
+COMFY314,https://github.com/Be-As-One/comfyui-wan2.2,Python,dokumentált,M1,Kihagyás,ComfyUI-csomagolás; ugyanaz az ok
+HUN,https://github.com/Tencent/HunyuanVideo,Python,nem igazolt,M1,Kihagyás,a licenc kizárja az EU-t
+MUSE,https://github.com/TMElyralab/MuseTalk,Python,nem igazolt,M2,Kihagyás,"mmcv/mmpose függőség, külön CUDA-build"
+WAV,https://github.com/Rudrabha/Wav2Lip,Python,nem igazolt,M2,Kihagyás,elavult; a modellek nem kereskedelmi licencűek
+VIDEOINP,https://github.com/sczhou/ProPainter,Python,nem igazolt,M6,Kihagyás,ProPainter: nem kereskedelmi licenc
+GS,https://github.com/graphdeco-inria/gaussian-splatting,Python,nem igazolt,M9,Kihagyás,az Inria-licenc nem kereskedelmi
+INSTANT,https://github.com/NVlabs/instant-ngp,C++/Python,nem igazolt,M9,Kihagyás,NVIDIA nem kereskedelmi licenc
+DREAMER,https://github.com/danijar/dreamerv3,Python,nem igazolt,M11,Kihagyás,"megerősítéses tanulás, nem videógenerátor"
+SHADOW,https://github.com/Shaadalam9/traffic-pipeline,Python,más környezetet dokumentál,M11,Kihagyás,"forgalmi pipeline, nem videógenerátor"
