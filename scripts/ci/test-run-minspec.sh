@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# Regression test for scripts/dev/run-minspec.sh without a GPU or systemd:
+# fake systemd-run, taskset and nvidia-smi on PATH record what the wrapper
+# would execute.
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+
+WORK=$(mktemp -d)
+trap 'rm -rf "$WORK"' EXIT
+BIN="$WORK/bin"
+mkdir -p "$BIN"
+
+# systemd-run: record the cgroup properties, then run what follows "--".
+cat >"$BIN/systemd-run" <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$@" >"$CFA4_TEST_LOG.systemd"
+while [[ $# -gt 0 && "$1" != "--" ]]; do shift; done
+shift
+exec "$@"
+SH
+# taskset: record the CPU list, then run the command.
+cat >"$BIN/taskset" <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$2" >"$CFA4_TEST_LOG.taskset"
+shift 2
+exec "$@"
+SH
+# nvidia-smi: a 24 GB card at index 0, the 12 GB RTX 3060 at index 1.
+cat >"$BIN/nvidia-smi" <<'SH'
+#!/usr/bin/env bash
+echo "0, NVIDIA GeForce RTX 4090, 24564, 0x268410DE"
+echo "1, NVIDIA GeForce RTX 3060, 12288, 0x250310DE"
+SH
+chmod +x "$BIN"/*
+
+fail() { echo "FAIL: $*" >&2; exit 1; }
+
+run() {
+  local log="$WORK/log"
+  rm -f "$log".*
+  CFA4_TEST_LOG="$log" PATH="$BIN:$PATH" "$@" \
+    bash scripts/dev/run-minspec.sh env >"$log.env" 2>"$log.err"
+}
+
+# Default NVIDIA: picks the 3060, caps RAM at 32G without swap, 8 CPUs.
+run env
+grep -qx 'MemoryMax=32G' "$WORK/log.systemd" || fail "MemoryMax=32G missing"
+grep -qx 'MemorySwapMax=0' "$WORK/log.systemd" || fail "MemorySwapMax=0 missing"
+grep -qx '0-7' "$WORK/log.taskset" || fail "CPU list is not 0-7"
+grep -qx 'CUDA_VISIBLE_DEVICES=1' "$WORK/log.env" || fail "3060 (index 1) not selected"
+grep -qx 'CUDA_DEVICE_ORDER=PCI_BUS_ID' "$WORK/log.env" || fail "PCI_BUS_ID order missing"
+# Vulkan/wgpu follows the same card through the Mesa device-select layer.
+grep -qx 'MESA_VK_DEVICE_SELECT=10de:2503' "$WORK/log.env" || fail "Vulkan not pinned to the 3060"
+grep -qx 'MESA_VK_DEVICE_SELECT_FORCE_DEFAULT_DEVICE=1' "$WORK/log.env" || fail "Vulkan selection not forced"
+
+# Overrides: RAM, CPUs and an explicit card.
+run env CFA4_MIN_RAM=16G CFA4_MIN_CPUS=4 CFA4_REF_GPU=0
+grep -qx 'MemoryMax=16G' "$WORK/log.systemd" || fail "CFA4_MIN_RAM ignored"
+grep -qx '0-3' "$WORK/log.taskset" || fail "CFA4_MIN_CPUS ignored"
+grep -qx 'CUDA_VISIBLE_DEVICES=0' "$WORK/log.env" || fail "CFA4_REF_GPU ignored"
+grep -qx 'MESA_VK_DEVICE_SELECT=10de:2684' "$WORK/log.env" || fail "Vulkan does not follow CFA4_REF_GPU"
+
+# AMD and Intel hide CUDA devices and need an explicit index.
+run env CFA4_REF_VENDOR=amd CFA4_REF_GPU=2
+grep -qx 'ROCR_VISIBLE_DEVICES=2' "$WORK/log.env" || fail "AMD card not selected"
+grep -qx 'CUDA_VISIBLE_DEVICES=' "$WORK/log.env" || fail "AMD run must hide CUDA devices"
+grep -q 'FIGYELEM' "$WORK/log.err" || fail "unfiltered Vulkan must warn"
+grep -q '^MESA_VK_DEVICE_SELECT=' "$WORK/log.env" && fail "no Vulkan filter without a PCI id"
+run env CFA4_REF_VENDOR=amd CFA4_REF_GPU=2 CFA4_REF_VK_DEVICE=1002:73df
+grep -qx 'MESA_VK_DEVICE_SELECT=1002:73df' "$WORK/log.env" || fail "CFA4_REF_VK_DEVICE ignored"
+if run env CFA4_REF_VENDOR=amd CFA4_REF_GPU=2 CFA4_REF_VK_DEVICE=bogus; then fail "malformed PCI id must fail"; fi
+run env CFA4_REF_VENDOR=intel CFA4_REF_GPU=3
+grep -qx 'ZE_AFFINITY_MASK=3' "$WORK/log.env" || fail "Intel card not selected"
+# The mask renumbers the card to 0, so the SYCL selector must use 0.
+grep -qx 'ONEAPI_DEVICE_SELECTOR=level_zero:0' "$WORK/log.env" || fail "SYCL selector must use the remapped index 0"
+if run env CFA4_REF_VENDOR=amd; then fail "AMD without CFA4_REF_GPU must fail"; fi
+if run env CFA4_REF_VENDOR=other CFA4_REF_GPU=0; then fail "unknown vendor must fail"; fi
+
+# No command: usage error, nothing runs.
+if CFA4_TEST_LOG="$WORK/log" PATH="$BIN:$PATH" bash scripts/dev/run-minspec.sh 2>/dev/null; then
+  fail "missing command must fail"
+fi
+
+echo "PASS: run-minspec wrapper limits (RAM, swap, CPU, GPU and Vulkan selection)"

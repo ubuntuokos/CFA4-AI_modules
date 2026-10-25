@@ -1,0 +1,201 @@
+#,Funkcionális típus,Csoport,P-kódok (eredeti lista),Jelölt repók (projektjeloltek.csv),Motorcsalád,Besorolás,Futtatás,12 GB-on,Fázis,Megjegyzés
+1,Text-to-Video,I. Alapvető videógenerátorok,"P01, P02, P03, P04, P15","MOLD, CV, BRAIN, COMFY, WAN",M1 Videódiffúziós mag,Képesség,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,
+2,Image-to-Video,I. Alapvető videógenerátorok,"P02, P15, P16, P17, P18","MOLD, BRAIN, COMFY, COMFY314, WAN",M1 Videódiffúziós mag,Képesség,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,
+3,Video-to-Video,I. Alapvető videógenerátorok,"P02, P15, P19, P20, P21","MOLD, COMFY, COMFY314, VIDCOMP, CTRVIDEO",M1 Videódiffúziós mag,Képesség,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,
+4,Audio-to-Video,I. Alapvető videógenerátorok,"P04, P15, P17, P35","WAN22, ANIPOR, HALLO, HALLO2, ECHO2",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,"hang mint kondíció, M10-zel"
+5,Speech-to-Video,I. Alapvető videógenerátorok,"P02, P17, P35, P37","WAN22, ANIPOR, HALLO, HALLO2, ECHO2",M2 Hangvezérelt arc és avatár,Képesség,PyTorch,feltétellel,5,
+6,Music-to-Video,I. Alapvető videógenerátorok,—,"WAN22, COMFY, OPENM, MONEY, PIXELLE",M10 Hang- és zeneanalízis,Változat,Rust DSP (audio-dsp) + M1/M7,igen,4,ütemek + M1/M7
+7,Sketch-to-Video,I. Alapvető videógenerátorok,—,"VIDCOMP, CTRVIDEO, COMFY, COMFY314, VIDEDITOR",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,vázlat/él-kondíció
+8,Storyboard-to-Video,I. Alapvető videógenerátorok,"P17, P24, P27, P38","REEL, VIDGEN, NFRAME, SCRIPTV, OPENM",M8 LLM-vezérelt gyártási pipeline,Képesség,helyi LLM + a többi motor,"igen (7–8B, 4 bit)",6,
+9,Script-to-Video,I. Alapvető videógenerátorok,"P24, P25, P27, P37, P38","REEL, VIDGEN, NFRAME, SCRIPTV, OPENM",M8 LLM-vezérelt gyártási pipeline,Képesség,helyi LLM + a többi motor,"igen (7–8B, 4 bit)",6,
+10,Multimodal-to-Video,I. Alapvető videógenerátorok,"P02, P04, P15, P17, P18","MOLD, BRAIN, COMFY, WAN22, LTX",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,
+11,First-Frame-to-Video,II. Kép- és referenciavezérelt,"P02, P15, P16, P17, P18","MOLD, BRAIN, COMFY, COMFY314, WAN",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,kép-/referencia-kondíció
+12,First/Last-Frame-to-Video,II. Kép- és referenciavezérelt,"P02, P18","MOLD, COMFY, COMFY314, SCRIPTV, DYNINTER",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,kép-/referencia-kondíció
+13,Multi-Image-to-Video,II. Kép- és referenciavezérelt,"P02, P15, P17, P18","MOLD, COMFY, COMFY314, LTX, WAN22",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,kép-/referencia-kondíció
+14,Reference-to-Video,II. Kép- és referenciavezérelt,"P02, P15, P17, P18","MOLD, COMFY, COMFY314, LTX, WAN22",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,kép-/referencia-kondíció
+15,Character-Reference Video,II. Kép- és referenciavezérelt,"P02, P17, P19","MOLD, COMFY, ANILCM, MAGIC, ANYONE",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,kép-/referencia-kondíció
+16,Style-Reference Video,II. Kép- és referenciavezérelt,"P02, P17","MOLD, COMFY, ANILCM, MAGIC, ANYONE",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,kép-/referencia-kondíció
+17,Pose-to-Video,II. Kép- és referenciavezérelt,—,"MIMIC, POSE, MAGIC, ANYONE, VIDCOMP",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,vezérlőjel-kondíció; a bemenetet M3/M9/M6 adja
+18,Depth-to-Video,II. Kép- és referenciavezérelt,—,"VIDCOMP, CTRVIDEO, COMFY, COMFY314, DRAGNUWA",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,vezérlőjel-kondíció; a bemenetet M3/M9/M6 adja
+19,Edge-to-Video,II. Kép- és referenciavezérelt,—,"VIDCOMP, CTRVIDEO, COMFY, COMFY314, DRAGNUWA",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,vezérlőjel-kondíció; a bemenetet M3/M9/M6 adja
+20,Segmentation-to-Video,II. Kép- és referenciavezérelt,—,"VIDCOMP, CTRVIDEO, COMFY, COMFY314, DRAGNUWA",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,vezérlőjel-kondíció; a bemenetet M3/M9/M6 adja
+21,Motion-to-Video,III. Mozgás és animáció,"P15, P17","MIMIC, POSE, MAGIC, ANYONE, VIDCOMP",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,
+22,Motion-Transfer,III. Mozgás és animáció,—,"MIMIC, POSE, MAGIC, ANYONE, FOMM",M3 Mozgás és testtartás,Képesség,ONNX (pózbecslés) + M1,igen / generálásnál feltétellel,4,
+23,Motion-Retargeting,III. Mozgás és animáció,—,"MIMIC, POSE, MAGIC, ANYONE, FOMM",M3 Mozgás és testtartás,Változat,ONNX (pózbecslés) + M1,igen / generálásnál feltétellel,4,
+24,Human-Motion Generation,III. Mozgás és animáció,—,"MIMIC, POSE, MAGIC, ANYONE, VIDCOMP",M3 Mozgás és testtartás,Képesség,ONNX (pózbecslés) + M1,igen / generálásnál feltétellel,4,
+25,Skeleton-to-Video,III. Mozgás és animáció,—,"MIMIC, POSE, MAGIC, ANYONE, VIDCOMP",M3 Mozgás és testtartás,Változat,ONNX (pózbecslés) + M1,igen / generálásnál feltétellel,4,
+26,Gesture-to-Video,III. Mozgás és animáció,—,"MIMIC, POSE, ANYONE, ANIPOR, DANCE",M3 Mozgás és testtartás,Változat,ONNX (pózbecslés) + M1,igen / generálásnál feltétellel,4,
+27,Dance-to-Video,III. Mozgás és animáció,—,"MIMIC, POSE, ANYONE, ANIPOR, DANCE",M3 Mozgás és testtartás,Változat,ONNX (pózbecslés) + M1,igen / generálásnál feltétellel,4,
+28,Action-to-Video,III. Mozgás és animáció,P03,"MOTIONCTRL, DRAGNUWA, VIDCOMP, CTRVIDEO, COMFY",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,
+29,Trajectory-to-Video,III. Mozgás és animáció,P17,"MOTIONCTRL, DRAGNUWA, VIDCOMP, CTRVIDEO, COMFY",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,
+30,Physics-Based Motion Generation,III. Mozgás és animáció,P03,"BRAIN, COSMOS, DIAM, OASIS, DREAMER","M11 Világmodellek, szimuláció",Kísérleti,PyTorch,nagy VRAM,kísérleti,
+31,Talking-Head Generation,"IV. Arc, karakter, avatár","P17, P37","ANIPOR, SADT, LIVE, HALLO, JOY",M2 Hangvezérelt arc és avatár,Képesség,PyTorch,feltétellel,5,
+32,Talking-Avatar Generation,"IV. Arc, karakter, avatár","P17, P37","ANIPOR, SADT, LIVE, HALLO, JOY",M2 Hangvezérelt arc és avatár,Változat,PyTorch,feltétellel,5,
+33,Full-Body Avatar Generation,"IV. Arc, karakter, avatár",—,"ANYONE, POSE, ECHO2, MIMIC, MAGIC",M2 Hangvezérelt arc és avatár,Változat,PyTorch,feltétellel,5,nagy VRAM ajánlott
+34,Lip-Sync Generation,"IV. Arc, karakter, avatár","P02, P17, P35, P37","MUSE, LAT, WAV, W2L, HALLO",M2 Hangvezérelt arc és avatár,Képesség,PyTorch,feltétellel,5,
+35,Facial Animation,"IV. Arc, karakter, avatár","P17, P37","ANIPOR, SADT, LIVE, HALLO, JOY",M2 Hangvezérelt arc és avatár,Változat,PyTorch,feltétellel,5,
+36,Facial Reenactment,"IV. Arc, karakter, avatár",P17,"LIVE, FOMM, THIN, ANIPOR, VEX",M2 Hangvezérelt arc és avatár,Változat,PyTorch,feltétellel,5,
+37,Expression Transfer,"IV. Arc, karakter, avatár",P17,"LIVE, FOMM, THIN, ANIPOR, VEX",M2 Hangvezérelt arc és avatár,Változat,PyTorch,feltétellel,5,
+38,Face-Replacement Video,"IV. Arc, karakter, avatár",—,"LIVE, FOMM, W2L, ANIPOR, VEX",M2 Hangvezérelt arc és avatár,Szabályzat kell,PyTorch,feltétellel,döntés után,"hozzájárulás, vízjel, visszaélés elleni szabályok nélkül ne kerüljön be"
+39,Digital-Human Generation,"IV. Arc, karakter, avatár",P17,"ANIPOR, SADT, LIVE, HALLO, JOY",M2 Hangvezérelt arc és avatár,Változat,PyTorch,feltétellel,5,
+40,Virtual-Presenter Generation,"IV. Arc, karakter, avatár","P17, P37","ANIPOR, SADT, LIVE, HALLO, JOY",M8 LLM-vezérelt gyártási pipeline,Sablon,helyi LLM + a többi motor,"igen (7–8B, 4 bit)",6,M2 + TTS
+41,Cinematic Video Generation,V. Filmes és jelenet,"P01, P02, P03, P15, P17","MOLD, CV, BRAIN, WAN22, COG",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,
+42,Multi-Shot Video Generation,V. Filmes és jelenet,"P17, P19, P24, P25, P38","SCRIPTV, REEL, VIDGEN, OPENM, PIXELLE",M8 LLM-vezérelt gyártási pipeline,Képesség,helyi LLM + a többi motor,"igen (7–8B, 4 bit)",6,
+43,Scene-to-Scene Generation,V. Filmes és jelenet,"P02, P19, P38","SCRIPTV, REEL, VIDGEN, OPENM, PIXELLE",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,
+44,Narrative Video Generation,V. Filmes és jelenet,"P24, P25, P37, P38","SCRIPTV, REEL, VIDGEN, OPENM, PIXELLE",M8 LLM-vezérelt gyártási pipeline,Változat,helyi LLM + a többi motor,"igen (7–8B, 4 bit)",6,
+45,Character-Consistent Generation,V. Filmes és jelenet,"P02, P19","MOLD, COMFY, COMFY314, WAN22, FRAMEPACK",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,
+46,Location-Consistent Generation,V. Filmes és jelenet,—,"MOLD, COMFY, COMFY314, WAN22, FRAMEPACK",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,
+47,Camera-Controlled Generation,V. Filmes és jelenet,P17,"MOTIONCTRL, DRAGNUWA, VIDCOMP, WAN22, COMFY",M1 Videódiffúziós mag,Képesség,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,kameravezérlés
+48,Shot-Composition Generation,V. Filmes és jelenet,"P17, P27","MOTIONCTRL, DRAGNUWA, VIDCOMP, WAN22, COMFY",M8 LLM-vezérelt gyártási pipeline,Változat,helyi LLM + a többi motor,"igen (7–8B, 4 bit)",6,
+49,Film-Previsualization,V. Filmes és jelenet,"P17, P27","MOTIONCTRL, DRAGNUWA, VIDCOMP, WAN22, COMFY",M8 LLM-vezérelt gyártási pipeline,Változat,helyi LLM + a többi motor,"igen (7–8B, 4 bit)",6,
+50,Virtual-Cinematography Generation,V. Filmes és jelenet,P17,"MOTIONCTRL, DRAGNUWA, VIDCOMP, WAN22, COMFY",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,
+51,2D Animation Generation,VI. 2D és grafikai animáció,"P26, P27, P28, P29, P30","RUSTMOTION, ONDA, MERC, NFRAME, VCR",M7 Procedurális és grafikus animáció,Képesség,"Rust (CFA4 render), nem neurális",igen,4,
+52,Cartoon Video Generation,VI. 2D és grafikai animáció,—,"ANID, ANILCM, COMFY, COMFY314, MOLD",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,stílus
+53,Anime Video Generation,VI. 2D és grafikai animáció,—,"ANID, ANILCM, COMFY, COMFY314, MOLD",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,stílus
+54,Line-Art Animation,VI. 2D és grafikai animáció,"P26, P29, P30","RUSTMOTION, MERC, ONDA, VCR, MANIM",M7 Procedurális és grafikus animáció,Változat,"Rust (CFA4 render), nem neurális",igen,4,
+55,Sprite Animation Generation,VI. 2D és grafikai animáció,—,"RUSTMOTION, MERC, ONDA, VCR, NFRAME",M7 Procedurális és grafikus animáció,Változat,"Rust (CFA4 render), nem neurális",igen,4,
+56,Pixel-Art Animation,VI. 2D és grafikai animáció,—,"RUSTMOTION, MERC, ONDA, VCR, NFRAME",M7 Procedurális és grafikus animáció,Változat,"Rust (CFA4 render), nem neurális",igen,4,
+57,Vector Animation Generation,VI. 2D és grafikai animáció,"P26, P28, P29, P30","RUSTMOTION, ONDA, MERC, VCR, NFRAME",M7 Procedurális és grafikus animáció,Változat,"Rust (CFA4 render), nem neurális",igen,4,
+58,Motion-Graphics Generation,VI. 2D és grafikai animáció,"P26, P28, P29, P30, P31","RUSTMOTION, ONDA, MERC, VCR, NFRAME",M7 Procedurális és grafikus animáció,Képesség,"Rust (CFA4 render), nem neurális",igen,4,
+59,Kinetic-Typography Generation,VI. 2D és grafikai animáció,"P26, P27, P28, P29, P30","RUSTMOTION, ONDA, MERC, VCR, NFRAME",M7 Procedurális és grafikus animáció,Változat,"Rust (CFA4 render), nem neurális",igen,4,
+60,Infographic Animation,VI. 2D és grafikai animáció,"P26, P27, P28, P29, P30","RUSTMOTION, ONDA, MERC, VCR, NFRAME",M7 Procedurális és grafikus animáció,Változat,"Rust (CFA4 render), nem neurális",igen,4,
+61,Text-to-3D-to-Video,VII. 3D és térbeli,P02,"BRAIN, DREAMG, FOURD, GS, NERF",M9 3D és térbeli,Képesség,PyTorch + ONNX (mélység),feltétellel,7,
+62,Image-to-3D-to-Video,VII. 3D és térbeli,"P02, P03","BRAIN, DREAMG, FOURD, GS, NERF",M9 3D és térbeli,Változat,PyTorch + ONNX (mélység),feltétellel,7,
+63,3D-Scene-to-Video,VII. 3D és térbeli,"P03, P33","BRAIN, DREAMG, FOURD, GS, NERF",M9 3D és térbeli,Változat,PyTorch + ONNX (mélység),feltétellel,7,
+64,NeRF-Based Video Generation,VII. 3D és térbeli,—,"NERF, INSTANT, NVS, GS, MDV",M9 3D és térbeli,Változat,PyTorch + ONNX (mélység),feltétellel,7,
+65,Gaussian-Splatting Video,VII. 3D és térbeli,P03,"BRAIN, GS, NVS, FOURD, SPLAT",M9 3D és térbeli,Képesség,PyTorch + ONNX (mélység),feltétellel,7,
+66,Novel-View Synthesis,VII. 3D és térbeli,P03,"NVS, NERF, INSTANT, GS, STEREO",M9 3D és térbeli,Változat,PyTorch + ONNX (mélység),feltétellel,7,
+67,Volumetric Video Generation,VII. 3D és térbeli,—,"FOURD, SPLAT, GS, STEREO, MDV",M9 3D és térbeli,Kísérleti,PyTorch + ONNX (mélység),feltétellel,7,
+68,3D Character Animation,VII. 3D és térbeli,—,"FOURD, SPLAT, POSE, MIMIC, ANYONE",M9 3D és térbeli,Változat,PyTorch + ONNX (mélység),feltétellel,7,
+69,Virtual-Camera Path Rendering,VII. 3D és térbeli,P03,"BRAIN, GS, NERF, NVS, FOURD",M9 3D és térbeli,Változat,PyTorch + ONNX (mélység),feltétellel,7,
+70,Multi-View Video Generation,VII. 3D és térbeli,—,"STEREO, NVS, GS, MDV, FOURD",M9 3D és térbeli,Változat,PyTorch + ONNX (mélység),feltétellel,7,
+71,Video Inpainting,VIII. Generatív szerkesztők,—,"VIDEOINP, DIFFUER, E2FGVI, STTN, FUSE",M1 Videódiffúziós mag,Képesség,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,maszkos generálás
+72,Video Outpainting,VIII. Generatív szerkesztők,—,"SEEN, OUT",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,maszk M6-ból + M1 inpainting
+73,Object Removal,VIII. Generatív szerkesztők,—,"SVOR, VIDEOINP, DIFFUER, VANISH, VREMOVE",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,maszk M6-ból + M1 inpainting
+74,Object Insertion,VIII. Generatív szerkesztők,—,"COMFY, COMFY314, VIDTOKEN, FATE, RAVE",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,maszk M6-ból + M1 inpainting
+75,Object Replacement,VIII. Generatív szerkesztők,—,"COMFY, COMFY314, VIDTOKEN, FATE, RAVE",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,maszk M6-ból + M1 inpainting
+76,Background Replacement,VIII. Generatív szerkesztők,—,"COMFY, COMFY314, VIDTOKEN, FATE, RAVE","M6 Szegmentálás, matting, rotoszkóp",Képesség,ONNX + PyTorch (SAM 2),igen,3,matting + kompozit; generatív háttér M1-gyel
+77,Scene Replacement,VIII. Generatív szerkesztők,—,"COMFY, COMFY314, VIDTOKEN, FATE, RAVE",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,maszk M6-ból + M1 inpainting
+78,Semantic Video Editing,VIII. Generatív szerkesztők,"P21, P40","COMFY, COMFY314, VIDTOKEN, FATE, RAVE",M1 Videódiffúziós mag,Képesség,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,maszkos generálás
+79,Localized Video Regeneration,VIII. Generatív szerkesztők,—,"COMFY, COMFY314, VIDTOKEN, FATE, RAVE",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,maszk M6-ból + M1 inpainting
+80,Temporal Video Inpainting,VIII. Generatív szerkesztők,—,"VIDEOINP, DIFFUER, E2FGVI, STTN, FUSE",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,maszk M6-ból + M1 inpainting
+81,Video Style Transfer,IX. Stílus és megjelenés,—,"RAVE, VIDTOKEN, FATE, ANID, ANILCM",M1 Videódiffúziós mag,Képesség,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,V2V stílus
+82,Photorealistic Video Conversion,IX. Stílus és megjelenés,—,"RAVE, VIDTOKEN, FATE, COMFY",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,V2V stílus/prompt
+83,Cartoonization,IX. Stílus és megjelenés,—,"RAVE, VIDTOKEN, FATE, ANID, ANILCM",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,V2V stílus/prompt
+84,Anime Conversion,IX. Stílus és megjelenés,—,"RAVE, VIDTOKEN, FATE, ANID, ANILCM",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,V2V stílus/prompt
+85,Artistic Video Stylization,IX. Stílus és megjelenés,—,"RAVE, VIDTOKEN, FATE, ANID, ANILCM",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,V2V stílus/prompt
+86,Material Appearance Transfer,IX. Stílus és megjelenés,—,"RAVE, VIDTOKEN, COMFY",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,V2V stílus/prompt
+87,Lighting Style Transfer,IX. Stílus és megjelenés,—,"RAVE, VIDTOKEN, COMFY",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,V2V stílus/prompt
+88,Weather Transformation,IX. Stílus és megjelenés,—,"SHADOW, COMFY, VIDCOMP",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,V2V stílus/prompt
+89,Day-to-Night Conversion,IX. Stílus és megjelenés,—,"SHADOW, COMFY, VIDCOMP",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,V2V stílus/prompt
+90,Seasonal Transformation,IX. Stílus és megjelenés,—,"SHADOW, COMFY, VIDCOMP",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,V2V stílus/prompt
+91,Video Super-Resolution,X. Minőségjavítás,"P02, P05, P06, P07, P08","VSR, RVRT, VRT, EDVR, REALVSR",M4 Képjavítás és restaurálás,Képesség,ONNX,igen,1,
+92,AI Video Upscaling,X. Minőségjavítás,"P05, P06, P07, P08, P12","VSR, RVRT, VRT, EDVR, REALVSR",M4 Képjavítás és restaurálás,Változat,ONNX,igen,3,azonos a 91-gyel
+93,Video Denoising,X. Minőségjavítás,—,"RVRT, VRT, FASTDVD, DVD, EDDEN",M4 Képjavítás és restaurálás,Képesség,ONNX,igen,3,
+94,Video Deblurring,X. Minőségjavítás,—,"RVRT, VRT, ESTRNN, DENO, EDVR",M4 Képjavítás és restaurálás,Változat,ONNX,igen,3,
+95,Video Decompression,X. Minőségjavítás,—,"RVRT, VRT, VSR, ENH",M4 Képjavítás és restaurálás,Változat,ONNX,igen,3,
+96,Video Artifact Removal,X. Minőségjavítás,—,"RVRT, VRT, VSR, ENH",M4 Képjavítás és restaurálás,Változat,ONNX,igen,3,
+97,Detail Reconstruction,X. Minőségjavítás,"P05, P06, P07, P08, P12","VSR, RVRT, VRT, EDVR, REALVSR",M4 Képjavítás és restaurálás,Változat,ONNX,igen,3,
+98,Low-Light Video Enhancement,X. Minőségjavítás,—,"DENO, RVRT, VRT, REALVSR, REALER",M4 Képjavítás és restaurálás,Változat,ONNX,igen,3,
+99,Video Color Restoration,X. Minőségjavítás,—,"DEEPREM, DEOLD, TCVC",M4 Képjavítás és restaurálás,Változat,ONNX,igen,3,
+100,AI HDR Video Reconstruction,X. Minőségjavítás,—,"COMFY, RVRT, VRT",M4 Képjavítás és restaurálás,Változat,ONNX,igen,3,
+101,Frame Interpolation,XI. Időbeli,"P05, P06, P07, P08, P09","RIFE, PRRIFE, FILM, AMT, IFR",M5 Időbeli feldolgozás,Képesség,ONNX,igen,3,
+102,Frame Extrapolation,XI. Időbeli,—,"DYNINTER, PYRAMID, FRAMEPACK",M5 Időbeli feldolgozás,Változat,ONNX,igen,3,
+103,Video Extension,XI. Időbeli,"P02, P19, P20, P21","FRAMEPACK, WAN, WAN22, COMFY, MOLD",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,
+104,Video Loop Generation,XI. Időbeli,—,"DYNINTER, COMFY, ANILCM, RIFE",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,
+105,Slow-Motion Generation,XI. Időbeli,"P05, P06, P07, P08, P10","RIFE, PRRIFE, FILM, AMT, IFR",M5 Időbeli feldolgozás,Változat,ONNX,igen,3,
+106,Temporal Super-Resolution,XI. Időbeli,"P05, P06, P07, P08, P09","RIFE, PRRIFE, FILM, AMT, IFR",M5 Időbeli feldolgozás,Változat,ONNX,igen,3,
+107,Frame Reconstruction,XI. Időbeli,—,"VIDEOINP, DIFFUER, E2FGVI, VSR, RVRT",M5 Időbeli feldolgozás,Változat,ONNX,igen,3,
+108,Temporal Consistency Refinement,XI. Időbeli,"P05, P06","VSR, RVRT, VRT, VIDTOKEN, RAVE",M5 Időbeli feldolgozás,Képesség,ONNX,igen,3,
+109,Motion Smoothing,XI. Időbeli,"P05, P06, P07, P08, P09","RIFE, PRRIFE, FILM, AMT, IFR",M5 Időbeli feldolgozás,Változat,ONNX,igen,3,
+110,Time-Remapping Generation,XI. Időbeli,"P10, P26, P29","RIFE, PRRIFE, FILM, AMT, IFR",M5 Időbeli feldolgozás,Változat,ONNX,igen,3,
+111,Historical Footage Restoration,XII. Rekonstrukció és restaurálás,P12,"DEEPREM, DEOLD, TCVC, RVRT, VRT",M4 Képjavítás és restaurálás,Sablon,ONNX,igen,3,M4/M5 lánc
+112,Film Scratch Removal,XII. Rekonstrukció és restaurálás,—,"DEEPREM, DENO, VRT",M4 Képjavítás és restaurálás,Változat,ONNX,igen,3,
+113,Film Grain Reconstruction,XII. Rekonstrukció és restaurálás,—,"DEEPREM, DENO, VRT",M12 Hagyományos algoritmus,Képesség,Rust,igen,3,nem kell hozzá neurális modell
+114,Colorization,XII. Rekonstrukció és restaurálás,—,"DEEPREM, DEOLD, TCVC",M4 Képjavítás és restaurálás,Képesség,ONNX,igen,3,PyTorch is lehet
+115,Video Stabilization,XII. Rekonstrukció és restaurálás,—,"EDVR, RVRT, VRT",M12 Hagyományos algoritmus,Képesség,Rust,igen,3,nem kell hozzá neurális modell
+116,Rolling-Shutter Correction,XII. Rekonstrukció és restaurálás,—,"EDVR, RVRT",M12 Hagyományos algoritmus,Képesség,Rust,igen,3,nem kell hozzá neurális modell
+117,Deflickering,XII. Rekonstrukció és restaurálás,—,"RVRT, VRT, DEEPREM",M5 Időbeli feldolgozás,Változat,ONNX,igen,3,
+118,Video Dehazing,XII. Rekonstrukció és restaurálás,—,"DENO, RVRT, VRT",M4 Képjavítás és restaurálás,Változat,ONNX,igen,3,
+119,Video Deraining,XII. Rekonstrukció és restaurálás,—,"DENO, RVRT, VRT",M4 Képjavítás és restaurálás,Változat,ONNX,igen,3,
+120,Damaged-Frame Restoration,XII. Rekonstrukció és restaurálás,—,"VIDEOINP, DIFFUER, E2FGVI, RVRT, VRT",M5 Időbeli feldolgozás,Változat,ONNX,igen,3,
+121,Joint Audio-Video Generation,XIII. Hanggal generáló,"P02, P04, P15","WAN22, COMFY, COMFY314, INFINITE, ANIPOR",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,együttes hang-kép; nagy VRAM
+122,Audio-Synchronized Video,XIII. Hanggal generáló,"P02, P04, P15, P17, P35","WAN22, COMFY, COMFY314, INFINITE, ANIPOR",M10 Hang- és zeneanalízis,Változat,Rust DSP (audio-dsp) + M1/M7,igen,4,
+123,Dialogue-Driven Video,XIII. Hanggal generáló,"P04, P17, P37","SADT, ANIPOR, INFINITE, TALKPIPE, AVATARMC",M2 Hangvezérelt arc és avatár,Változat,PyTorch,feltétellel,5,
+124,Music-Synchronized Animation,XIII. Hanggal generáló,—,"OPENM, REEL, VIDGEN, SHORT, PIXELLE",M10 Hang- és zeneanalízis,Képesség,Rust DSP (audio-dsp) + M1/M7,igen,4,
+125,Beat-Driven Video,XIII. Hanggal generáló,—,"OPENM, REEL, VIDGEN, SHORT, PIXELLE",M10 Hang- és zeneanalízis,Változat,Rust DSP (audio-dsp) + M1/M7,igen,4,
+126,Sound-Reactive Visuals,XIII. Hanggal generáló,—,"OPENM, REEL, VIDGEN, SHORT, PIXELLE",M10 Hang- és zeneanalízis,Változat,Rust DSP (audio-dsp) + M1/M7,igen,4,
+127,Singing-Avatar Generation,XIII. Hanggal generáló,—,"INFINITE, ECHO2, HALLO2, JOY, SONIC",M2 Hangvezérelt arc és avatár,Változat,PyTorch,feltétellel,5,
+128,Music-Performance Generation,XIII. Hanggal generáló,—,"OPENM, REEL, VIDGEN, MONEY, PIXELLE",M2 Hangvezérelt arc és avatár,Változat,PyTorch,feltétellel,5,
+129,Audio-Conditioned Motion,XIII. Hanggal generáló,P17,"ANIPOR, HALLO, ECHO2, SONIC, JOY",M3 Mozgás és testtartás,Változat,ONNX (pózbecslés) + M1,igen / generálásnál feltétellel,4,
+130,Multispeaker Scene Generation,XIII. Hanggal generáló,—,"INFINITE, WAN22, COMFY, HALLO2",M8 LLM-vezérelt gyártási pipeline,Változat,helyi LLM + a többi motor,"igen (7–8B, 4 bit)",6,
+131,AI Visual Effects Generation,XIV. VFX és kompozit,—,"COMFY, VIDCOMP, VIDTOKEN, RAVE, FATE",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,
+132,Particle Effects Generation,XIV. VFX és kompozit,—,"COMFY, VIDCOMP",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,vagy procedurális szimuláció (M7)
+133,Fire and Smoke Generation,XIV. VFX és kompozit,—,"COMFY, VIDCOMP",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,vagy procedurális szimuláció (M7)
+134,Fluid Effects Generation,XIV. VFX és kompozit,—,"COMFY, VIDCOMP",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,vagy procedurális szimuláció (M7)
+135,Weather Effects Generation,XIV. VFX és kompozit,—,"COMFY, VIDCOMP",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,vagy procedurális szimuláció (M7)
+136,Explosion Effects Generation,XIV. VFX és kompozit,—,"COMFY, VIDCOMP",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,vagy procedurális szimuláció (M7)
+137,AI Rotoscoping,XIV. VFX és kompozit,"P13, P40","VIDEOINP, DIFFUER, SVOR, VANISH, VREMOVE","M6 Szegmentálás, matting, rotoszkóp",Képesség,ONNX + PyTorch (SAM 2),igen,3,
+138,AI Matting,XIV. VFX és kompozit,P13,"VIDEOINP, DIFFUER, SVOR, VANISH, VREMOVE","M6 Szegmentálás, matting, rotoszkóp",Változat,ONNX + PyTorch (SAM 2),igen,3,
+139,Generative Compositing,XIV. VFX és kompozit,"P26, P27, P28, P29, P30","RUSTMOTION, ONDA, NFRAME, VCR, MERC",M7 Procedurális és grafikus animáció,Változat,"Rust (CFA4 render), nem neurális",igen,4,
+140,Shadow and Reflection Generation,XIV. VFX és kompozit,—,"COMFY, VIDCOMP, SVOR",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,újravilágítás
+141,World-Model Video Generation,XV. Virtuális világok,"P03, P32, P33","BRAIN, COSMOS, COSMOSP, COSMOT, DIAM","M11 Világmodellek, szimuláció",Kísérleti,PyTorch,nagy VRAM,kísérleti,
+142,Physics-Conditioned Generation,XV. Virtuális világok,P03,"BRAIN, COSMOS, COSMOSP, COSMOT, DIAM","M11 Világmodellek, szimuláció",Kísérleti,PyTorch,nagy VRAM,kísérleti,
+143,Physics-Grounded Generation,XV. Virtuális világok,—,"BRAIN, COSMOS, COSMOSP, COSMOT, DIAM","M11 Világmodellek, szimuláció",Kísérleti,PyTorch,nagy VRAM,kísérleti,
+144,Interactive World Generation,XV. Virtuális világok,"P03, P32, P33","BRAIN, COSMOS, COSMOSP, COSMOT, DIAM","M11 Világmodellek, szimuláció",Kísérleti,PyTorch,nagy VRAM,kísérleti,
+145,Game-Environment Generation,XV. Virtuális világok,"P32, P33","BRAIN, COSMOS, COSMOSP, COSMOT, DIAM","M11 Világmodellek, szimuláció",Kísérleti,PyTorch,nagy VRAM,kísérleti,
+146,Driving-Scene Generation,XV. Virtuális világok,—,"DRIVE, DREAMFOR, COSMOS, COSMOSP, BRAIN","M11 Világmodellek, szimuláció",Kísérleti,PyTorch,nagy VRAM,kísérleti,
+147,Robotics Simulation Video,XV. Virtuális világok,—,"COSMOS, COSMOSP, COSMOT, DREAMER, BRAIN","M11 Világmodellek, szimuláció",Kísérleti,PyTorch,nagy VRAM,kísérleti,
+148,Embodied-Agent Video Prediction,XV. Virtuális világok,P03,"BRAIN, COSMOS, COSMOSP, DIAM, OASIS","M11 Világmodellek, szimuláció",Kísérleti,PyTorch,nagy VRAM,kísérleti,
+149,Action-Conditioned World Simulation,XV. Virtuális világok,P03,"BRAIN, COSMOS, COSMOSP, DIAM, OASIS","M11 Világmodellek, szimuláció",Kísérleti,PyTorch,nagy VRAM,kísérleti,
+150,Long-Horizon Scene Simulation,XV. Virtuális világok,—,"BRAIN, COSMOS, COSMOSP, DIAM, OASIS","M11 Világmodellek, szimuláció",Kísérleti,PyTorch,nagy VRAM,kísérleti,
+151,Prompt-to-Film,XVI. Automatizált gyártás,"P17, P24, P25, P37, P38","MOLD, OPENM, REEL, VIDGEN, MONEY",M8 LLM-vezérelt gyártási pipeline,Képesség,helyi LLM + a többi motor,"igen (7–8B, 4 bit)",6,
+152,Article-to-Video,XVI. Automatizált gyártás,—,"OPENM, REEL, VIDGEN, MONEY, PIXELLE",M8 LLM-vezérelt gyártási pipeline,Változat,helyi LLM + a többi motor,"igen (7–8B, 4 bit)",6,dokumentum/weboldal bemenet
+153,Blog-to-Video,XVI. Automatizált gyártás,—,"OPENM, REEL, VIDGEN, MONEY, PIXELLE",M8 LLM-vezérelt gyártási pipeline,Változat,helyi LLM + a többi motor,"igen (7–8B, 4 bit)",6,dokumentum/weboldal bemenet
+154,Document-to-Video,XVI. Automatizált gyártás,P24,"OPENM, REEL, VIDGEN, MONEY, PIXELLE",M8 LLM-vezérelt gyártási pipeline,Változat,helyi LLM + a többi motor,"igen (7–8B, 4 bit)",6,dokumentum/weboldal bemenet
+155,PDF-to-Video,XVI. Automatizált gyártás,—,"OPENM, REEL, VIDGEN, MONEY, PIXELLE",M8 LLM-vezérelt gyártási pipeline,Változat,helyi LLM + a többi motor,"igen (7–8B, 4 bit)",6,dokumentum/weboldal bemenet
+156,Presentation-to-Video,XVI. Automatizált gyártás,—,"OPENM, REEL, VIDGEN, MONEY, PIXELLE",M8 LLM-vezérelt gyártási pipeline,Változat,helyi LLM + a többi motor,"igen (7–8B, 4 bit)",6,dokumentum/weboldal bemenet
+157,Data-to-Video,XVI. Automatizált gyártás,"P27, P28, P29","RUSTMOTION, ONDA, NFRAME, VCR, MERC",M7 Procedurális és grafikus animáció,Változat,"Rust (CFA4 render), nem neurális",igen,4,M8 vezérli
+158,Product-to-Video,XVI. Automatizált gyártás,—,"OPENM, VIDGEN, REEL, MONEY, PIXELLE",M8 LLM-vezérelt gyártási pipeline,Sablon,helyi LLM + a többi motor,"igen (7–8B, 4 bit)",6,
+159,Website-to-Video,XVI. Automatizált gyártás,P24,"OPENM, VIDGEN, REEL, MONEY, PIXELLE",M8 LLM-vezérelt gyártási pipeline,Változat,helyi LLM + a többi motor,"igen (7–8B, 4 bit)",6,dokumentum/weboldal bemenet
+160,Automated Video Production,XVI. Automatizált gyártás,"P24, P25, P27, P37, P38","VIDGEN, REEL, OPENM, MONEY, PIXELLE",M8 LLM-vezérelt gyártási pipeline,Változat,helyi LLM + a többi motor,"igen (7–8B, 4 bit)",6,dokumentum/weboldal bemenet
+161,Advertisement Video Generation,XVII. Speciális tartalom,—,"OPENM, MONEY, PIXELLE, SHORT, REEL",M8 LLM-vezérelt gyártási pipeline,Sablon,helyi LLM + a többi motor,"igen (7–8B, 4 bit)",6,műfaji sablon
+162,Social-Media Video Generation,XVII. Speciális tartalom,"P24, P25, P37, P38","OPENM, MONEY, PIXELLE, SHORT, REEL",M8 LLM-vezérelt gyártási pipeline,Sablon,helyi LLM + a többi motor,"igen (7–8B, 4 bit)",6,műfaji sablon
+163,Short-Form Video Generation,XVII. Speciális tartalom,"P24, P25, P37, P38","OPENM, MONEY, PIXELLE, SHORT, REEL",M8 LLM-vezérelt gyártási pipeline,Sablon,helyi LLM + a többi motor,"igen (7–8B, 4 bit)",6,műfaji sablon
+164,Educational Video Generation,XVII. Speciális tartalom,"P24, P37","VIDGEN, REEL, OPENM, MONEY, PIXELLE",M8 LLM-vezérelt gyártási pipeline,Sablon,helyi LLM + a többi motor,"igen (7–8B, 4 bit)",6,műfaji sablon
+165,Explainer Video Generation,XVII. Speciális tartalom,"P24, P25, P37","VIDGEN, REEL, OPENM, MONEY, PIXELLE",M8 LLM-vezérelt gyártási pipeline,Sablon,helyi LLM + a többi motor,"igen (7–8B, 4 bit)",6,műfaji sablon
+166,Tutorial Video Generation,XVII. Speciális tartalom,"P24, P37","VIDGEN, REEL, OPENM, MONEY, PIXELLE",M8 LLM-vezérelt gyártási pipeline,Sablon,helyi LLM + a többi motor,"igen (7–8B, 4 bit)",6,műfaji sablon
+167,Product-Demo Video Generation,XVII. Speciális tartalom,—,"OPENM, REEL, VIDGEN, MONEY, PIXELLE",M8 LLM-vezérelt gyártási pipeline,Sablon,helyi LLM + a többi motor,"igen (7–8B, 4 bit)",6,műfaji sablon
+168,News Video Generation,XVII. Speciális tartalom,—,"OPENM, MONEY, PIXELLE",M8 LLM-vezérelt gyártási pipeline,Sablon,helyi LLM + a többi motor,"igen (7–8B, 4 bit)",6,műfaji sablon
+169,Music-Video Generation,XVII. Speciális tartalom,—,"OPENM, PIXELLE, MONEY",M8 LLM-vezérelt gyártási pipeline,Sablon,helyi LLM + a többi motor,"igen (7–8B, 4 bit)",6,műfaji sablon
+170,Documentary-Style Generation,XVII. Speciális tartalom,—,"OPENM, VIDGEN, REEL",M8 LLM-vezérelt gyártási pipeline,Sablon,helyi LLM + a többi motor,"igen (7–8B, 4 bit)",6,műfaji sablon
+171,Camera-Motion Generation,XVIII. Kamera és formátum,P17,"MOTIONCTRL, DRAGNUWA, MOLD, COMFY, VIDCOMP",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,kameravezérlés
+172,Camera-Angle Generation,XVIII. Kamera és formátum,P17,"MOTIONCTRL, DRAGNUWA, MOLD, COMFY, VIDCOMP",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,kameravezérlés
+173,Zoom and Pan Generation,XVIII. Kamera és formátum,"P17, P26, P29","MOTIONCTRL, DRAGNUWA, COMFY, MOLD, VIDCOMP",M12 Hagyományos algoritmus,Képesség,Rust,igen,3,hagyományos kulcskocka-animáció is elég
+174,Dolly-Shot Generation,XVIII. Kamera és formátum,P17,"MOTIONCTRL, DRAGNUWA, COMFY, MOLD, VIDCOMP",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,kameravezérlés
+175,Orbit-Camera Generation,XVIII. Kamera és formátum,P17,"MOTIONCTRL, DRAGNUWA, COMFY, MOLD, VIDCOMP",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,kameravezérlés
+176,Parallax Video Generation,XVIII. Kamera és formátum,—,"MDV, STEREO, NVS",M9 3D és térbeli,Változat,PyTorch + ONNX (mélység),feltétellel,7,mélységalapú
+177,Stereo Video Generation,XVIII. Kamera és formátum,—,"STEREO, MDV",M9 3D és térbeli,Változat,PyTorch + ONNX (mélység),feltétellel,7,mélységalapú
+178,360-Degree Video Generation,XVIII. Kamera és formátum,—,"STEREO, MDV, GS, NERF",M1 Videódiffúziós mag,Kísérleti,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,
+179,VR Video Generation,XVIII. Kamera és formátum,—,"STEREO, MDV, GS, NERF",M9 3D és térbeli,Változat,PyTorch + ONNX (mélység),feltétellel,7,mélységalapú
+180,Aspect-Ratio Generative Reframing,XVIII. Kamera és formátum,—,"COMFY, COMFY314, VIDCOMP, FRAMEPACK",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,outpainting + alanykövetés
+181,Medical Video Synthesis,XIX. Tudományos és ipari,—,—,—,Kihagyás,—,—,—,orvosi felhasználás felelősségi kockázata
+182,Microscopy Video Generation,XIX. Tudományos és ipari,—,—,M7 Procedurális és grafikus animáció,Sablon,"Rust (CFA4 render), nem neurális",igen,4,"rétegpiac, később; M7/M1 sablon"
+183,Scientific Simulation Video,XIX. Tudományos és ipari,—,"COSMOS, COSMOSP, BRAIN, DIAM, DREAMER",M7 Procedurális és grafikus animáció,Sablon,"Rust (CFA4 render), nem neurális",igen,4,"rétegpiac, később; M7/M1 sablon"
+184,Molecular Animation Generation,XIX. Tudományos és ipari,—,MANIM,M7 Procedurális és grafikus animáció,Sablon,"Rust (CFA4 render), nem neurális",igen,4,"rétegpiac, később; M7/M1 sablon"
+185,Satellite Video Synthesis,XIX. Tudományos és ipari,—,—,M7 Procedurális és grafikus animáció,Sablon,"Rust (CFA4 render), nem neurális",igen,4,"rétegpiac, később; M7/M1 sablon"
+186,Weather Simulation Video,XIX. Tudományos és ipari,—,"COSMOS, BRAIN",M7 Procedurális és grafikus animáció,Sablon,"Rust (CFA4 render), nem neurális",igen,4,"rétegpiac, később; M7/M1 sablon"
+187,Industrial Process Visualization,XIX. Tudományos és ipari,—,"BRAIN, COSMOS, COSMOSP, NERF, GS",M7 Procedurális és grafikus animáció,Sablon,"Rust (CFA4 render), nem neurális",igen,4,"rétegpiac, később; M7/M1 sablon"
+188,Digital-Twin Video Generation,XIX. Tudományos és ipari,—,"BRAIN, COSMOS, COSMOSP, NERF, GS",M7 Procedurális és grafikus animáció,Sablon,"Rust (CFA4 render), nem neurális",igen,4,"rétegpiac, később; M7/M1 sablon"
+189,Synthetic Training Video,XIX. Tudományos és ipari,—,"COSMOS, COSMOSP, COSMOT, DRIVE, DREAMFOR",M7 Procedurális és grafikus animáció,Sablon,"Rust (CFA4 render), nem neurális",igen,4,"rétegpiac, később; M7/M1 sablon"
+190,Synthetic Surveillance Video,XIX. Tudományos és ipari,—,"COSMOS, COSMOSP, COSMOT, DRIVE, DREAMFOR",—,Kihagyás,—,—,—,visszaélési kockázat
+191,Real-Time Generative Video,XX. Fejlett és kísérleti,—,"BRAIN, MOLD, FRAMEPACK, COMFY",—,Üzemmód,—,—,—,"preview/valós idejű szint, nem külön funkció"
+192,Streaming Video Generation,XX. Fejlett és kísérleti,P09,"BRAIN, MOLD, FRAMEPACK, COMFY",—,Üzemmód,—,—,—,"preview/valós idejű szint, nem külön funkció"
+193,Autoregressive Video Generation,XX. Fejlett és kísérleti,—,"PYRAMID, DIAM, DREAMER, OASIS, COSMOSP",—,Architektúra,—,—,—,"modellcsalád-tulajdonság a manifestben, nem funkció"
+194,Diffusion-Based Video Generation,XX. Fejlett és kísérleti,"P01, P02, P03, P04, P41","CV, MOLD, BRAIN, WAN, LTX",—,Architektúra,—,—,—,"modellcsalád-tulajdonság a manifestben, nem funkció"
+195,Flow-Matching Video Generation,XX. Fejlett és kísérleti,"P01, P02","CV, MOLD, PYRAMID, LTX, WAN22",—,Architektúra,—,—,—,"modellcsalád-tulajdonság a manifestben, nem funkció"
+196,Latent Video Generation,XX. Fejlett és kísérleti,"P01, P02, P03, P04, P41","CV, MOLD, BRAIN, LTX, WAN22",—,Architektúra,—,—,—,"modellcsalád-tulajdonság a manifestben, nem funkció"
+197,Transformer-Based Video Generation,XX. Fejlett és kísérleti,"P01, P02, P03, P04, P41","CV, MOLD, BRAIN, WAN22, LTX",—,Architektúra,—,—,—,"modellcsalád-tulajdonság a manifestben, nem funkció"
+198,Hybrid Generative Rendering,XX. Fejlett és kísérleti,"P02, P03","MOLD, BRAIN, COSMOS, COMFY, RUSTMOTION",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,procedurális render + diffúziós finomítás
+199,Agent-Controlled Video Generation,XX. Fejlett és kísérleti,"P24, P26, P27, P28, P29","VIDGEN, REEL, RUSTMOTION, NFRAME, ONDA",M8 LLM-vezérelt gyártási pipeline,Változat,helyi LLM + a többi motor,"igen (7–8B, 4 bit)",6,ez maga az AI-asszisztens
+200,Unified Multimodal Video Generation,XX. Fejlett és kísérleti,"P02, P04, P15, P17, P39","MOLD, BRAIN, COMFY, WAN22, HUN",M1 Videódiffúziós mag,Változat,PyTorch (diffusers),"feltétellel (480–720p, kisebb modell)",5,
