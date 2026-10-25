@@ -4,7 +4,7 @@
 **Állapot:** JAVASLAT; KÓD MÉG NINCS  
 **Kiadás:** HOLD
 
-> **Utolsó átnézés:** 2026-10-25 · **Változás:** major (első változat) · **Részletes terv:**
+> **Utolsó átnézés:** 2026-10-25 · **Változás:** minor (Qt 6 utáni sorrend a szakaszokban) · **Részletes terv:**
 > [CFA4 AI tervdokumentum](https://claude.ai/artifact/MLd6UfHG1uPBdJ16B2JZBh)
 
 A számozás azért 0006, mert a 0004 (FFI-kivétel elve) és a 0005 (`cfa4-route`) már foglalt
@@ -121,10 +121,25 @@ fogyasztja a sémát.
 
 ## Szakaszok (havi lépések)
 
+**Sorrend (tulajdonosi döntés, 2026-10-25):** előbb a teljes Qt 6 átállásnak kell
+elkészülnie és az egui-nak ki kell kerülnie ([ADR F8](ADR-F8-QT6-RUST-ENGINE-2026-10-23.md)).
+Az átállás 2026-10-25-én kb. 65%-on állt. Addig ebben a repóban **nem indul AI-crate**
+(`cfa4-ai-types`, `-registry`, `-jobs`, `-workers`), és nem kerül `ai.*` parancs a motorba.
+A hónapokat az átállás lezárásától kell számolni.
+
+Az átállás alatt is folytatható, mert nem érinti a felületet:
+
+- dokumentáció: ez az ADR, a [besorolási táblák](../ai/README.md), a Kdenlive-terv 11.3 pontja;
+- a minimumteszt-burkoló (`scripts/dev/run-minspec.sh`) és a tesztje;
+- a worker-protokoll, a sémák és a `cfa4-ai-protocol` crate a külön
+  [CFA4-sdk](https://github.com/ubuntuokos/CFA4-sdk) repóban (MIT OR Apache-2.0);
+- a K2 (Whisper bekapcsolása), mert kész kód, és a [Kdenlive-terv](../kdenlive-parity.md)
+  szerint független.
+
 Minden hónap végén legyen valami, ami az idővonalon használható.
 
-1. **1. hónap:** ez az ADR, a besorolási táblák, a minimumteszt-burkoló, majd a
-   `cfa4-ai-types` és `cfa4-ai-registry` crate. Az első képesség a jelenetfelismerés candle-on.
+1. **1. hónap:** a `cfa4-ai-types` és `cfa4-ai-registry` crate, a `cfa4-ai-protocol` bekötése.
+   Az első képesség a jelenetfelismerés candle-on.
 2. **2. hónap:** `cfa4-ai-jobs` és `cfa4-ai-workers`, a Qt shell ↔ motor adapter, az első
    PyTorch worker.
 3. **3. hónap:** átirat és szövegalapú vágás. Ehhez a meglévő `transcript.generate` funkciót kell
