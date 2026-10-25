@@ -1,7 +1,7 @@
 # Kdenlive-paritás: mit tud a Kdenlive, és mit tud már a CFA4
 
 > **Állapot:** a tulajdonos 2026-10-25-én jóváhagyta (K1–K30). · **Utolsó átnézés:** 2026-10-25 · **Változás:** major (3. változat: a kiegészítő Kdenlive-repók
-> elemzése, K10–K19 új teendők, a tulajdonos 2026-10-25-i döntései, 12. pont; K20–K25 az FA3 elődtervből, 11.1; K26–K30 felirat- és átiratlánc, 11.2) · **Cél:** Kdenlive 26.08.2 (2026-10-13) · **CFA4:** `main` @ `bbbefc3`
+> elemzése, K10–K19 új teendők, a tulajdonos 2026-10-25-i döntései, 12. pont; K20–K25 az FA3 elődtervből, 11.1; K26–K30 felirat- és átiratlánc, 11.2; az AI-részek az ADR 0006 szerint, 11.3) · **Cél:** Kdenlive 26.08.2 (2026-10-13) · **CFA4:** `main` @ `bbbefc3`
 
 Ez a lista a Kdenlive képességeit veti össze a CFA4 jelenlegi állapotával, és rangsorolja a
 hiányokat. A `docs/gaps.md` a Premiere-hez mér; ha egy hiány ott is szerepel, a G-számra
@@ -168,15 +168,15 @@ közvetlenül Qt6-ban készül, nem egui-ban.
 
 | # | Feladat | Kapcsolódó lépés | Átvehető forrás |
 |---|---|---|---|
-| **K2** | Whisper bekapcsolása a kiadott buildekben | független, most indítható (G19) | — (kész kód) |
+| **K2** | Whisper bekapcsolása a kiadott buildekben | független, most indítható (G19); a CFA4 candle-Whisperje, Vosk nem kell (11.3) | — (kész kód) |
 | **K1** | `.kdenlive` (MLT XML) projektimport | motor most; Qt6-menü az ADR F8 3. lépésénél | Kdenlive és MLT olvasó logikája, fájlonként |
 | **K3** | Linux-stabilitás, Wayland és X11 minden változaton | ADR F8 5–7. lépés, VISION.md 3. pont | — |
 | **K7** | Matematikai kifejezés a számmezőkben | ADR F8 4. lépés (közös Qt6-spinbox) | Kdenlive spinbox-logikája, ha a fejléce engedi |
 | **K8** | Hangspektrum- és spektrogram-panel | ADR F8 5. lépés | Kdenlive vagy Audacity-kód, fájlonként |
 | **K9** | ASS / SSA felirat | bármikor (`crates/captions`) | Subtitle Edit (GPL-3.0) vagy Kdenlive |
-| **K4** | AI háttéreltávolítás (SAM2-szerű) | MI-szakasz | SAM2 (Apache-2.0), helyben, nem csak NVIDIA-n |
+| **K4** | AI háttéreltávolítás (SAM2-szerű) | MI-szakasz: ADR 0006, 4. hónap, ONNX-worker (11.3) | SAM2 (Apache-2.0), helyben, nem csak NVIDIA-n |
 | **K5** | frei0r és LV2 effektek külön folyamatban | ADR 0003 A6–A7 | frei0r, lilv |
-| **K6** | Feliratfordítás szállítható licencű modellel | MI-szakasz | modellválasztás kell (licenc és helyi futás) |
+| **K6** | Feliratfordítás kereskedelmi használatot engedő modellel | MI-szakasz: ADR 0006, M10 (11.3) | modellválasztás kell (licenc és helyi futás) |
 
 ### K1 részletesen: `.kdenlive` import
 
@@ -335,6 +335,35 @@ jóváhagyással kerül be. A CFA4-ben ma megvan a Whisper (`transcript.generate
   vezérlőcsatornán is lekérdezhető; export előtt figyelmeztet.
 - **K30.** A `crates/captions` meglévő SRT- és VTT-kezelése mellé.
 
+### 11.3 AI-részek az ADR 0006 szerint (2026-10-25)
+
+A Kdenlive AI-funkciói nem saját futtatókörnyezettel jönnek át, hanem a CFA4 AI-rétegén
+([ADR 0006](adr/ADR-0006-ai-processing-layer.md)) futnak. A workerek a
+[CFA4-sdk](https://github.com/ubuntuokos/CFA4-sdk) protokollját beszélik.
+
+- **Sorrend:** az AI-réteg crate-jei csak a Qt6-átállás befejezése és az egui kivezetése után
+  indulnak. Kivétel a K2, mert az kész kód bekapcsolása.
+- **K2 (beszédfelismerés, M10, 3. hónap):** a CFA4 saját, candle-alapú Whisperje
+  (`transcript.generate`). A Kdenlive Vosk-ága és Python-alapú Whisper-hívása nem kell. A
+  Speech Editor szövegalapú vágási logikája Qt6-ban átvehető, fájlonkénti licencellenőrzéssel.
+- **K4 (háttéreltávolítás, M6, 4. hónap):** SAM2 ONNX Runtime-workerben, gyártófüggetlen
+  futtatókkal (CUDA/TensorRT, MIGraphX, OpenVINO, CPU). A Kdenlive SAM2-szkriptje
+  (Apache-2.0 OR GPL-3.0) csak referencia, a CFA4 nem futtatja.
+- **K6 és K28 (fordítás, M10):** csak kereskedelmi használatot engedő modell. A SeamlessM4T és
+  az NLLB (CC-BY-NC) kizárva.
+- **K26 (hangleválasztás):** Demucs (MIT) a közös PyTorch-workerben, vagy ONNX-exporttal.
+  **K27 (kényszerített igazítás):** CTC-modell candle-on vagy ONNX-en, licencellenőrzés után.
+- **Futtatókörnyezet:** a Kdenlive CUDA-verziónkénti venv- és requirements-rendszerét nem
+  vesszük át. Egy közös, uv-vel rögzített PyTorch-környezet van egy CUDA 12.x-szel, a sorrend
+  candle → ONNX → PyTorch.
+- **Modellek:** a CFA4 nem szállít modellt. A felhasználó a K18 letöltővel tölti le őket,
+  jóváhagyással, a manifestben rögzített ellenőrzőösszeggel. A képesség csak a telepített
+  modellel jelenik meg.
+- **Működés:** az `ai.*` parancsok a motor parancsregiszterében vannak, és előnézettel,
+  visszavonhatóan, naplózva futnak (11.1). Az idővonalra csak jóváhagyás után kerül eredmény.
+- **Minimumteszt:** minden AI-funkciót a `scripts/dev/run-minspec.sh` alatt mérünk (32 GB RAM,
+  8 CPU, egy 12 GB-os referencia-GPU).
+
 ## 12. Tulajdonosi döntések (2026-10-25)
 
 | Téma | Döntés |
@@ -344,7 +373,7 @@ jóváhagyással kerül be. A CFA4-ben ma megvan a Whisper (`transcript.generate
 | FFmpeg | az ADR 0005 (#62) szerint: kiegészítő háttér a `cfa4-route` mögött; a CI FFmpeg 9.0.2-je külön orákulum. **Feltételes:** amíg a #62 (és vele az `AGENTS.md` §2 és az ADR 0003 §10 módosítása) nincs a `main`-ben, az `AGENTS.md` §2 érvényes (FFmpeg csak teszt-orákulum), és az FFmpeg-háttérre épülő K-teendők nem kezdhetők el |
 | `gyroflow-core` (K13) | kell |
 | Hálózati render (K14) | több gép és több GPU engedélyezett; csak renderelő kliens is készül |
-| Fordítómodell (K6) | a csomagba egy nyitott, kereskedelmi használatot is engedő modell (jelölt: Opus-MT/Marian magyar–angol, licencellenőrzés után); a felhasználó opcionálisan cserélheti. SeamlessM4T és NLLB nem (CC-BY-NC) |
+| Fordítómodell (K6) | nyitott, kereskedelmi használatot is engedő modell (jelölt: Opus-MT/Marian magyar–angol, licencellenőrzés után), amelyet a felhasználó a K18 letöltővel tölt le; a CFA4 nem szállít modellt (11.3). A felhasználó cserélheti. SeamlessM4T és NLLB nem (CC-BY-NC) |
 | Hardveres kódolás (K11) | a gyártói meghajtót a felhasználó telepíti, hiány esetén telepítési link |
 | SQLite-nyilvántartás (K17) | kell |
 | Online források (K18) | fontos |
@@ -375,3 +404,4 @@ jóváhagyással kerül be. A CFA4-ben ma megvan a Whisper (`transcript.generate
 | 2026-10-25 | minor | 11.1: K20–K25 és tervezési elvek az FA3 elődtervből (FA3-VIDEO-EDITOR-001); a Kdenlive `REUSE.toml` CC0-részei rögzítve |
 | 2026-10-25 | minor | 11.2: K26–K30 felirat- és átiratlánc az FA3 Kdenlive-konszolidációjából (hangleválasztás, kényszerített igazítás, fordítás nyomkövetéssel, feliratminőség-ellenőrzés, SBV) |
 | 2026-10-25 | minor | A tulajdonos jóváhagyta a tervet (K1–K30) |
+| 2026-10-25 | minor | 11.3: a Kdenlive AI-részei (K2, K4, K6, K26–K28) az ADR 0006 szerint; K6: a modellt a felhasználó tölti le (K18), a CFA4 nem szállít modellt |
