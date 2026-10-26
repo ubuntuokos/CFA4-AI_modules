@@ -73,6 +73,19 @@ Hat funkció (hangosság, de-esser, térhang, tempó, nyelvfelismerés, zenei re
   5. **Fordítás.** A forrásnyelv szakaszonként jön az átiratból.
   6. **Protokoll.** A manifestben `capability.languages` (BCP 47), a `run` paramétereiben
      `language`. A worker szakaszonként kapja a nyelvet, így egy kötegben több nyelv is lehet.
+- **Példa (István): angol, kínai és magyar szereplő, köztük tolmács.**
+  - A tolmács beszélőváltás nélkül vált nyelvet. Ezért a nyelvet nem szabad a beszélőből
+    levezetni: a beszélő és a nyelv két külön címke minden szakaszon. A nyelvváltást a
+    mondathatáron is keresni kell, nem csak az ablakhatáron.
+  - Az átirat mindhárom nyelvet a meglévő Whisperrel kezeli; szakaszonként kell nyelvet becsülni.
+  - Beszédhangnál a Kokoro angolul és kínaiul tud, magyarul a Piper. Ha a tolmácsnak mindhárom
+    nyelven ugyanúgy kell szólnia, az ma nem megoldott: a Chatterbox Multilingual nem tud
+    magyarul. Ez nyitott modellválasztási kérdés.
+  - A tolmács mondatai a másik szereplő mondatának fordításai. Ha a szakasz „tolmácsolás”
+    jelölést kap, és mutat az eredeti szakaszra, akkor a felirat és a szinkron kihagyhatja a
+    felesleges ismétlést, vagy szándékosan megtarthatja.
+  - A felirat célnyelvenként készül. Minden szakasz az eredeti nyelvéből fordítódik, nem a
+    tolmács fordításából, hogy a hibák ne halmozódjanak.
 - **Kizárt modellek.** Nem kereskedelmi a súlyuk, ezért a fizetős oldalon nem használhatók:
   MusicGen, AudioGen, MERT, F5-TTS, Fish Speech, XTTS v2, Audio Flamingo, MMS, SeamlessM4T.
 - **Tiltott függőség.** Az Essentia AGPL-3.0, és a CFA4 licencpolitikája ezt tiltja.
