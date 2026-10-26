@@ -8,7 +8,7 @@
 |---|---|
 | [`200-tipus-besorolas.csv`](200-tipus-besorolas.csv) | A 200 funkciótípus: csoport, motorcsalád (M1–M12), besorolás (képesség, változat, sablon, kísérleti), futtató, 12 GB-os futtathatóság, fázis. A „Jelölt repók” oszlop a `projektjeloltek.csv` azonosítóira hivatkozik (típusonként legfeljebb 5 hely). A „P-kódok” az eredeti 200-as lista projektkódjai, ezek feloldása még hiányzik |
 | [`projektjeloltek.csv`](projektjeloltek.csv) | A 107 jelölt repó: motorcsalád és javaslat (elsődleges, értékelendő Rust, tartalék, referencia, kihagyás) |
-| [`hang-besorolas.csv`](hang-besorolas.csv) | 59 hang-, zene- és beszédfunkció: motorcsalád, besorolás, ami a CFA4-ben már megvan, elsődleges és tartalék jelölt, futtató, kód- és súlylicenc külön, kereskedelmi használat, 12 GB-os futtathatóság, fázis |
+| [`hang-besorolas.csv`](hang-besorolas.csv) | 60 hang-, zene- és beszédfunkció: motorcsalád, besorolás, ami a CFA4-ben már megvan, elsődleges és tartalék jelölt, futtató, kód- és súlylicenc külön, kereskedelmi használat, 12 GB-os futtathatóság, fázis |
 
 A licenc- és VRAM-adatok becslések, és egyetlen projekt sincs még kipróbálva. Mielőtt egy projekt
 bekerül, ellenőrizni kell a repójában a licencét, és le kell mérni a

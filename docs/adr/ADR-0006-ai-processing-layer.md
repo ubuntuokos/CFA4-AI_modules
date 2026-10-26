@@ -18,7 +18,7 @@ A CFA4 hibrid szerkesztő lesz: a hagyományos vágás mellett körülbelül 200
 12 motorcsaládba (M1–M12) és 32 valódi képességbe sűríthető. A többi ezek változata, sablonja
 vagy kísérleti ága. A 107 jelölt projekt értékelése:
 [`docs/ai/projektjeloltek.csv`](../ai/projektjeloltek.csv). A hang-, zene- és beszédfunkciók külön
-táblában vannak ([`docs/ai/hang-besorolas.csv`](../ai/hang-besorolas.csv)): 59 funkció, amelyhez három
+táblában vannak ([`docs/ai/hang-besorolas.csv`](../ai/hang-besorolas.csv)): 60 funkció, amelyhez három
 új motorcsalád kell (M13 beszédszintézis, M14 zene- és hanggenerálás, M15 hangleválasztás és
 -helyreállítás).
 
