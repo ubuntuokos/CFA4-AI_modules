@@ -55,6 +55,24 @@ Hat funkció (hangosság, de-esser, térhang, tempó, nyelvfelismerés, zenei re
 
   A nyelv alapján a Registry választ, ehhez a manifestnek nyelvmező kell. Kizárt: MMS-TTS
   (1100+ nyelv, de CC-BY-NC) és XTTS v2 (CPML).
+- **Nyelvenkénti modellválasztás, többnyelvű filmek (István, 2026-10-26).** Egy filmben a
+  párbeszéd nyelve váltakozhat, ezért a nyelv nem a projekt vagy a fájl tulajdonsága, hanem
+  szakaszé:
+  1. **Átirat.** Ma a `cfa4-speech` az első 30 másodpercből egyszer becsül nyelvet, és az egész
+     fájlra azt használja. Helyette ablakonként kell becsülni, és minden átiratszakasz saját
+     `language` mezőt kap. A Text panelen ez kézzel javítható, mint a beszélőcímke.
+  2. **Modellválasztás.** A Registry (képesség, nyelv) pár alapján választ a telepített modellek
+     közül, a VRAM-szint szerint. A sorrend: a felhasználó választása, aztán a minőségi
+     rangsor, végül az eSpeak NG tartalék. Ha egy nyelvhez nincs modell, a felület jelzi, és a
+     K18 letöltővel pótolható.
+  3. **Beszédhang.** A szkriptben soronként jelölhető a nyelv a `[pause 1s]` mintájára, például
+     `[lang hu]`. Ha nincs jelölés, a felirat- vagy átiratszakasz nyelve az alapértelmezés.
+  4. **Szereplők.** Szereplőnként nyelvenként rendelhető hang (szereplő → nyelv → hang). Ha
+     ugyanannak a szereplőnek minden nyelven ugyanúgy kell szólnia, az csak klónozással
+     (Chatterbox Multilingual) oldható meg, hozzájárulással.
+  5. **Fordítás.** A forrásnyelv szakaszonként jön az átiratból.
+  6. **Protokoll.** A manifestben `capability.languages` (BCP 47), a `run` paramétereiben
+     `language`. A worker szakaszonként kapja a nyelvet, így egy kötegben több nyelv is lehet.
 - **Kizárt modellek.** Nem kereskedelmi a súlyuk, ezért a fizetős oldalon nem használhatók:
   MusicGen, AudioGen, MERT, F5-TTS, Fish Speech, XTTS v2, Audio Flamingo, MMS, SeamlessM4T.
 - **Tiltott függőség.** Az Essentia AGPL-3.0, és a CFA4 licencpolitikája ezt tiltja.
