@@ -27,6 +27,9 @@ A hanglista miatt három új motorcsalád kell; az M10 és az M12 a 200-as list�
 | M14 Zene- és hanggenerálás | zene, dal, effekt, Foley | PyTorch |
 | M15 Hangleválasztás és -helyreállítás | stemek, beszéd–zaj szétválasztás, zajszűrés, sávszélesség | Rust (tract), PyTorch |
 
+A manifestben a hangfunkció azonosítója `AU-nnn`, ahol `nnn` a tábla sorszáma (például `AU-010` a
+beszédgenerálás), a 200-as lista `AI-nnn` azonosítója mellett.
+
 A „Fázis” oszlop az [ADR 0006](../adr/ADR-0006-ai-processing-layer.md) hónapjait jelenti, a
 Qt 6 átállás lezárásától számolva. A „kész” azt jelenti, hogy a funkció AI nélkül, a meglévő
 crate-ekkel már működik. A „K…” a [Kdenlive-terv](../kdenlive-parity.md) teendőjére utal.
