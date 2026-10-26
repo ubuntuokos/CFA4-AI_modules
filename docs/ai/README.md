@@ -44,8 +44,17 @@ Hat funkció (hangosság, de-esser, térhang, tempó, nyelvfelismerés, zenei re
 
 **Döntést igénylő megállapítások:**
 
-- **Magyar beszédhang.** A Kokoro nem tud magyarul, a Chatterbox sem. Magyar TTS-re a Piper
-  `hu_HU` hangjai jöhetnek szóba ONNX-en, de a licencüket hangonként ellenőrizni kell.
+- **Többnyelvű beszédhang (István, 2026-10-26: minél több nyelv).** A szűk keresztmetszet a
+  fonemizálás, mert a CFA4 saját fonemizálója csak angolul és spanyolul tud. Javasolt rétegek:
+  1. Kokoro: 9 nyelv, candle-on, folyamaton belül.
+  2. Piper-hangok: kb. 40 nyelv, köztük a magyar (`hu_HU`), ONNX-en. A licencük hangonként eltér.
+  3. Chatterbox Multilingual: 23 nyelv és hangklónozás, MIT, PyTorch-workerben. Magyarul nem tud.
+  4. eSpeak NG fonemizáló: kb. 100 nyelv, GPL-3.0, C nyelvű, ezért külön folyamatban fut. Ez
+     látja el fonémával a Kokorót és a Pipert, és robotos végső tartalékhangként minden
+     nyelvre ad hangot.
+
+  A nyelv alapján a Registry választ, ehhez a manifestnek nyelvmező kell. Kizárt: MMS-TTS
+  (1100+ nyelv, de CC-BY-NC) és XTTS v2 (CPML).
 - **Kizárt modellek.** Nem kereskedelmi a súlyuk, ezért a fizetős oldalon nem használhatók:
   MusicGen, AudioGen, MERT, F5-TTS, Fish Speech, XTTS v2, Audio Flamingo, MMS, SeamlessM4T.
 - **Tiltott függőség.** Az Essentia AGPL-3.0, és a CFA4 licencpolitikája ezt tiltja.
@@ -62,4 +71,4 @@ Hat funkció (hangosság, de-esser, térhang, tempó, nyelvfelismerés, zenei re
   AudioCraft régi Python-igénye nem akadály, de a kizárt modellek így sem jönnek szóba.
 - **Modellkatalógus.** A worker-manifest ([CFA4-sdk](https://github.com/ubuntuokos/CFA4-sdk))
   már tárolja a kód és a súly licencét külön, a letöltési címet, a méretet, a VRAM-ot és a
-  RAM-ot. A támogatott nyelvek mezője még hiányzik.
+  RAM-ot. A támogatott nyelvek mezője (`capability.languages`, BCP 47) a CFA4-sdk-ba kerül.
