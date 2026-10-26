@@ -109,9 +109,36 @@ Hat funkció (hangosság, de-esser, térhang, tempó, nyelvfelismerés, zenei re
   - **Írás.** A tengwar vagy a pIqaD betűtípusa a külső betűtípus-mappába kerül, a repóba nem
     (AGENTS.md §1.9). Ezek az írások a Unicode magánhasználatú tartományában vannak, a CSUR
     szerint.
-  - **Jogok.** Több nyelvet jogtulajdonos birtokol (klingon, na'vi, dothraki, valyrian). A CFA4
-    nem szállít hozzájuk szótárt vagy szabályt, ezeket a felhasználó adja. Csak nyílt licencű
-    adat szállítható, például az eSpeak NG GPL-3.0 adatai.
+  - **Jogok (István, 2026-10-26).** A jogtulajdonoshoz tartozó nyelvet (klingon, na'vi, dothraki,
+    valyrian) a felhasználó maga szerzi be vagy licenceli. A CFA4 nem szállít hozzá szótárt vagy
+    szabályt, csak importálni tudja a felhasználó adatait a projekt nyelvdefiníciójába. A CFA4
+    csak nyílt licencű adatot szállíthat, például az eSpeak NG GPL-3.0 adatait.
+- **Új nyelv kitalálása (István, 2026-10-26: ez a legfontosabb).** A CFA4 saját nyelvalkotót kap
+  (`AU-060`). Az eredmény a felhasználóé, a CFA4 semmilyen jogot nem tart fenn rá. A lépések:
+  1. **Hangzás.** A felhasználó leírja a karaktert („érdes, torokhangú harcos nép”, „dallamos,
+     sok magánhangzó”), vagy beállításokat választ. Ebből Rustban, magból (seed) generálva
+     születik a hangkészlet, a szótagszerkezet, a hangsúly és a hanglejtés. Ugyanaz a mag
+     ugyanazt a nyelvet adja.
+  2. **Írás és kiejtés.** Latin betűs átírás és IPA-megfeleltetés készül. Ebből automatikusan
+     keletkeznek az eSpeak NG formátumú kiejtési szabályok, így a beszédhang azonnal megszólal
+     az új nyelven, akár a színész klónozott hangján is.
+  3. **Szótár.** Egy alapfogalom-listához (Swadesh-típusú lista) generál szavakat, hangváltozási
+     szabályokkal, hogy a nyelv „élőnek” hasson. Szűri a valódi nyelvek sértő vagy nevetséges
+     egybeeséseit. A szótár a projektben tárolódik, kézzel szerkeszthető, és új szó igény
+     szerint keletkezik.
+  4. **Nyelvtan.** Szórend, ragozás és toldalékok sablonokból választva.
+  5. **Fordítás.** A forgatókönyv sorait a helyi LLM (M8) a projekt szótára és nyelvtana alapján
+     fordítja. Minden új szót és alakot visszaír a szótárba, így a nyelv a film végéig
+     következetes marad.
+  6. **Írásrendszer (később).** Generált jelkészlet, amely betűtípusként a felhasználó
+     betűtípus-mappájába kerül, nem a repóba.
+  7. **Kimenet.** Nyelvdefiníció `art-x-<név>` címkével, valamint szótár, nyelvtani összefoglaló,
+     kiejtési szabályok és feliratfordítások. Exportálható, hogy más projekt vagy a stáb
+     (például a színészek nyelvi edzője) is használhassa.
+
+  A meglévő nyelvalkotó programok (például a Vulgarlang zárt, a többi licence változó) csak
+  ötletforrások lehetnek, kódjuk és adatuk nem kerülhet be. A nyelvalkotó magja nem igényel AI-t
+  és GPU-t, ezért korán elkészülhet. Az LLM csak a fordítást segíti.
 - **Kizárt modellek.** Nem kereskedelmi a súlyuk, ezért a fizetős oldalon nem használhatók:
   MusicGen, AudioGen, MERT, F5-TTS, Fish Speech, XTTS v2, Audio Flamingo, MMS, SeamlessM4T.
 - **Tiltott függőség.** Az Essentia AGPL-3.0, és a CFA4 licencpolitikája ezt tiltja.
