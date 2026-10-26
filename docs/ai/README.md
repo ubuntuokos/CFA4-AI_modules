@@ -89,6 +89,29 @@ Hat funkció (hangosság, de-esser, térhang, tempó, nyelvfelismerés, zenei re
     felesleges ismétlést, vagy szándékosan megtarthatja.
   - A felirat célnyelvenként készül. Minden szakasz az eredeti nyelvéből fordítódik, nem a
     tolmács fordításából, hogy a hibák ne halmozódjanak.
+- **Mesterséges nyelvek (István, 2026-10-26; főleg fantasy és sci-fi).**
+  - **Jelölés.** Ahol van ISO 639-3 kód, azt kell használni: `tlh` (klingon), `qya` (quenya),
+    `sjn` (sinda), `eo` (eszperantó), `jbo` (lojban), `tok` (toki pona). A kód nélküli nyelvek
+    privát BCP 47 címkét kapnak: `art-x-<név>`, például `art-x-dothrak` vagy `art-x-navi`. Az
+    `art` a mesterséges nyelvek gyűjtőkódja. A projekt saját nyelvdefiníciót tárol: név, címke,
+    kiejtési szabályok, szótár és opcionálisan írásrendszer.
+  - **Átirat.** A Whisper ezeket nem ismeri fel, a nyelvfelismerés rossz nyelvet tippel. Ezért az
+    ilyen szakaszt kézzel kell jelölni, vagy alacsony biztonság esetén „ismeretlen nyelvűként”
+    megjelölni. A szöveg a forgatókönyvből jön, az időzítést a kényszerített igazítás (K27) adja
+    a kiejtési szabályok alapján.
+  - **Beszédhang.** Az eSpeak NG-ben már van kiejtési szabály a quenyához, a sindához, a
+    klingonhoz (`piqd`), a lojbanhoz, az eszperantóhoz és az interlinguához. Más nyelvhez a
+    felhasználó adhat szabályt eSpeak NG formátumban vagy egyszerű betű–hang táblában. A fonémák
+    a Kokoro, a Piper vagy egy klónozott hang bemenetei lehetnek, így a színész hangján is
+    megszólalhat a mesterséges nyelv.
+  - **Felirat és fordítás.** Gépi fordító nem ismeri ezeket a nyelveket. A szakasz fordítása a
+    forgatókönyv glosszájából vagy kézzel jön, a gépi fordítás le van tiltva.
+  - **Írás.** A tengwar vagy a pIqaD betűtípusa a külső betűtípus-mappába kerül, a repóba nem
+    (AGENTS.md §1.9). Ezek az írások a Unicode magánhasználatú tartományában vannak, a CSUR
+    szerint.
+  - **Jogok.** Több nyelvet jogtulajdonos birtokol (klingon, na'vi, dothraki, valyrian). A CFA4
+    nem szállít hozzájuk szótárt vagy szabályt, ezeket a felhasználó adja. Csak nyílt licencű
+    adat szállítható, például az eSpeak NG GPL-3.0 adatai.
 - **Kizárt modellek.** Nem kereskedelmi a súlyuk, ezért a fizetős oldalon nem használhatók:
   MusicGen, AudioGen, MERT, F5-TTS, Fish Speech, XTTS v2, Audio Flamingo, MMS, SeamlessM4T.
 - **Tiltott függőség.** Az Essentia AGPL-3.0, és a CFA4 licencpolitikája ezt tiltja.
