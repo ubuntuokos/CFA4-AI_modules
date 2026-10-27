@@ -53,6 +53,7 @@ cfa4-credits = { path = "crates/credits" }
 cfa4-speech = { path = "crates/speech" }
 cfa4-tts = { path = "crates/tts" }
 cfa4-tts-text = { path = "crates/tts-text" }
+cfa4-conlang = { path = "crates/conlang" }
 cfa4-render = { path = "crates/render" }
 cfa4-gpu = { path = "crates/gpu" }
 cfa4-scopes = { path = "crates/scopes" }

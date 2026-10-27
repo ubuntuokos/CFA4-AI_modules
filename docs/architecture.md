@@ -1,6 +1,6 @@
 # Architecture
 
-> **Last reviewed:** 2026-10-10 · **Last updated:** 2026-10-10 · **Change:** trivial (status line, revision history and roadmap link added; content checked against the crate list) · **Target:** Adobe Premiere Pro 2026 (26.5.2)
+> **Last reviewed:** 2026-10-10 · **Last updated:** 2026-10-27 · **Change:** minor (`conlang` crate added at L2) · **Target:** Adobe Premiere Pro 2026 (26.5.2)
 
 CFA4 is a Cargo workspace of small crates with strictly enforced layering. The engine is
 headless: every feature can be reached without a window, and the egui UI is one client among the
@@ -26,7 +26,7 @@ Design principles:
  L5  ui-egui · automation · platform · gstreamer (cfa4-gstreamer, optional)
  L4  engine
  L3  render · gpu · export · golden (test-only)
- L2  edit · codecs · interchange · captions · credits · speech · tts · tts-text
+ L2  edit · codecs · interchange · captions · credits · speech · tts · tts-text · conlang
  L1  frame · media · project · audio-dsp · text · accel
  L0  foundation: time · geom · color · bitstream · testkit (dev-dependency only)
      codecs/containers: isobmff · matroska · mxf · cfb · mpegts · ogg · h264 · h264enc · hevc · vp9 · av1 · mpeg2v · prores · dnx · apv · dng · aac · ac3 · mpa · opus
@@ -71,6 +71,7 @@ and `cfa4-cli`.
 | `speech` | L2 | speech-to-text: `Transcriber` trait, Whisper model catalogue + verified downloader (feature `download`), pure-Rust Whisper inference on candle with word timestamps (feature `whisper`), speaker labelling ([transcripts.md](transcripts.md)) |
 | `tts` | L2 | text to speech: `Voice` trait, voice catalogue, pause markers, built-in formant voices; Kokoro-82M natural voices on candle and their pinned package catalogue (feature `kokoro`). Same-layer edge to `tts-text` |
 | `tts-text` | L2 | text front end for narration: normalizer (numbers, money, dates, acronyms, pauses) and English pronunciation (CMUdict + letter-to-sound) to Kokoro phonemes |
+| `conlang` | L2 | constructed-language generator (`AU-060`): seeded sound system, romanization and IPA, vocabulary with sound changes and a real-word filter, grammar sketch, eSpeak NG pronunciation files; serde stored form validated on load. No AI, no UI |
 | `codecs` | L2 | container + codec hub: MP4/MOV, MKV, MXF, Ogg and MPEG TS / PS / video elementary stream sources, GOP-aware seeking, decoder registry, audio decoding |
 | `interchange` | L2 | EDL, FCP7 XML, FCPXML, OTIO, AAF (on `cfb`) and OMF 2.0 import/export (no file I/O; the engine supplies rendered audio essence) ([README](../crates/interchange/README.md)) |
 | `render` | L3 | sequence evaluation, CPU compositor, video effects (`effects`, `vfx`; effects needing other frames or tracks read them through `vfx::FxEnv`), transitions, audio mix |
@@ -774,4 +775,5 @@ native menus) in `apps/cfa4`. [roadmap.md](roadmap.md) has the milestone status 
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-10-27 | minor | `conlang` crate (L2) added to the layer list and the crate table |
 | 2026-10-10 | trivial | Status line and revision history added; milestone link points at docs/roadmap.md |
