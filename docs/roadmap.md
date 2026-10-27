@@ -75,6 +75,7 @@ Status: ✅ done · 🟡 in progress · ⬜ not started. Estimates are remaining
 | M12–M16 | Multicam, web (WASM), platform, long tail | 🟡 | Multicam: audio sync (GCC-PHAT, sub-sample), Merge Clips, multi-camera source sequences, Multi-Camera view with live switching (1–9); L0–L4 crates compile to wasm32 | Web app shell (file access, WebCodecs, audio), scene detection, auto reframe, ~800 remaining commands and dialogs, performance hardening | 35–55 |
 | HW | Hardware acceleration (#30) | 🟡 | Blend modes and 34 effect ids on the GPU incl. Lumetri basic / creative / vignette (#32, GPU2–GPU7); GPU export rendering (#421); decode: VideoToolbox (#33, #41), Media Foundation / D3D11 H.264 / HEVC / VP9 / AV1 (HW2, HW3), VA-API H.264 / HEVC (#358), NVDEC H.264 / HEVC (#549); encode: VideoToolbox H.264 / HEVC, NVENC H.264 (Windows, Linux) and HEVC incl. Main 10 HDR (#328, #360) | Zero-copy, remaining GPU effects, VideoToolbox Main 10, Quick Sync / AMF, VA-API VP9 / AV1 and encode | 120–200 |
 | L10N | Localization | 🟡 | Spanish, Japanese, Simplified Chinese whole interface; Portuguese (Brazil), Ukrainian menus | Hindi, Arabic (RTL), French, Indonesian, German, Korean, Vietnamese, Italian, Russian; native review | 150–230 |
+| CB | Codec backlog (low priority, last in codec work) | ⬜ | — | The remaining codecs from the owner's 2026-10-27 list not already done or planned elsewhere (CineForm, FFV1, HAP, DTS, TrueHD, WavPack, AVIF, JPEG XL, VVC, AVS, legacy and game codecs …), in four bands; low priority, at least 2 per week from 2026-11-02 to 2027-09-12: [codec-backlog.md](codec-backlog.md), [plan](codec-backlog-plan.md) | not estimated |
 
 ## After beta
 
@@ -87,5 +88,6 @@ the web app shell ([G20](gaps.md#g20-the-web-app-shell)).
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-10-27 | minor | CB row: low-priority codec backlog at the end of codec work, excluding codecs already done or planned in G3 / G10 / G13 / ADR 0002 / ADR 0003 ([codec-backlog.md](codec-backlog.md)) |
 | 2026-10-10 | minor | Alpha gate table added: six core workflows, all pass on macOS; stage stays alpha |
 | 2026-10-10 | major | Created: milestone table moved from ROADMAP.md (M5 and M9 remaining work updated), HW and L10N rows, beta milestones B1–B7, Current focus from the re-measure |

@@ -55,11 +55,13 @@ contents). Percent is ready-for-real-work for that codec: depth, profiles, speed
 - **Behind, by user impact:** 10-bit / 4:2:2 H.264 and HEVC in software ([G3](gaps.md#g3-10-bit-and-422-camera-media-needs-hardware)),
   E-AC-3, camera RAW, HEVC and AV1 software encoding, MPEG-2 / JPEG 2000 encoding for broadcast
   and DCP, DV, WMV.
+- **Low-priority backlog** (the owner's 2026-10-27 list minus what is done; after everything above): [codec-backlog.md](codec-backlog.md).
 - **Codec dimension: ~60%, 150–250 h** ([target-app-parity.md](target-app-parity.md#by-dimension)).
 
 ## Revision history
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-10-27 | trivial | Summary links the low-priority codec backlog |
 | 2026-10-11 | minor | CinemaDNG / DNG decode (#1065) |
 | 2026-10-10 | major | Created: codec-by-codec comparison with Premiere 26.5.2 from the codec crates' READMEs, the export format registry and the installed bundle's listings |
