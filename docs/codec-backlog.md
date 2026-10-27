@@ -6,7 +6,7 @@ A tulajdonos 2026-10-27-én két kodeklistát adott át (általánosan használt
 ázsiai videó-, audio- és képkodekek). Ebből a fájlból **kimaradt minden, ami már meg van oldva**
 (lásd lent), a többi ide került. **Nem sürgős:** ezek a tételek a kodekfejlesztés végére
 kerülnek, a meglévő kodekmunka (M9, B3 / [G3](gaps.md#g3-10-bit-and-422-camera-media-needs-hardware),
-a [codec-parity.md](codec-parity.md) „Behind” sorai) után. A sávokon belül a sorrend sem kötelező.
+a [codec-parity.md](codec-parity.md) „Behind” sorai) után. A sávokon belül a sorrend sem kötelező. Heti ütemterv (legalább 2 tétel hetente): [codec-backlog-plan.md](codec-backlog-plan.md).
 
 Minden tételre érvényesek a szokásos szabályok: clean-room, nyilvános specifikációból, pure Rust
 ([AGENTS.md](../AGENTS.md) §2); ffmpeg csak tesztorákulum. Ahol nincs nyilvános specifikáció, vagy
@@ -123,6 +123,7 @@ A K2-es AVS-munkához (AVS2, AVS3, AVS-audiók) kötődnek, és csak utána, a b
 
 | Dátum | Változás | Összefoglaló |
 |---|---|---|
+| 2026-10-27 | minor | Hivatkozás a heti ütemtervre ([codec-backlog-plan.md](codec-backlog-plan.md)) |
 | 2026-10-27 | minor | Új K4 sáv a legvégén: TPG, SMT, AVS3 Immersive Media (a K2-es AVS-munkához) |
 | 2026-10-27 | minor | A már folyamatban lévő vagy tervezett tételek (G3, G10, G13, ADR 0002, ADR 0003) is kikerültek, külön táblában hivatkozva |
 | 2026-10-27 | major | Létrehozva a tulajdonos 2026-10-27-i kodeklistájából: a megoldott tételek kiszűrve, a többi három alacsony prioritású sávban a kodekfejlesztés végére |
