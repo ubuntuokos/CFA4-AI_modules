@@ -1,7 +1,7 @@
 # CFA4 AI – besorolási táblák
 
 > **Állapot:** javaslat, egyetlen projekt–típus pár sincs még tesztelve · **Utolsó átnézés:**
-> 2026-10-26 · **Változás:** minor (hangfunkciók táblája, M13–M15) · **Döntés:**
+> 2026-10-26 · **Változás:** minor (a nyelvalkotó magja elkészült: `crates/conlang`) · **Döntés:**
 > [ADR 0006](../adr/ADR-0006-ai-processing-layer.md)
 
 | Fájl | Tartalom |
@@ -139,6 +139,13 @@ Hat funkció (hangosság, de-esser, térhang, tempó, nyelvfelismerés, zenei re
   A meglévő nyelvalkotó programok (például a Vulgarlang zárt, a többi licence változó) csak
   ötletforrások lehetnek, kódjuk és adatuk nem kerülhet be. A nyelvalkotó magja nem igényel AI-t
   és GPU-t, ezért korán elkészülhet. Az LLM csak a fordítást segíti.
+
+  **Állapot (2026-10-27).** Az 1–4. és a 7. lépés magja kész a `crates/conlang` crate-ben (L2, tiszta
+  Rust, felület nélkül; István döntése: GUI csak Qt6-ban készülhet). Négy hangzás-előbeállítás
+  van (kiegyensúlyozott, érdes, dallamos, sziszegő). A kiejtési szabályokat az eSpeak NG `az`
+  hangtáblájára írja, és egy teszt kb. 3800 szón ellenőrzi, hogy az eSpeak NG pontosan a számolt
+  IPA-t és hangsúlyt mondja. Hiányzik még: leírásból (szövegből) választott hangzás, fordítás
+  helyi LLM-mel (5.), írásrendszer (6.), toldalékolt alakok és a Qt6-os szerkesztőfelület.
 - **Kizárt modellek.** Nem kereskedelmi a súlyuk, ezért a fizetős oldalon nem használhatók:
   MusicGen, AudioGen, MERT, F5-TTS, Fish Speech, XTTS v2, Audio Flamingo, MMS, SeamlessM4T.
 - **Tiltott függőség.** Az Essentia AGPL-3.0, és a CFA4 licencpolitikája ezt tiltja.

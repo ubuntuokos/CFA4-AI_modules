@@ -1,0 +1,17 @@
+[package]
+name = "cfa4-conlang"
+description = "CFA4 constructed-language generator: seeded phonology, romanization and IPA, lexicon with sound changes, basic grammar choices and eSpeak NG pronunciation rules"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }

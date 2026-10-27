@@ -971,6 +971,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "cfa4-conlang"
+version = "0.10.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "cfa4-credits"
 version = "0.10.0"
 dependencies = [
