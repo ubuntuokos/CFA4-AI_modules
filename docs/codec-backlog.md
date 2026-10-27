@@ -23,33 +23,31 @@ A crate-ek README-je, a [codec-parity.md](codec-parity.md) és a [file-format-pa
 | Kép | JPEG, PNG, WebP, TIFF, BMP, GIF, APNG, OpenEXR (scan-line), DPX, CinemaDNG / DNG, HEIF / HEIC (első kép, 8 bit, külső libheif-programmal), HLG átviteli görbe (ARIB STD-B67, színkezelésben) |
 | Konténer | MP4, MOV, MKV / Matroska, WebM, AVI (demux), MPEG-TS / PS, MXF, Ogg, WAV / BWF |
 
-**Nem ide tartozik, mert már szerepel a tervben:** H.264 High 10 / 4:2:2 és HEVC 4:2:2
-(B3, G3, #626), E-AC-3 hiányzó részei (#647), MP3 / HEVC / AV1 szoftveres enkóder és
-MPEG-2 enkóder ([codec-parity.md](codec-parity.md)). Ezek a helyükön maradnak.
+## Már folyamatban vagy tervezve (ezért kimaradt)
+
+Ezeknek már van helyük a tervben, ezért a duplikáció elkerülése miatt nem kerültek a backlogba.
+Ott kell őket követni, nem itt.
+
+| Kodek / formátum | Hol van a tervben |
+|---|---|
+| H.264 High 10 / 4:2:2, HEVC 4:2:2 (RExt) | B3, [G3](gaps.md#g3-10-bit-and-422-camera-media-needs-hardware), #626 |
+| E-AC-3 hiányzó részei (AHT, enhanced coupling, 7.1) | [G10](gaps.md#g10-container-and-codec-gaps-on-import), #647 |
+| MPEG-4 Part 2 (DivX / Xvid) | G10, [codec-parity.md](codec-parity.md) (10–20 h) |
+| Theora, FLV | GStreamer-tartalék, ADR 0002 2. lépés (kész, de csak fejlesztői buildben) |
+| JPEG 2000, JPEG XS | G10, G13 (JPEG 2000 MXF, DCP), [ADR 0003](adr/ADR-0003-aswf-and-conversion-sources.md) A3 |
+| Kamera-RAW (Canon Cinema RAW Light és a többi) | G10, #383, #345, ADR 0003 A3 (LibRaw) |
+| MP3, HEVC, AV1 szoftveres enkóder, MPEG-2 enkóder | G13, ADR 0003 A5 |
 
 ## K1 – elterjedt vagy professzionális (a backlogon belül először)
 
 | Kodek / formátum | Típus | Megjegyzés |
 |---|---|---|
-| MPEG-4 Part 2 (DivX / Xvid) | videó | Az AVI-demuxer már felismeri, csak dekóder kell |
-| JPEG 2000 | videó / kép | MXF, DCP, archiválás |
-| DV / DVCPRO / DVCPRO HD | videó | Panasonic P2 is |
-| VC-1 / WMV7 / WMV8 / WMV9 | videó | ASF / WMV konténer is kell |
 | CineForm | videó | |
 | FFV1 | videó | A Matroska-demuxer már ismeri a kodekazonosítót |
 | HAP | videó | |
-| JPEG XS | videó | |
-| Theora | videó | Ma csak az opcionális GStreamer-tartalékon át nyílik meg |
-| Tömörítetlen videó (v210, RGB) MOV / AVI-ban | videó | |
 | Huffyuv, Ut Video, MagicYUV, Lagarith | videó | Veszteségmentes köztes kodekek |
-| Sony XAVC / XAVC S / XAVC HS | kameraprofil | Nagyrészt H.264 / HEVC 10 bit, 4:2:2 – a B3-ra épül; itt csak a metaadat és a mappaszerkezet |
-| Canon XF-AVC | kameraprofil | Mint fent |
-| Panasonic AVC-Intra / AVC-Ultra / P2 AVC-Intra | kameraprofil | Mint fent, MXF-ben |
-| Canon Cinema RAW Light | kamera-RAW | A kamera-RAW csoport része (#383); tulajdonosi döntés |
-| Általános kamera-RAW (a DNG-n túl) | kép | #383 |
 | DTS, DTS-HD Master Audio | audio | Licenc / szabadalom: tulajdonosi döntés |
 | Dolby TrueHD | audio | Licenc / szabadalom: tulajdonosi döntés |
-| WMA | audio | |
 | ADPCM (IMA, Microsoft) | audio | |
 | G.711 / G.722 | audio | |
 | AMR-NB / AMR-WB | audio | |
@@ -58,10 +56,6 @@ MPEG-2 enkóder ([codec-parity.md](codec-parity.md)). Ezek a helyükön maradnak
 | Speex | audio | |
 | AVIF | kép | AV1-dekóder már van, a HEIF-konténer kell hozzá |
 | JPEG XL | kép | |
-| HEIF / HEIC teljes támogatás | kép | 10 bit / HDR, több kép, animáció; saját dekóder a külső program helyett |
-| OpenEXR maradék | kép | PIZ, B44, DWA, csempés, többrészes |
-| FLV | konténer | |
-| ASF / WMV | konténer | A VC-1 / WMA-hoz |
 
 ## K2 – regionális, új generációs, szűkebb szakmai
 
@@ -120,4 +114,5 @@ külön tulajdonosi döntés kell.
 
 | Dátum | Változás | Összefoglaló |
 |---|---|---|
+| 2026-10-27 | minor | A már folyamatban lévő vagy tervezett tételek (G3, G10, G13, ADR 0002, ADR 0003) is kikerültek, külön táblában hivatkozva |
 | 2026-10-27 | major | Létrehozva a tulajdonos 2026-10-27-i kodeklistájából: a megoldott tételek kiszűrve, a többi három alacsony prioritású sávban a kodekfejlesztés végére |
