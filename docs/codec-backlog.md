@@ -103,16 +103,26 @@ külön tulajdonosi döntés kell.
 | QDesign Music 2, Voxware MetaSound, TrueSpeech, Apple MACE 3 / 6, QCELP | régi audio |
 | AVS2 3D / Multiview, AVS3 panoráma / immerszív profilok, AVS3 RTC Speech | kínai speciális |
 
+## K4 – legutolsó: AVS-kapcsolódó technológiák
+
+A K2-es AVS-munkához (AVS2, AVS3, AVS-audiók) kötődnek, és csak utána, a backlog legvégén jönnek.
+
+| Technológia | Típus |
+|---|---|
+| TPG | AVS-kapcsolódó képformátum / konténer |
+| SMT (Smart Media Transport) | multimédia-átviteli technológia |
+| AVS3 Immersive Media | immerszív média szabványcsalád |
+
 ## Nem kodek, nincs külön feladat
 
 - **ARIB STD-B32** (japán videó / audio / multiplex szabvány): a benne használt kodekek (MPEG-2,
   H.264, HEVC, AAC) és az MPEG-TS már megoldottak; legfeljebb egy ellenőrző teszt kell.
 - **ISDB-T, ISDB-S / S3**: rádiós átviteli rendszerek, videószerkesztőben nincs teendő.
-- **TPG, SMT (Smart Media Transport), AVS3 Immersive Media**: a K2-es AVS-munka mellett nézendő meg, ha odáig jut.
 
 ## Revíziótörténet
 
 | Dátum | Változás | Összefoglaló |
 |---|---|---|
+| 2026-10-27 | minor | Új K4 sáv a legvégén: TPG, SMT, AVS3 Immersive Media (a K2-es AVS-munkához) |
 | 2026-10-27 | minor | A már folyamatban lévő vagy tervezett tételek (G3, G10, G13, ADR 0002, ADR 0003) is kikerültek, külön táblában hivatkozva |
 | 2026-10-27 | major | Létrehozva a tulajdonos 2026-10-27-i kodeklistájából: a megoldott tételek kiszűrve, a többi három alacsony prioritású sávban a kodekfejlesztés végére |
