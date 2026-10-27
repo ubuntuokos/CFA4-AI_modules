@@ -262,9 +262,22 @@ pub enum CoinError {
 }
 
 /// Normalized gloss used as the lookup key and as the word's sub-seed: trimmed, inner whitespace
-/// collapsed, lower case.
+/// collapsed, lower case. It stops after `MAX_GLOSS_CHARS + 1` characters, so an oversized gloss
+/// costs no more than that and still fails every length check.
 pub(crate) fn gloss_key(gloss: &str) -> String {
-    gloss.split_whitespace().collect::<Vec<_>>().join(" ").to_lowercase()
+    let mut key = String::new();
+    let mut n = 0;
+    for word in gloss.split_whitespace() {
+        let space = (!key.is_empty()).then_some(' ');
+        for c in space.into_iter().chain(word.chars().flat_map(char::to_lowercase)) {
+            if n > MAX_GLOSS_CHARS {
+                return key;
+            }
+            key.push(c);
+            n += 1;
+        }
+    }
+    key
 }
 
 /// Everything needed to coin words deterministically.
@@ -317,10 +330,13 @@ impl Coiner<'_> {
     }
 }
 
+const MAX_FOLD_CHARS: usize = 512;
+
 /// Fold used by the filter and for tags: lower case, accents dropped, only ASCII letters and digits
-/// kept.
+/// kept. Reads at most [`MAX_FOLD_CHARS`] characters (longer than any word or name).
 pub(crate) fn fold(s: &str) -> String {
     s.chars()
+        .take(MAX_FOLD_CHARS)
         .flat_map(char::to_lowercase)
         .filter_map(|c| match c {
             'à' | 'á' | 'â' | 'ä' | 'ã' | 'å' => Some('a'),
@@ -386,6 +402,8 @@ mod tests {
         assert!(!is_blocked("kakar", &[]));
         assert!(is_blocked("Bambi", &["bambì".to_owned()]));
         assert!(!is_blocked("tala", &[]));
+        // Oversized input is read only up to the fold limit.
+        assert!(!is_blocked(&"ta".repeat(10_000_000), &[]));
     }
 
     #[test]
@@ -405,6 +423,16 @@ mod tests {
         assert_eq!(coiner.coin(" ", WordClass::Noun, &|_| false), Err(CoinError::BadGloss));
         assert_eq!(coiner.coin(&"x".repeat(200), WordClass::Noun, &|_| false), Err(CoinError::BadGloss));
         assert!(matches!(coiner.coin("sun", WordClass::Noun, &|_| true), Err(CoinError::Exhausted(_))));
+    }
+
+    #[test]
+    fn gloss_keys_are_normalized_and_bounded() {
+        assert_eq!(gloss_key("  Dragon \t FIRE "), "dragon fire");
+        assert_eq!(gloss_key(" \n "), "");
+        // Millions of short tokens: the key stops just past the limit.
+        let huge = "a ".repeat(5_000_000);
+        assert_eq!(gloss_key(&huge).chars().count(), MAX_GLOSS_CHARS + 1);
+        assert_eq!(gloss_key(&"İ".repeat(1000)).chars().count(), MAX_GLOSS_CHARS + 1);
     }
 
     #[test]
