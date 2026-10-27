@@ -4,7 +4,7 @@
 **Állapot:** JAVASLAT; KÓD MÉG NINCS  
 **Kiadás:** HOLD
 
-> **Utolsó átnézés:** 2026-10-25 · **Változás:** minor (Qt 6 utáni sorrend a szakaszokban) · **Részletes terv:**
+> **Utolsó átnézés:** 2026-10-25 · **Változás:** minor (hangfunkciók, M13–M15; Qt 6 utáni sorrend) · **Részletes terv:**
 > [CFA4 AI tervdokumentum](https://claude.ai/artifact/MLd6UfHG1uPBdJ16B2JZBh)
 
 A számozás azért 0006, mert a 0004 (FFI-kivétel elve) és a 0005 (`cfa4-route`) már foglalt
@@ -17,7 +17,10 @@ A CFA4 hibrid szerkesztő lesz: a hagyományos vágás mellett körülbelül 200
 (lista: [`docs/ai/200-tipus-besorolas.csv`](../ai/200-tipus-besorolas.csv)). A 200 típus
 12 motorcsaládba (M1–M12) és 32 valódi képességbe sűríthető. A többi ezek változata, sablonja
 vagy kísérleti ága. A 107 jelölt projekt értékelése:
-[`docs/ai/projektjeloltek.csv`](../ai/projektjeloltek.csv).
+[`docs/ai/projektjeloltek.csv`](../ai/projektjeloltek.csv). A hang-, zene- és beszédfunkciók külön
+táblában vannak ([`docs/ai/hang-besorolas.csv`](../ai/hang-besorolas.csv)): 60 funkció, amelyhez három
+új motorcsalád kell (M13 beszédszintézis, M14 zene- és hanggenerálás, M15 hangleválasztás és
+-helyreállítás).
 
 A rétegnek ezeket a meglévő szabályokat kell betartania: soha ne omoljon össze (AGENTS.md §0),
 minden művelet parancs legyen (`crates/engine`), tartsa a rétegezést (`cargo xtask layers`),
