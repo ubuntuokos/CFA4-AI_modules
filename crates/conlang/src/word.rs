@@ -138,6 +138,11 @@ impl Orthography {
     /// The segments of `text` (any case), or `None` if a letter is not in the language or the
     /// word is longer than [`MAX_SEGMENTS`].
     pub fn read(&self, text: &str) -> Option<Word> {
+        // No grapheme is longer than 4 characters: anything longer cannot be a word, and is
+        // refused before a buffer of its size is allocated.
+        if text.chars().nth(MAX_SEGMENTS * 4).is_some() {
+            return None;
+        }
         let chars: Vec<char> = text.chars().flat_map(char::to_lowercase).collect();
         let mut rest = chars.as_slice();
         let mut segments = Vec::new();

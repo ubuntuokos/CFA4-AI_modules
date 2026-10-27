@@ -1,6 +1,6 @@
 //! A whole generated language and its stored form.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
@@ -49,7 +49,8 @@ pub struct Language {
     pub grammar: Grammar,
     entries: Vec<Entry>,
     by_gloss: HashMap<String, usize>,
-    spellings: HashSet<String>,
+    /// How many entries use each spelling (hand edits may share one).
+    spellings: HashMap<String, usize>,
 }
 
 impl Language {
@@ -63,7 +64,7 @@ impl Language {
         let grammar = Grammar::generate(seed);
         let tag = format!("art-x-{}", subtag(&name));
         let mut lang =
-            Language { name, tag, seed, settings, phonology, sound_changes, grammar, entries: Vec::new(), by_gloss: HashMap::new(), spellings: HashSet::new() };
+            Language { name, tag, seed, settings, phonology, sound_changes, grammar, entries: Vec::new(), by_gloss: HashMap::new(), spellings: HashMap::new() };
         for gloss in Grammar::MORPHEMES {
             lang.coin(gloss, WordClass::Grammatical)?;
         }
@@ -102,7 +103,7 @@ impl Language {
             avoid: &self.settings.avoid,
         };
         let spellings = &self.spellings;
-        let word = coiner.coin(gloss, class, &|s| spellings.contains(s))?;
+        let word = coiner.coin(gloss, class, &|s| spellings.contains_key(s))?;
         self.push(gloss_key(gloss), class, word)
     }
 
@@ -115,9 +116,9 @@ impl Language {
         if let Some(&i) = self.by_gloss.get(&key) {
             let old = self.entries.get(i).map(|e| e.word.spelling());
             if let Some(old) = old {
-                self.spellings.remove(&old);
+                self.release(&old);
             }
-            self.spellings.insert(word.spelling());
+            *self.spellings.entry(word.spelling()).or_insert(0) += 1;
             let entry = self.entries.get_mut(i).ok_or_else(|| invalid(&key, "index out of range"))?;
             entry.class = class;
             entry.word = word;
@@ -139,10 +140,20 @@ impl Language {
         is_blocked(spelling, &self.settings.avoid)
     }
 
+    /// Drops one use of `spelling`; it stays reserved while another entry uses it.
+    fn release(&mut self, spelling: &str) {
+        if let Some(n) = self.spellings.get_mut(spelling) {
+            *n = n.saturating_sub(1);
+            if *n == 0 {
+                self.spellings.remove(spelling);
+            }
+        }
+    }
+
     /// Appends an entry and returns it.
     fn push(&mut self, key: String, class: WordClass, word: Word) -> Result<&Entry, ConlangError> {
         let i = self.entries.len();
-        self.spellings.insert(word.spelling());
+        *self.spellings.entry(word.spelling()).or_insert(0) += 1;
         self.by_gloss.insert(key.clone(), i);
         self.entries.push(Entry { gloss: key.clone(), class, word });
         self.entries.get(i).ok_or_else(|| invalid(&key, "was not stored"))
@@ -313,7 +324,7 @@ impl TryFrom<LanguageData> for Language {
             grammar: d.grammar,
             entries: Vec::with_capacity(d.lexicon.len()),
             by_gloss: HashMap::new(),
-            spellings: HashSet::new(),
+            spellings: HashMap::new(),
         };
         for e in d.lexicon {
             let key = gloss_key(&e.gloss);
@@ -377,6 +388,31 @@ mod tests {
         assert_eq!(l.set_word("dragon", WordClass::Noun, &new)?.word.spelling(), new);
         assert_eq!(l.entries().len(), n + 1);
         assert!(matches!(l.set_word("x", WordClass::Noun, "§"), Err(ConlangError::InvalidEntry { .. })));
+        Ok(())
+    }
+
+    #[test]
+    fn shared_spelling_stays_reserved_after_replacement() -> Result<(), ConlangError> {
+        let mut l = Language::generate("Test", 3, &Settings::default())?;
+        let sun = l.word("sun").map(|e| e.word.spelling()).unwrap_or_default();
+        // "star" shares the spelling of "sun", then "sun" gets a new word.
+        l.set_word("star", WordClass::Noun, &sun)?;
+        let other = format!("{sun}{sun}");
+        l.set_word("sun", WordClass::Noun, &other)?;
+        // "star" still uses the old spelling, so no new word may take it.
+        assert!(l.spellings.contains_key(&sun));
+        for i in 0..300 {
+            let w = l.coin(&format!("thing {i}"), WordClass::Noun)?.word.spelling();
+            assert!(w != sun && w != other);
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn huge_spelling_is_refused_without_reading_it_all() -> Result<(), ConlangError> {
+        let mut l = Language::generate("Test", 3, &Settings::default())?;
+        let huge = "a".repeat(50_000_000);
+        assert!(matches!(l.set_word("x", WordClass::Noun, &huge), Err(ConlangError::InvalidEntry { .. })));
         Ok(())
     }
 }
