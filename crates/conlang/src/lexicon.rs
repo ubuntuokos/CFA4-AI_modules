@@ -317,18 +317,19 @@ impl Coiner<'_> {
     }
 }
 
-/// ASCII fold used by the filter: diacritics dropped, apostrophes removed, lower case.
-fn fold(s: &str) -> String {
+/// Fold used by the filter and for tags: lower case, accents dropped, only ASCII letters and digits
+/// kept.
+pub(crate) fn fold(s: &str) -> String {
     s.chars()
+        .flat_map(char::to_lowercase)
         .filter_map(|c| match c {
-            'à' | 'á' | 'â' | 'ä' => Some('a'),
+            'à' | 'á' | 'â' | 'ä' | 'ã' | 'å' => Some('a'),
             'è' | 'é' | 'ê' | 'ë' => Some('e'),
             'ì' | 'í' | 'î' | 'ï' => Some('i'),
-            'ò' | 'ó' | 'ô' | 'ö' | 'ő' => Some('o'),
+            'ò' | 'ó' | 'ô' | 'ö' | 'ő' | 'õ' | 'ø' | 'œ' => Some('o'),
             'ù' | 'ú' | 'û' | 'ü' | 'ű' => Some('u'),
-            'œ' => Some('o'),
-            '\'' => None,
-            c => c.to_lowercase().next().filter(char::is_ascii_alphanumeric),
+            c if c.is_ascii_alphanumeric() => Some(c),
+            _ => None,
         })
         .collect()
 }

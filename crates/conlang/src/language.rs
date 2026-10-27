@@ -173,9 +173,10 @@ fn check_name(name: &str) -> Result<String, ConlangError> {
     Ok(name.to_owned())
 }
 
-/// The private-use subtag for a name: ASCII letters and digits, at most 8, `conlang` if none.
+/// The private-use subtag for a name: its letters and digits with accents dropped, at most 8,
+/// `conlang` if none.
 pub(crate) fn subtag(name: &str) -> String {
-    let s: String = name.chars().filter(char::is_ascii_alphanumeric).map(|c| c.to_ascii_lowercase()).take(8).collect();
+    let s: String = crate::lexicon::fold(name).chars().take(8).collect();
     if s.is_empty() { "conlang".to_owned() } else { s }
 }
 
@@ -349,13 +350,14 @@ mod tests {
 
     #[test]
     fn names_and_tags() {
-        assert_eq!(subtag("Ősi Tünde nyelv"), "sitndeny");
-        assert_eq!(subtag("ÁÉ"), "conlang");
+        assert_eq!(subtag("Ősi Tünde nyelv"), "ositunde");
+        assert_eq!(subtag("ÁÉ"), "ae");
+        assert_eq!(subtag("ㄱ—!"), "conlang");
         assert!(check_name("").is_err() && check_name("a\u{7}").is_err() && check_name(&"x".repeat(65)).is_err());
         assert!(check_tag("art-x-elf").is_ok() && check_tag("tlh").is_ok());
         assert!(check_tag("art-x-toolongsubtag").is_err() && check_tag("a--b").is_err() && check_tag("").is_err());
         let l = Language::generate("  Ősi Tünde nyelv ", 1, &Settings::preset(Style::Melodic));
-        assert_eq!(l.map(|l| (l.name, l.tag)), Ok(("Ősi Tünde nyelv".to_owned(), "art-x-sitndeny".to_owned())));
+        assert_eq!(l.map(|l| (l.name, l.tag)), Ok(("Ősi Tünde nyelv".to_owned(), "art-x-ositunde".to_owned())));
     }
 
     #[test]
