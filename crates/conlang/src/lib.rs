@@ -22,6 +22,7 @@
 
 mod espeak;
 mod grammar;
+mod inflect;
 mod language;
 mod lexicon;
 pub mod phoneme;
@@ -32,6 +33,7 @@ mod word;
 
 pub use espeak::{EspeakFiles, PHONEME_TABLE};
 pub use grammar::{Grammar, Marking, Position, WordOrder};
+pub use inflect::{Clause, NounPhrase, Phrase, Tense};
 pub use language::{ConlangError, FORMAT, Language, MAX_NAME_CHARS};
 pub use lexicon::{BASIC_CONCEPTS, CoinError, Entry, MAX_ENTRIES, MAX_GLOSS_CHARS, SoundChange, WordClass};
 pub use phonology::Phonology;

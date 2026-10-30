@@ -41,6 +41,14 @@ let json = serde_json::to_string_pretty(&lang)?;        // readable, hand-editab
   frequencies), adjective and adposition position (adpositions follow the
   verb–object order 9 times in 10), and how plural, past, future, negation and
   yes/no questions are marked (prefix, suffix, particle or nothing).
+- **Inflected forms and clauses** (`Language::noun_phrase`, `verb_form`,
+  `clause`): plural, past, future, negation and yes/no questions, as prefix,
+  suffix or particle, with tense closest to the stem and negation outside it;
+  adjective and word order from the grammar. Where a stem and an affix meet, a
+  linking consonant separates two vowels and a linking vowel breaks a cluster
+  of three consonants or a spelling that could be read two ways, so every
+  inflected form is speakable and reads back exactly. The linking sounds come
+  from the seed and the inventory.
 - **eSpeak NG files** (`Language::espeak`): a voice file and
   `<dictionary>_rules`, so eSpeak NG (a separate GPL-3.0 program; CFA4 only
   writes its input) speaks the language at once. They use eSpeak NG's `az`
@@ -63,8 +71,9 @@ panics on hostile input.
 
 - Style comes from presets; choosing it from a free-text description ("rough,
   guttural warrior people") is for the later LLM step.
-- No inflected forms yet: the grammar names the morphemes and where they go,
-  but does not build words with them.
+- Inflection covers plural, past, future and negation, and clauses cover
+  subject, verb, object, one adjective and yes/no questions. No cases,
+  adpositions, person agreement or subordinate clauses yet.
 - Translation of script lines (local LLM using this vocabulary and grammar), a
   generated writing system (a font in the user's font directory) and the Qt6
   editor come later.
@@ -76,6 +85,7 @@ panics on hostile input.
 `cargo test -p cfa4-conlang`. `tests/espeak_oracle.rs` copies the system
 eSpeak NG data into the target directory, compiles the rules of 24 generated
 languages (every style and stress rule, with and without long vowels) and
-checks that eSpeak NG says all about 3800 words with exactly the IPA and the
+checks that eSpeak NG says about 16 000 words (the vocabulary plus inflected
+forms with every morpheme as prefix and suffix) with exactly the IPA and the
 stressed syllable this crate computes. Without `espeak-ng` installed
 (`apt install espeak-ng`) it prints a note and passes.

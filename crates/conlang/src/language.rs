@@ -30,6 +30,8 @@ pub enum ConlangError {
     InvalidPhonology(String),
     #[error("invalid vocabulary entry \"{gloss}\": {reason}")]
     InvalidEntry { gloss: String, reason: String },
+    #[error("the vocabulary has no word for \"{0}\"")]
+    UnknownGloss(String),
     #[error(transparent)]
     Coin(#[from] CoinError),
 }
