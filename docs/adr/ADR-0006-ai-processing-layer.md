@@ -250,8 +250,11 @@ fogyasztja a sémát. A jobállapotok és a manifest v3 licencmezői az SDK-ban 
   időtartam vagy 720p-s kimeneti felbontás) csak a zárt workerekben élhet, a GPL-es magban soha.
   Az alapprogram képességeit nem csonkítjuk. A freemium az első körben nem szerepel.
 - **Az ingyenes képminőség 2K** (DCI 2K, 2048×1080; tulajdonosi döntés, 2026-10-30). A zárt
-  fizetős workerek kulcs nélkül legfeljebb 2K-s kimenetet adnak, a 2K fölötti (például 4K)
-  kimenet a fizetős rész. A GPL-es magban és a CFA4-gyel szállított GPL-es workerekben nincs
+  fizetős workerek kulcs nélkül 2K-ig vízjel nélkül dolgoznak. 2K fölött (például 4K) kulcs
+  nélkül is elkészül a kimenet, hogy a felhasználó lássa, mire képes, de **látható vízjellel**;
+  vízjel nélküli 2K fölötti kimenet a fizetős rész. A vízjelet a zárt worker teszi a kimenetre,
+  és a `caps` üzenetben jelzi, így a felület előre megmondja. Visszavonható lépésként sem tűnhet
+  el a projektből: a vízjeles asset vízjeles marad, kulcs után újra kell számolni. A GPL-es magban és a CFA4-gyel szállított GPL-es workerekben nincs
   felbontáskorlát: ott a kártya VRAM-ja a határ.
 
 ### 9. Hardverminimum és tesztelés
@@ -339,7 +342,8 @@ a kaput a futtató határozza meg: ONNX → F3/F4, candle → F5, PyTorch és he
 ## Nyitott kérdések
 
 - Melyik funkció legyen ingyenes, és melyik fizetős?
-- A fizetős workerekben a kimeneti felbontás korlátja 2K; kell-e mellé időtartam-korlát is?
+- A fizetős workerekben 2K fölött vízjel jár kulcs nélkül; kell-e mellé időtartam-korlát is?
+- A vízjel kinézete és helye (logó, felirat, áttetszőség), hogy látható legyen, de a próbát ne tegye használhatatlanná.
 - Milyen hozzájárulási és vízjelezési szabály vonatkozzon az arccserére (38. típus)?
 - Mi helyettesítse a SeamlessM4T v2 fordítót, amelynek a licence nem kereskedelmi?
 - Melyik ONNX-modell legyen a #91 alapja (licenc és 2K-s sebesség alapján)?
