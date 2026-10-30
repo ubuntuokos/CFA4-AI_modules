@@ -1,6 +1,6 @@
 # Kdenlive-paritás: mit tud a Kdenlive, és mit tud már a CFA4
 
-> **Állapot:** a tulajdonos 2026-10-25-én jóváhagyta (K1–K30). · **Utolsó átnézés:** 2026-10-25 · **Változás:** major (3. változat: a kiegészítő Kdenlive-repók
+> **Állapot:** a tulajdonos 2026-10-25-én jóváhagyta (K1–K30). · **Utolsó átnézés:** 2026-10-30 · **Változás:** major (3. változat: a kiegészítő Kdenlive-repók
 > elemzése, K10–K19 új teendők, a tulajdonos 2026-10-25-i döntései, 12. pont; K20–K25 az FA3 elődtervből, 11.1; K26–K30 felirat- és átiratlánc, 11.2; az AI-részek az ADR 0006 szerint, 11.3) · **Cél:** Kdenlive 26.08.2 (2026-10-13) · **CFA4:** `main` @ `bbbefc3`
 
 Ez a lista a Kdenlive képességeit veti össze a CFA4 jelenlegi állapotával, és rangsorolja a
@@ -174,7 +174,7 @@ közvetlenül Qt6-ban készül, nem egui-ban.
 | **K7** | Matematikai kifejezés a számmezőkben | ADR F8 4. lépés (közös Qt6-spinbox) | Kdenlive spinbox-logikája, ha a fejléce engedi |
 | **K8** | Hangspektrum- és spektrogram-panel | ADR F8 5. lépés | Kdenlive vagy Audacity-kód, fájlonként |
 | **K9** | ASS / SSA felirat | bármikor (`crates/captions`) | Subtitle Edit (GPL-3.0) vagy Kdenlive |
-| **K4** | AI háttéreltávolítás (SAM2-szerű) | MI-szakasz: ADR 0006, 4. hónap, ONNX-worker (11.3) | SAM2 (Apache-2.0), helyben, nem csak NVIDIA-n |
+| **K4** | AI háttéreltávolítás (SAM2-szerű) | MI-szakasz: ADR 0006, F4 kapu, ONNX-worker (11.3) | SAM2 (Apache-2.0), helyben, nem csak NVIDIA-n |
 | **K5** | frei0r és LV2 effektek külön folyamatban | ADR 0003 A6–A7 | frei0r, lilv |
 | **K6** | Feliratfordítás kereskedelmi használatot engedő modellel | MI-szakasz: ADR 0006, M10 (11.3) | modellválasztás kell (licenc és helyi futás) |
 
@@ -343,10 +343,10 @@ A Kdenlive AI-funkciói nem saját futtatókörnyezettel jönnek át, hanem a CF
 
 - **Sorrend:** az AI-réteg crate-jei csak a Qt6-átállás befejezése és az egui kivezetése után
   indulnak. Kivétel a K2, mert az kész kód bekapcsolása.
-- **K2 (beszédfelismerés, M10, 3. hónap):** a CFA4 saját, candle-alapú Whisperje
+- **K2 (beszédfelismerés, M10, F5 kapu):** a CFA4 saját, candle-alapú Whisperje
   (`transcript.generate`). A Kdenlive Vosk-ága és Python-alapú Whisper-hívása nem kell. A
   Speech Editor szövegalapú vágási logikája Qt6-ban átvehető, fájlonkénti licencellenőrzéssel.
-- **K4 (háttéreltávolítás, M6, 4. hónap):** SAM2 ONNX Runtime-workerben, gyártófüggetlen
+- **K4 (háttéreltávolítás, M6, F4 kapu):** SAM2 ONNX Runtime-workerben, gyártófüggetlen
   futtatókkal (CUDA/TensorRT, MIGraphX, OpenVINO, CPU). A Kdenlive SAM2-szkriptje
   (Apache-2.0 OR GPL-3.0) csak referencia, a CFA4 nem futtatja.
 - **K6 és K28 (fordítás, M10):** csak kereskedelmi használatot engedő modell. A SeamlessM4T és
@@ -355,7 +355,7 @@ A Kdenlive AI-funkciói nem saját futtatókörnyezettel jönnek át, hanem a CF
   **K27 (kényszerített igazítás):** CTC-modell candle-on vagy ONNX-en, licencellenőrzés után.
 - **Futtatókörnyezet:** a Kdenlive CUDA-verziónkénti venv- és requirements-rendszerét nem
   vesszük át. Egy közös, uv-vel rögzített PyTorch-környezet van egy CUDA 12.x-szel, a sorrend
-  candle → ONNX → PyTorch.
+  ONNX → candle → PyTorch (ADR 0006, 2026-10-30).
 - **Modellek:** a CFA4 nem szállít modellt. A felhasználó a K18 letöltővel tölti le őket,
   jóváhagyással, a manifestben rögzített ellenőrzőösszeggel. A képesség csak a telepített
   modellel jelenik meg.
@@ -405,3 +405,4 @@ A Kdenlive AI-funkciói nem saját futtatókörnyezettel jönnek át, hanem a CF
 | 2026-10-25 | minor | 11.2: K26–K30 felirat- és átiratlánc az FA3 Kdenlive-konszolidációjából (hangleválasztás, kényszerített igazítás, fordítás nyomkövetéssel, feliratminőség-ellenőrzés, SBV) |
 | 2026-10-25 | minor | A tulajdonos jóváhagyta a tervet (K1–K30) |
 | 2026-10-25 | minor | 11.3: a Kdenlive AI-részei (K2, K4, K6, K26–K28) az ADR 0006 szerint; K6: a modellt a felhasználó tölti le (K18), a CFA4 nem szállít modellt |
+| 2026-10-30 | minor | 11.3: az ADR 0006 átdolgozása szerint hónapok helyett kapuk (K2 → F5, K4 → F4), a futtatók sorrendje ONNX → candle → PyTorch |
