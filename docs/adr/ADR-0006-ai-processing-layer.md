@@ -43,24 +43,72 @@ futásidejű hálózati függőség ([ADR F8](ADR-F8-QT6-RUST-ENGINE-2026-10-23.
 Az elődtervekből csak a szabályokat vesszük át. A kódjuk Python, a CFA4 terméke tiszta Rust, ezért
 újraírjuk.
 
+## Orchesztrátor és komponenstérkép
+
+**Az orchesztrátor** az a rész, amely egy AI-feladatot a kéréstől az idővonalig végigvisz: eldönti,
+mi fusson, megszerzi hozzá a modellt és a hardvert, elindítja, figyeli, és az eredményt a
+felhasználó elé teszi. A CFA4-ben ez nem egyetlen nagy komponens, hanem a `cfa4-ai-jobs` crate
+feladattervezője és erőforrás-kezelője, amely a többi hat elemet hívja. Mindegyik elemnek egy
+felelőse van, és egyik sem végzi a másik munkáját.
+
+### A nyolc elem egy helyen
+
+| # | Elem | Crate | Réteg | Felelős ezért | Nem felelős ezért | Előd (CFA3/FA3) |
+|---|---|---|---|---|---|---|
+| 1 | Képességjegyzék és útválasztó | `cfa4-ai-registry` | L2 | A manifestek beolvasása; a képesség, a nyelv, a modell és a futtató kiválasztása a gép VRAM-ja, gyártója és a telepített modellek szerint; „mi futna és miért” lekérdezés futtatás nélkül | Modellfájlok, hardverfoglalás | Model Router |
+| 2 | Modellkezelő | `cfa4-ai-models` | L2 | Közös modelltár, SHA-256 ellenőrzés és deduplikáció, verziók, licenc, frissítés, törlés csak a felhasználó döntésével | Melyik modell fusson, melyik GPU-n | Model Manager |
+| 3 | Feladattervező (az orchesztrátor egyik fele) | `cfa4-ai-jobs` | L2 | Elemzés → Javaslat → Előnézet → Alkalmazás lánc, szakaszolás (chunking), függőségek, jobállapotok | Modellválasztás, hardver | workflow-réteg |
+| 4 | Erőforrás-kezelő (az orchesztrátor másik fele) | `cfa4-ai-jobs` | L2 | Befogadás és atomi foglalás, P0/P1/P2/R osztályok, GPU-nkénti VRAM-nyilvántartás (NVML), LRU modellmegtartás, OOM-visszalépési létra | Modellfájlok, a feladat tartalma | Host Resource Broker |
+| 5 | Tartós jobtár | `cfa4-ai-jobs` (redb) | L2 | A jobok állapota és naplója, amely a CFA4 újraindítása után is megmarad | Futtatás | Temporal |
+| 6 | Worker-felügyelő | `cfa4-ai-workers` | L3 | Worker-folyamatok indítása, felügyelete, újraindítása, az IPC kliensoldala | Ütemezés, modellválasztás | Package Management izolációja |
+| 7 | Médiahíd és eredménytár | `cfa4-ai-workers` + `media` | L3 | Bemenetek átadása fájl- és asset-hivatkozással, eredmények `MediaSource`-ként, tartalomcímzett gyorsítótár | A projekt módosítása | Shared Asset Management |
+| 8 | Naplózás és diagnosztika | `cfa4-ai-jobs` | L2 | Worker-hibák, VRAM-csúcsok, a minimumtesztek mérései, a CFA4 meglévő naplójába | Döntések | Evidence (egyszerűsítve) |
+
+Mindegyik fölött az `ai.*` parancsok állnak (L4, `crates/engine`), és csak ők módosíthatják a
+projektet: a felület, a CLI, a vezérlőcsatorna és az MCP is ezeken át éri el az AI-réteget. A
+közös típusok (képességazonosító, jobállapotok, hibakódok) a `cfa4-ai-types` crate-ben (L1)
+vannak.
+
+```
+Qt 6 felület / CLI / MCP
+        │  ai.* parancsok (L4, crates/engine)
+        ▼
+┌──────────────── orchesztrátor: cfa4-ai-jobs ────────────────┐
+│  feladattervező ◄──► erőforrás-kezelő      tartós jobtár    │
+│        │                    │               naplózás        │
+└────────┼────────────────────┼───────────────────────────────┘
+         ▼                    ▼
+ cfa4-ai-registry      cfa4-ai-models        cfa4-ai-workers ──► worker-folyamat
+ (mi fusson)           (modellfájl)          (indítás, IPC)      (ONNX Runtime…)
+                                                    │
+                                             médiahíd és eredménytár
+```
+
+### Egy job útja
+
+1. A felhasználó a Qt 6 felületen elindít egy funkciót; ez egy `ai.*` parancs.
+2. A **feladattervező** létrehozza a jobot (`queued`), és megkérdezi a **jegyzéket**, melyik
+   képesség, modell és futtató felel meg. Ha egyik sem, a job `blocked`, és a felület a jegyzék
+   indoklását mutatja.
+3. A **modellkezelő** ellenőrzi a modellt (hash, licenc, formátum): `preparing_model`. Hiányzó
+   vagy ismeretlen licencű modellnél a job `blocked`.
+4. Az **erőforrás-kezelő** befogadja a deklarált igényt, és atomin lefoglalja a GPU-t:
+   `waiting_for_resources`, amíg nincs elég hely.
+5. A **worker-felügyelő** elindítja vagy újrahasznosítja a workert, betölti a modellt
+   (`loading`), majd futtatja (`running`); a bemenet a **médiahídon** át, hivatkozással megy.
+6. Az eredmény az **eredménytárba** kerül új assetként (`succeeded`), a hiba kóddal (`failed`),
+   a megszakítás `cancelling`, majd `cancelled`. Minden állapotváltás a **tartós jobtárba** és a
+   **naplóba** kerül.
+7. A felhasználó az Előnézetben megnézi az eredményt; az Alkalmazás parancs a projektverzió
+   ellenőrzése után, egyetlen visszavonható lépésként teszi az idővonalra.
+
 ## Döntés
 
-### 1. Komponenstérkép (orchesztrátor és társai)
+### 1. Komponensek
 
-Az orchesztrátor nem egyetlen elem, hanem a feladattervező és az erőforrás-kezelő együtt. Mindegyik
-elemnek egy felelőse van, és egyik sem végzi a másik munkáját: a modellkezelő a fájlokért, a
-jegyzék a modell és a futtató kiválasztásáért, az erőforrás-kezelő a hardverért felel.
-
-| Elem | Feladat | Hol él | Előd (CFA3/FA3) |
-|---|---|---|---|
-| Képességjegyzék és útválasztó | A TOML-manifestek beolvasása; a képesség, a nyelv, a modell és a futtató kiválasztása a gépen ténylegesen elérhető VRAM, gyártó és telepített modell szerint; a döntés futtatás nélkül is lekérdezhető („mi futna és miért”) | `cfa4-ai-registry` | Model Router |
-| Modellkezelő | A modellek teljes életciklusa (2. pont) | `cfa4-ai-models` | Model Manager |
-| Feladattervező | Elemzés → javaslat → előnézet → alkalmazás lánc, szakaszolás (chunking), függőségek | `cfa4-ai-jobs` | workflow-réteg |
-| Erőforrás-kezelő | Befogadás és foglalás (3. pont), P0/P1/P2/R osztályok, GPU-nkénti VRAM-nyilvántartás (NVML), LRU modellmegtartás, OOM-visszalépési létra | `cfa4-ai-jobs` | Host Resource Broker |
-| Tartós jobtár | A jobok állapota és naplója, amely egy újraindítás után is megmarad (4. pont) | `cfa4-ai-jobs` (redb) | Temporal |
-| Worker-felügyelő | Worker-folyamatok indítása, felügyelete és újraindítása, az IPC kliensoldala | `cfa4-ai-workers` | Package Management izolációja |
-| Médiahíd és eredménytár | Bemenetek átadása a `media`/`frame` crate-ekből, eredmények `MediaSource`-ként, tartalomcímzett gyorsítótár | `cfa4-ai-workers` + `media` | Shared Asset Management |
-| Naplózás és diagnosztika | Worker-hibák, VRAM-csúcsok, a minimumtesztek mérései, a CFA4 meglévő naplójába | `cfa4-ai-jobs` | Evidence (egyszerűsítve) |
+A nyolc elemet, a crate-jeiket és az orchesztrátor működését az
+[Orchesztrátor és komponenstérkép](#orchesztrátor-és-komponenstérkép) rész írja le. Az alábbi
+pontok az egyes elemek szabályai.
 
 ### 2. Modellkezelő
 
