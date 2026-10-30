@@ -1,7 +1,7 @@
 # CFA4 AI – besorolási táblák
 
 > **Állapot:** javaslat, egyetlen projekt–típus pár sincs még tesztelve · **Utolsó átnézés:**
-> 2026-10-30 · **Változás:** minor (a nyelvalkotó toldalékolt alakokat és mondatokat is képez) · **Döntés:**
+> 2026-10-30 · **Változás:** minor (a „Fázis” oszlop és az ADR 0006 F0–F6 kapuinak megfeleltetése) · **Döntés:**
 > [ADR 0006](../adr/ADR-0006-ai-processing-layer.md)
 
 | Fájl | Tartalom |
@@ -30,8 +30,9 @@ A hanglista miatt három új motorcsalád kell; az M10 és az M12 a 200-as list�
 A manifestben a hangfunkció azonosítója `AU-nnn`, ahol `nnn` a tábla sorszáma (például `AU-010` a
 beszédgenerálás), a 200-as lista `AI-nnn` azonosítója mellett.
 
-A „Fázis” oszlop az [ADR 0006](../adr/ADR-0006-ai-processing-layer.md) hónapjait jelenti, a
-Qt 6 átállás lezárásától számolva. A „kész” azt jelenti, hogy a funkció AI nélkül, a meglévő
+A „Fázis” oszlop a régi havi sorszámot tartalmazza. 2026-10-30 óta az
+[ADR 0006](../adr/ADR-0006-ai-processing-layer.md) F0–F6 kapukat használ, és a kaput a futtató
+határozza meg: ONNX → F3/F4, candle → F5, PyTorch és helyi LLM → F6. A „kész” azt jelenti, hogy a funkció AI nélkül, a meglévő
 crate-ekkel már működik. A „K…” a [Kdenlive-terv](../kdenlive-parity.md) teendőjére utal.
 
 **Ami már megvan, ezért nem kell rá modell:**
@@ -162,7 +163,7 @@ Hat funkció (hangosság, de-esser, térhang, tempó, nyelvfelismerés, zenei re
   átírásához hozzájárulás és vízjel kell, mint az arccseréhez (38. típus). A beszélőazonosítás
   biometrikus adatot kezel, ezért GDPR-szabály is kell hozzá.
 - **Python 3.14.** Az AI-workerek nem a rendszer Pythonját használják, hanem a `uv` által
-  rögzített interpretert a közös PyTorch-környezetben (ADR 0006, 3. pont). Ezért például az
+  rögzített interpretert a közös PyTorch-környezetben (ADR 0006, 6. pont). Ezért például az
   AudioCraft régi Python-igénye nem akadály, de a kizárt modellek így sem jönnek szóba.
 - **Modellkatalógus.** A worker-manifest ([CFA4-sdk](https://github.com/ubuntuokos/CFA4-sdk))
   már tárolja a kód és a súly licencét külön, a letöltési címet, a méretet, a VRAM-ot és a

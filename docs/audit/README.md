@@ -13,7 +13,7 @@ ellentmond neki, a `VISION.md` az irányadó.
 | Dokumentum | Miről szól |
 |---|---|
 | [F9 kiadási döntés](F9-RELEASE-DECISION-2026-10-23.md) + [`f9-release-readiness.json`](f9-release-readiness.json) | **Összesítő:** minden kapu állapota (PASS/OPEN), PR-onként. Kiadás: HOLD |
-| [ADR 0006 – AI-feldolgozó réteg](../adr/ADR-0006-ai-processing-layer.md) | Javaslat: öt komponens, futtatási sorrend (candle → ONNX → közös PyTorch), worker-protokoll, licenchatár, hardverminimum, havi szakaszok |
+| [ADR 0006 – AI-feldolgozó réteg](../adr/ADR-0006-ai-processing-layer.md) | Elfogadott terv: komponenstérkép (modellkezelő, erőforrás-kezelő, tartós jobtár), ONNX-es első kör, majd candle és közös PyTorch, worker-protokoll, négy licencmező, 12 GB-os minimum, F0–F6 kapuk |
 | [ADR F8 – Qt6 / Rust motor](../adr/ADR-F8-QT6-RUST-ENGINE-2026-10-23.md) | A Qt6-felület architektúrája és 7 lépéses átállási terve |
 | [ADR 0003 – ASWF és GPL-3-as források](../adr/ADR-0003-aswf-and-conversion-sources.md) | Jóváhagyott terv: ASWF-projektek, a HandBrake cseréje, zárt bővítmények, gyártónkénti kódolás, A0–A7 szakaszok |
 | [ADR 0002 – GStreamer](../adr/ADR-0002-gstreamer-backend.md) | GStreamer mint kiegészítő háttérmotor (a saját Rust motor marad az alap), 6 lépéses terv |
