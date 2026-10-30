@@ -1,7 +1,7 @@
 # CFA4 ADR 0006 – AI-feldolgozó réteg
 
 **Dátum:** 2026-10-25, átdolgozva 2026-10-30  
-**Állapot:** ELFOGADOTT TERV; KÓD MÉG NINCS  
+**Állapot:** ELFOGADVA (tulajdonosi jóváhagyás, 2026-10-30); KÓD MÉG NINCS  
 **Kiadás:** HOLD
 
 > **Utolsó átnézés:** 2026-10-30 · **Változás:** major (CFA4-AI-PLAN-001 és a CFA3/FA3 elődtervek
