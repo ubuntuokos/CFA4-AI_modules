@@ -257,8 +257,9 @@ fogyasztja a sémát. A jobállapotok és a manifest v3 licencmezői az SDK-ban 
   el a projektből: a vízjeles asset vízjeles marad, kulcs után újra kell számolni.
   **A vízjel** (tulajdonosi döntés, 2026-10-30): a CFA logó a kép jobb felső sarkában, 50%-os
   átlátszósággal, minden képkockán, a tévécsatornák logójához hasonlóan: kicsi, és a grafikai
-  biztonsági sávon belül marad (EBU R 95: a képszéltől 5%-ra). Javasolt magassága a képmagasság
-  kb. 8%-a; a pontos méretet a fizetős worker elkészítésekor kell rögzíteni. A GPL-es magban és a CFA4-gyel szállított GPL-es workerekben nincs
+  biztonsági sávon belül marad (EBU R 95: a képszéltől 5%-ra). Magassága a képmagasság 8%-a
+  (2048×1080-nál 86 pixel), a szélessége a logó arányából adódik; a jobb felső sarka a jobb és a
+  felső képszéltől is a megfelelő képméret 5%-ára van. A GPL-es magban és a CFA4-gyel szállított GPL-es workerekben nincs
   felbontáskorlát: ott a kártya VRAM-ja a határ.
 
 ### 9. Hardverminimum és tesztelés
