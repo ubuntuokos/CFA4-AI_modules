@@ -34,6 +34,8 @@ pub enum ConlangError {
     UnknownGloss(String),
     #[error("the inflected form {0} would be longer than a word may be")]
     FormTooLong(String),
+    #[error("the inflected form {0} cannot be spelled unambiguously in this language")]
+    Ambiguous(String),
     #[error(transparent)]
     Coin(#[from] CoinError),
 }

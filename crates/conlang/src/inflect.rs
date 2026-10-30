@@ -194,7 +194,12 @@ impl Language {
         // consonants and a linking consonant between two vowels always read back; anything still
         // ambiguous here was ambiguous in the stem itself, so take the safest join.
         let link = if l.is_vowel() { &link_consonant } else { &link_vowel };
-        concat(left, link, right)
+        let joined = concat(left, link, right)?;
+        if self.phonology.reads_back(&orthography, &joined) {
+            Ok(joined)
+        } else {
+            Err(ConlangError::Ambiguous(joined.spelling().chars().take(crate::MAX_GLOSS_CHARS).collect()))
+        }
     }
 
     /// The linking vowel and consonant, chosen from the inventory by the seed.
@@ -207,8 +212,8 @@ impl Language {
             rng.weighted(&weights).and_then(|i| from.get(i)).copied()
         };
         let vowel = pick(&mut rng, &self.phonology.vowels, &["e", "a", "i", "ɛ", "ɪ"]);
-        let edge_ok: Vec<PhonemeId> = self.phonology.consonants.iter().copied().filter(|id| id.get().is_some_and(|p| p.at_word_edge())).collect();
-        let consonant = pick(&mut rng, &edge_ok, &["n", "j", "t", "h", "r", "l", "w", "s"]);
+        // The linker always sits inside the word, so any consonant (the glottal stop too) will do.
+        let consonant = pick(&mut rng, &self.phonology.consonants, &["n", "j", "t", "h", "r", "l", "w", "s"]);
         (vowel.map(Segment::short).into_iter().collect(), consonant.map(Segment::short).into_iter().collect())
     }
 }
@@ -357,5 +362,27 @@ mod tests {
         assert!(matches!(np, Err(ConlangError::FormTooLong(_))), "{np:?}");
         l.grammar.plural = Marking::Prefix;
         assert!(matches!(l.noun_phrase(&NounPhrase { noun: "long", plural: true, adjective: None }), Err(ConlangError::FormTooLong(_))));
+    }
+
+    #[test]
+    fn glottal_stop_can_link_vowels() -> Result<(), ConlangError> {
+        // A loaded language whose only consonant is the glottal stop, with long vowels: "a" + "a"
+        // must not become "aa" (one long vowel) but "a'a".
+        let l = lang(1);
+        let mut v = serde_json::to_value(&l).map_err(|e| ConlangError::InvalidPhonology(e.to_string()))?;
+        v["phonology"]["consonants"] = serde_json::json!(["ʔ"]);
+        v["phonology"]["vowels"] = serde_json::json!(["a"]);
+        v["phonology"]["long_vowels"] = serde_json::json!(true);
+        v["lexicon"] = serde_json::json!([]);
+        v["grammar"]["plural"] = serde_json::json!("unmarked");
+        for k in ["past", "future", "negation", "question"] {
+            v["grammar"][k] = serde_json::json!("unmarked");
+        }
+        let tiny: Language = serde_json::from_value(v).map_err(|e| ConlangError::InvalidPhonology(e.to_string()))?;
+        let a = tiny.phonology.orthography().read("a").unwrap_or_default();
+        let joined = tiny.attach(&a, &a, false)?;
+        assert_eq!(joined.spelling(), "a'a");
+        assert_eq!(tiny.phonology.orthography().read(&joined.spelling()), Some(joined));
+        Ok(())
     }
 }
