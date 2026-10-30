@@ -254,7 +254,9 @@ fogyasztja a sémát. A jobállapotok és a manifest v3 licencmezői az SDK-ban 
   nélkül is elkészül a kimenet, hogy a felhasználó lássa, mire képes, de **látható vízjellel**;
   vízjel nélküli 2K fölötti kimenet a fizetős rész. A vízjelet a zárt worker teszi a kimenetre,
   és a `caps` üzenetben jelzi, így a felület előre megmondja. Visszavonható lépésként sem tűnhet
-  el a projektből: a vízjeles asset vízjeles marad, kulcs után újra kell számolni. A GPL-es magban és a CFA4-gyel szállított GPL-es workerekben nincs
+  el a projektből: a vízjeles asset vízjeles marad, kulcs után újra kell számolni.
+  **A vízjel** (tulajdonosi döntés, 2026-10-30): a CFA logó a kép jobb felső sarkában, 50%-os
+  átlátszósággal, minden képkockán. A GPL-es magban és a CFA4-gyel szállított GPL-es workerekben nincs
   felbontáskorlát: ott a kártya VRAM-ja a határ.
 
 ### 9. Hardverminimum és tesztelés
@@ -343,7 +345,7 @@ a kaput a futtató határozza meg: ONNX → F3/F4, candle → F5, PyTorch és he
 
 - Melyik funkció legyen ingyenes, és melyik fizetős?
 - A fizetős workerekben 2K fölött vízjel jár kulcs nélkül; kell-e mellé időtartam-korlát is?
-- A vízjel kinézete és helye (logó, felirat, áttetszőség), hogy látható legyen, de a próbát ne tegye használhatatlanná.
+- A vízjel mérete (a képmagasság arányában) és a széltől mért távolsága.
 - Milyen hozzájárulási és vízjelezési szabály vonatkozzon az arccserére (38. típus)?
 - Mi helyettesítse a SeamlessM4T v2 fordítót, amelynek a licence nem kereskedelmi?
 - Melyik ONNX-modell legyen a #91 alapja (licenc és 2K-s sebesség alapján)?
