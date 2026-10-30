@@ -114,11 +114,24 @@ impl Language {
         };
         let mut words: Vec<Word> = self.grammar.word_order.arrange(subject, verb, object).into_iter().flatten().collect();
         if c.question {
-            let q = self.lookup(Q)?;
+            // Intonation only needs no morpheme; an affix joins the first or last word of the
+            // clause, a particle stands at its edge.
             match self.grammar.question {
                 Marking::Unmarked => {}
-                Marking::ParticleBefore | Marking::Prefix => words.insert(0, q),
-                Marking::ParticleAfter | Marking::Suffix => words.push(q),
+                Marking::ParticleBefore => words.insert(0, self.lookup(Q)?),
+                Marking::ParticleAfter => words.push(self.lookup(Q)?),
+                Marking::Prefix => {
+                    let q = self.lookup(Q)?;
+                    if let Some(first) = words.first_mut() {
+                        *first = self.attach(first, &q, true)?;
+                    }
+                }
+                Marking::Suffix => {
+                    let q = self.lookup(Q)?;
+                    if let Some(last) = words.last_mut() {
+                        *last = self.attach(last, &q, false)?;
+                    }
+                }
             }
         }
         Ok(Phrase { words })
@@ -140,7 +153,7 @@ impl Language {
             Marking::Unmarked => Ok(head),
             Marking::Prefix | Marking::Suffix => {
                 if let Some(slot) = words.get_mut(head) {
-                    *slot = self.attach(slot, &morpheme, marking == Marking::Prefix);
+                    *slot = self.attach(slot, &morpheme, marking == Marking::Prefix)?;
                 }
                 Ok(head)
             }
@@ -156,25 +169,26 @@ impl Language {
     }
 
     /// Stem and affix joined into one word, with a linking sound where needed so the result is
-    /// speakable and its spelling reads back unambiguously.
-    pub fn attach(&self, stem: &Word, affix: &Word, prefix: bool) -> Word {
+    /// speakable and its spelling reads back unambiguously. A form longer than [`MAX_SEGMENTS`]
+    /// is an error, never a truncated word.
+    pub fn attach(&self, stem: &Word, affix: &Word, prefix: bool) -> Result<Word, ConlangError> {
         let (left, right) = if prefix { (affix, stem) } else { (stem, affix) };
         let (link_vowel, link_consonant) = self.linking();
-        let plain = concat(left, &[], right);
+        let plain = concat(left, &[], right)?;
         let (Some(l), Some(r)) = (left.segments.last(), right.segments.first()) else {
-            return plain;
+            return Ok(plain);
         };
         let orthography = self.phonology.orthography();
         let candidate = match (l.is_vowel(), r.is_vowel()) {
-            (true, true) => concat(left, &link_consonant, right),
+            (true, true) => concat(left, &link_consonant, right)?,
             (false, false) => {
                 let run = trailing_consonants(left) + leading_consonants(right);
-                if run > 2 || !self.phonology.reads_back(&orthography, &plain) { concat(left, &link_vowel, right) } else { plain }
+                if run > 2 || !self.phonology.reads_back(&orthography, &plain) { concat(left, &link_vowel, right)? } else { plain }
             }
             _ => plain,
         };
         if self.phonology.reads_back(&orthography, &candidate) {
-            return candidate;
+            return Ok(candidate);
         }
         // A vowel next to a consonant never forms a digraph, so a linking vowel between two
         // consonants and a linking consonant between two vowels always read back; anything still
@@ -199,9 +213,13 @@ impl Language {
     }
 }
 
-fn concat(left: &Word, link: &[Segment], right: &Word) -> Word {
-    let segments = left.segments.iter().chain(link).chain(&right.segments).copied().take(MAX_SEGMENTS).collect();
-    Word { segments }
+fn concat(left: &Word, link: &[Segment], right: &Word) -> Result<Word, ConlangError> {
+    let len = left.segments.len().saturating_add(link.len()).saturating_add(right.segments.len());
+    if len > MAX_SEGMENTS {
+        return Err(ConlangError::FormTooLong(format!("{}+{}", left.spelling(), right.spelling()).chars().take(crate::MAX_GLOSS_CHARS).collect()));
+    }
+    let segments = left.segments.iter().chain(link).chain(&right.segments).copied().collect();
+    Ok(Word { segments })
 }
 
 fn trailing_consonants(w: &Word) -> usize {
@@ -231,7 +249,7 @@ mod tests {
                 for e in l.entries() {
                     for m in &morphemes {
                         for prefix in [false, true] {
-                            let w = l.attach(&e.word, m, prefix);
+                            let w = l.attach(&e.word, m, prefix).unwrap_or_else(|e| panic!("{e}"));
                             assert_eq!(o.read(&w.spelling()).as_ref(), Some(&w), "{style:?} {seed} {} + {}", e.word.spelling(), m.spelling());
                             // Never more than two consonants in a row across the boundary.
                             let edge = if prefix { m.segments.len() } else { e.word.segments.len() };
@@ -253,8 +271,8 @@ mod tests {
             let np = l.noun_phrase(&NounPhrase { noun: "sun", plural: true, adjective: None }).unwrap_or_default();
             match l.grammar.plural {
                 Marking::Unmarked => assert_eq!(np.words, std::slice::from_ref(&stem)),
-                Marking::Suffix => assert_eq!(np.words, [l.attach(&stem, &pl, false)]),
-                Marking::Prefix => assert_eq!(np.words, [l.attach(&stem, &pl, true)]),
+                Marking::Suffix => assert_eq!(np.words, [l.attach(&stem, &pl, false).unwrap_or_default()]),
+                Marking::Prefix => assert_eq!(np.words, [l.attach(&stem, &pl, true).unwrap_or_default()]),
                 Marking::ParticleBefore => assert_eq!(np.words, [pl.clone(), stem.clone()]),
                 Marking::ParticleAfter => assert_eq!(np.words, [stem.clone(), pl.clone()]),
             }
@@ -267,7 +285,7 @@ mod tests {
             l.grammar.past = Marking::Suffix;
             l.grammar.negation = Marking::ParticleAfter;
             let v = l.verb_form("see", Tense::Past, true).unwrap_or_default();
-            assert_eq!(v.words, [l.attach(&see, &pst, false), neg.clone()]);
+            assert_eq!(v.words, [l.attach(&see, &pst, false).unwrap_or_default(), neg.clone()]);
             l.grammar.past = Marking::ParticleAfter;
             let v = l.verb_form("see", Tense::Past, true).unwrap_or_default();
             assert_eq!(v.words, [see, pst, neg]);
@@ -303,5 +321,41 @@ mod tests {
 
     fn p_err(l: &Language) -> Result<Phrase, ConlangError> {
         l.clause(&Clause { subject: NounPhrase::new("dragon"), verb: "see", object: None, tense: Tense::Past, negative: false, question: false })
+    }
+
+    #[test]
+    fn question_affixes_and_intonation() {
+        let mut l = lang(6);
+        let g = |l: &Language, s: &str| l.word(s).map(|e| e.word.clone()).unwrap_or_default();
+        let c = Clause { subject: NounPhrase::new("woman"), verb: "sleep", object: None, tense: Tense::Present, negative: false, question: true };
+        l.grammar.word_order = WordOrder::Svo;
+        l.grammar.question = Marking::Suffix;
+        let p = l.clause(&c).unwrap_or_default();
+        assert_eq!(p.words, [g(&l, "woman"), l.attach(&g(&l, "sleep"), &g(&l, "Q"), false).unwrap_or_default()]);
+        l.grammar.question = Marking::Prefix;
+        let p = l.clause(&c).unwrap_or_default();
+        assert_eq!(p.words, [l.attach(&g(&l, "woman"), &g(&l, "Q"), true).unwrap_or_default(), g(&l, "sleep")]);
+        // Intonation-only questions work without a Q entry in the vocabulary.
+        l.grammar.question = Marking::Unmarked;
+        let mut v = serde_json::to_value(&l).unwrap_or_default();
+        if let Some(a) = v["lexicon"].as_array_mut() {
+            a.retain(|e| e["gloss"] != "q");
+        }
+        let loaded: Language = serde_json::from_value(v).unwrap_or_else(|e| panic!("{e}"));
+        assert!(loaded.word("Q").is_none());
+        assert_eq!(loaded.clause(&c).map(|p| p.words.len()), Ok(2));
+    }
+
+    #[test]
+    fn overlong_forms_are_errors_not_truncated() {
+        let mut l = lang(8);
+        let a = l.phonology.vowels.first().map(|v| v.get().map_or("a", |p| p.roman)).unwrap_or("a");
+        let longest = a.repeat(MAX_SEGMENTS);
+        l.set_word("long", crate::WordClass::Noun, &longest).unwrap_or_else(|e| panic!("{e}"));
+        l.grammar.plural = Marking::Suffix;
+        let np = l.noun_phrase(&NounPhrase { noun: "long", plural: true, adjective: None });
+        assert!(matches!(np, Err(ConlangError::FormTooLong(_))), "{np:?}");
+        l.grammar.plural = Marking::Prefix;
+        assert!(matches!(l.noun_phrase(&NounPhrase { noun: "long", plural: true, adjective: None }), Err(ConlangError::FormTooLong(_))));
     }
 }

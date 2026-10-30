@@ -100,8 +100,8 @@ fn espeak_says_what_we_compute() {
             let morphemes: Vec<_> = Grammar::MORPHEMES.iter().filter_map(|g| lang.word(g)).map(|e| e.word.clone()).collect();
             for e in lang.entries().iter().filter(|e| e.class != WordClass::Grammatical).step_by(3) {
                 for m in &morphemes {
-                    words.push(lang.attach(&e.word, m, false));
-                    words.push(lang.attach(&e.word, m, true));
+                    words.push(lang.attach(&e.word, m, false).unwrap());
+                    words.push(lang.attach(&e.word, m, true).unwrap());
                 }
             }
             let input: String = words.iter().map(|w| format!("{}.\n", w.spelling())).collect();

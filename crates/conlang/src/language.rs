@@ -32,6 +32,8 @@ pub enum ConlangError {
     InvalidEntry { gloss: String, reason: String },
     #[error("the vocabulary has no word for \"{0}\"")]
     UnknownGloss(String),
+    #[error("the inflected form {0} would be longer than a word may be")]
+    FormTooLong(String),
     #[error(transparent)]
     Coin(#[from] CoinError),
 }
