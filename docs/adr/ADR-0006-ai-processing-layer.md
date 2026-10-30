@@ -259,7 +259,14 @@ fogyasztja a sémát. A jobállapotok és a manifest v3 licencmezői az SDK-ban 
   átlátszósággal, minden képkockán, a tévécsatornák logójához hasonlóan: kicsi, és a grafikai
   biztonsági sávon belül marad (EBU R 95: a képszéltől 5%-ra). Magassága a képmagasság 8%-a
   (2048×1080-nál 86 pixel), a szélessége a logó arányából adódik; a jobb felső sarka a jobb és a
-  felső képszéltől is a megfelelő képméret 5%-ára van. A GPL-es magban és a CFA4-gyel szállított GPL-es workerekben nincs
+  felső képszéltől is a megfelelő képméret 5%-ára van.
+  **A vízjel védelme a zárt workerben van, nem a szerkesztőben** (tulajdonosi döntés,
+  2026-10-30). A GPL-es szerkesztő semmit sem tilt. Ha a projektben kulcs nélküli, 2K fölötti
+  zárt-worker-kimenet van, a CFA4 exportja a kész képkockákat egy általános, dokumentált
+  „export utáni lépésen” át visszaküldi annak a workernek, amely a `caps` üzenetben ezt kérte. A
+  worker ellenőrzi, hogy a logó sarka látható-e; ha valami kitakarja, vagy a klip vágása, nagyítása
+  vagy eltolása miatt kiesik a képből, a teljes képre tesz vízjelet. A szerkesztőben csak az
+  általános export utáni lépés van, korlátozó logika nincs. A GPL-es magban és a CFA4-gyel szállított GPL-es workerekben nincs
   felbontáskorlát: ott a kártya VRAM-ja a határ.
 
 ### 9. Hardverminimum és tesztelés
