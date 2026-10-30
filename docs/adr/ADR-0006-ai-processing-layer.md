@@ -53,7 +53,7 @@ jegyzék a modell és a futtató kiválasztásáért, az erőforrás-kezelő a h
 
 | Elem | Feladat | Hol él | Előd (CFA3/FA3) |
 |---|---|---|---|
-| Képességjegyzék és útválasztó | A TOML-manifestek beolvasása; a képesség, a nyelv, a modell és a futtató kiválasztása a gépen ténylegesen elérhető VRAM, gyártó és telepített modell szerint | `cfa4-ai-registry` | Model Router |
+| Képességjegyzék és útválasztó | A TOML-manifestek beolvasása; a képesség, a nyelv, a modell és a futtató kiválasztása a gépen ténylegesen elérhető VRAM, gyártó és telepített modell szerint; a döntés futtatás nélkül is lekérdezhető („mi futna és miért”) | `cfa4-ai-registry` | Model Router |
 | Modellkezelő | A modellek teljes életciklusa (2. pont) | `cfa4-ai-models` | Model Manager |
 | Feladattervező | Elemzés → javaslat → előnézet → alkalmazás lánc, szakaszolás (chunking), függőségek | `cfa4-ai-jobs` | workflow-réteg |
 | Erőforrás-kezelő | Befogadás és foglalás (3. pont), P0/P1/P2/R osztályok, GPU-nkénti VRAM-nyilvántartás (NVML), LRU modellmegtartás, OOM-visszalépési létra | `cfa4-ai-jobs` | Host Resource Broker |
@@ -252,7 +252,8 @@ alatt is folytatható, mert nem érinti a felületet:
 **F1 – Alaptípusok és modellkezelő.** `cfa4-ai-types`, `cfa4-ai-models`, `cfa4-ai-registry`, a
 `cfa4-ai-protocol` bekötése. *Kilépés:* a jegyzék beolvassa a manifesteket és a referenciagépen
 helyesen szűr; a modellkezelő hash-t ellenőriz, deduplikál, és a hiányzó vagy ismeretlen licencű
-modellt `blocked`-ként jelzi; minden hibás bemenetre hibát ad, pánik nélkül.
+modellt `blocked`-ként jelzi; a jegyzék futtatás nélkül is megmondja, mi futna és miért (vagy miért
+nem), és a felület ezt mutatja; minden hibás bemenetre hibát ad, pánik nélkül.
 
 **F2 – Jobok, erőforrás-kezelő, ONNX worker.** `cfa4-ai-jobs` (erőforrás-kezelő, tartós jobtár),
 `cfa4-ai-workers`, az ONNX Runtime worker egy egyszerű tesztmodellel. *Kilépés:* a
@@ -271,7 +272,9 @@ képjavító (a 25-ből), valamint a SAM2-alapú maszkolás és háttéreltávol
 (K2, G19), beszédszintézis (`cfa4-tts`), hangfunkciók.
 
 **F6 – PyTorch és LLM.** A közös PyTorch-worker és a generatív családok (M1 videódiffúzió és a
-többi) a VRAM-szintek szerint, a helyi LLM-es funkciók.
+többi) a VRAM-szintek szerint, a helyi LLM-es funkciók. A helyi LLM méretét (kis vagy nagy modell)
+kérésenként egy kis ONNX-es szövegbeágyazó és pontozó választja, nem LLM-prompt; ez a meglévő
+ONNX-workeren fut (ötlet: [weave-os/router](https://github.com/weave-os/router), Apache-2.0, csak a módszer).
 
 **Az első körön kívül** (saját döntéssel, későbbi kapuban): freemium és fizetős workerek,
 ComfyUI-kompatibilitás, több GPU, AMD és Intel, TensorRT, CUDA IPC, osztott memória
