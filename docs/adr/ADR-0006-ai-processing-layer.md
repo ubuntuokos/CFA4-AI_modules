@@ -249,12 +249,17 @@ fogyasztja a sémát. A jobállapotok és a manifest v3 licencmezői az SDK-ban 
 - Fizetős extra csak külön folyamatként futó worker lehet. Használati korlát (például feldolgozott
   időtartam vagy 720p-s kimeneti felbontás) csak a zárt workerekben élhet, a GPL-es magban soha.
   Az alapprogram képességeit nem csonkítjuk. A freemium az első körben nem szerepel.
+- **Az ingyenes képminőség 2K** (DCI 2K, 2048×1080; tulajdonosi döntés, 2026-10-30). A zárt
+  fizetős workerek kulcs nélkül legfeljebb 2K-s kimenetet adnak, a 2K fölötti (például 4K)
+  kimenet a fizetős rész. A GPL-es magban és a CFA4-gyel szállított GPL-es workerekben nincs
+  felbontáskorlát: ott a kártya VRAM-ja a határ.
 
 ### 9. Hardverminimum és tesztelés
 
 - **Működési minimum** (alsó határ, nem felső; a tulajdonos 2026-10-30-án megerősítette): Linux,
   NVIDIA Ampere 12 GB (RTX 3060 12 GB), CUDA 12.x-es illesztő, 32 GB RAM, 8 mag AVX2-vel,
-  150 GB NVMe. Minden ingyenes funkciónak 1080p-n működnie kell. 8 GB-os profil nincs.
+  150 GB NVMe. Minden ingyenes funkciónak 2K-ban (DCI 2K, 2048×1080) működnie kell a
+  minimumgépen (tulajdonosi döntés, 2026-10-30). 8 GB-os profil nincs.
 - **Nagyobb gépek:** a nagyobb VRAM nagyobb modelleket és több funkciót nyit meg, a több GPU
   pedig lehetőség, nem követelmény.
 - **Gyártók:** első körben NVIDIA, utána 12 GB-os AMD és Intel kártyák az ONNX úton.
@@ -310,7 +315,7 @@ az OOM és a CFA4 újraindítása tesztelten kezelt.
 
 **F3 – Első képesség.** #91 Video Super-Resolution ONNX-en, a teljes Elemzés → Javaslat →
 Előnézet → Alkalmazás lánccal, projektverzió-ellenőrzéssel, Undo/Redo-val és Qt 6 panellel.
-*Kilépés:* egy 1080p-s klip a referenciakártyán, a minimumkorlátok alatt, új assetként kerül az
+*Kilépés:* egy 2K-s (2048×1080) klip a referenciakártyán, a minimumkorlátok alatt, új assetként kerül az
 idővonalra, az eredeti klip változatlan.
 
 **F4 – Többi ONNX-képesség.** Zajszűrés, képkocka-interpoláció és a többi tisztán ONNX-es
@@ -334,7 +339,7 @@ a kaput a futtató határozza meg: ONNX → F3/F4, candle → F5, PyTorch és he
 ## Nyitott kérdések
 
 - Melyik funkció legyen ingyenes, és melyik fizetős?
-- Melyik korlát legyen a fizetős workerekben: időtartam, kimeneti felbontás, vagy mindkettő?
+- A fizetős workerekben a kimeneti felbontás korlátja 2K; kell-e mellé időtartam-korlát is?
 - Milyen hozzájárulási és vízjelezési szabály vonatkozzon az arccserére (38. típus)?
 - Mi helyettesítse a SeamlessM4T v2 fordítót, amelynek a licence nem kereskedelmi?
-- Melyik ONNX-modell legyen a #91 alapja (licenc és 1080p-s sebesség alapján)?
+- Melyik ONNX-modell legyen a #91 alapja (licenc és 2K-s sebesség alapján)?
