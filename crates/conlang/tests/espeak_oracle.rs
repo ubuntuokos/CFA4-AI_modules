@@ -1,5 +1,6 @@
 //! eSpeak NG as an external oracle: the generated rules must make eSpeak NG say exactly the IPA
-//! this crate computes, with the stress on the same syllable.
+//! this crate computes, with the stress on the same syllable, for vocabulary words and for
+//! inflected forms (stems joined with prefixes and suffixes).
 //!
 //! Needs the `espeak-ng` program (Debian/Ubuntu package `espeak-ng`); without it the test only
 //! prints a note. The system data directory is copied into the target directory, so nothing
@@ -8,7 +9,7 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use cfa4_conlang::{Language, PHONEME_TABLE, Settings, Stress, Style};
+use cfa4_conlang::{Grammar, Language, PHONEME_TABLE, Settings, Stress, Style, WordClass};
 
 fn espeak_data_dir() -> Option<PathBuf> {
     let out = Command::new("espeak-ng").arg("--version").output().ok()?;
@@ -93,7 +94,16 @@ fn espeak_says_what_we_compute() {
             let log = String::from_utf8_lossy(&out.stderr).into_owned() + &String::from_utf8_lossy(&out.stdout);
             assert!(out.status.success() && !log.contains("Bad phoneme") && !log.contains("rror"), "{name}: {log}\n{}", files.rules);
 
-            let words: Vec<_> = lang.entries().iter().map(|e| e.word.clone()).collect();
+            // Every vocabulary word, plus every word joined with every grammatical morpheme as
+            // prefix and suffix (the inflected forms, with their linking sounds).
+            let mut words: Vec<_> = lang.entries().iter().map(|e| e.word.clone()).collect();
+            let morphemes: Vec<_> = Grammar::MORPHEMES.iter().filter_map(|g| lang.word(g)).map(|e| e.word.clone()).collect();
+            for e in lang.entries().iter().filter(|e| e.class != WordClass::Grammatical).step_by(3) {
+                for m in &morphemes {
+                    words.push(lang.attach(&e.word, m, false).unwrap());
+                    words.push(lang.attach(&e.word, m, true).unwrap());
+                }
+            }
             let input: String = words.iter().map(|w| format!("{}.\n", w.spelling())).collect();
             let txt = src.join("words.txt");
             std::fs::write(&txt, input).unwrap();
