@@ -6,7 +6,7 @@ LAT,https://github.com/bytedance/LatentSync,Python,nem igazolt,M2,Elsődleges,"L
 SONIC,https://github.com/jixiaozhong/Sonic,Python,nem igazolt,M2,Elsődleges,hangvezérelt portré-animáció; licenc ellenőrizendő
 MIMIC,https://github.com/TencentARC/MimicMotion,Python,nem igazolt,M3,Elsődleges,pózvezérelt emberi videó
 DENO,https://github.com/swz30/Restormer,Python,nem igazolt,M4,Elsődleges,"Restormer (zaj, elmosódás, eső)"
-REALER,https://github.com/xinntao/Real-ESRGAN,Python,nem igazolt,M4,Elsődleges,"Real-ESRGAN, ONNX-exporttal; kód és súly BSD-3-Clause, tanítóadat DF2K+OST (DIV2K csak kutatásra); a #91 F3-as elsődlegese (modellvalasztas-091.md)"
+REALER,https://github.com/xinntao/Real-ESRGAN,Python,nem igazolt,M4,Elsődleges,"Real-ESRGAN, ONNX-exporttal; kód és súly BSD-3-Clause, tanítóadat DF2K+OST (DIV2K csak kutatásra); az előtanított súly csak a fizetős workerek kapujában; az F3-ra javasolt saját, REDS-en tanított SRVGGNetCompact ettől külön (modellvalasztas-091.md)"
 PRRIFE,https://github.com/hankhank10/Practical-RIFE,Python,nem igazolt,M5,Elsődleges,"Practical-RIFE, ONNX-képes"
 DIFFUER,https://github.com/lixiaowen-xw/DiffuEraser,Python,nem igazolt,M6,Elsődleges,diffúziós objektumeltávolítás
 MANIM,https://github.com/ManimCommunity/manim,Python,nem igazolt,M7,Elsődleges,matematikai/infografikus animáció; MIT
