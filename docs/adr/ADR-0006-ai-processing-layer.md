@@ -4,7 +4,7 @@
 **Állapot:** ELFOGADVA (tulajdonosi jóváhagyás, 2026-10-30); KÓD MÉG NINCS  
 **Kiadás:** HOLD
 
-> **Utolsó átnézés:** 2026-10-31 (a 2. pont kivétele a zárt workerekre) · **Változás:** major (CFA4-AI-PLAN-001 és a CFA3/FA3 elődtervek
+> **Utolsó átnézés:** 2026-11-01 (a 6. pont: az ONNX nem kötelező; 2026-10-31: a 2. pont kivétele a zárt workerekre) · **Változás:** major (CFA4-AI-PLAN-001 és a CFA3/FA3 elődtervek
 > beépítése: F0–F6 kapuk, ONNX-es első kör, modellkezelő, erőforrás-kezelési szabályok, tartós
 > jobtár, bővített jobállapotok, szétbontott licencmezők) · **Részletes terv:**
 > [CFA4 AI tervdokumentum](https://claude.ai/artifact/MLd6UfHG1uPBdJ16B2JZBh) ·
@@ -210,6 +210,12 @@ paranccsal.
 Előnézet és Alkalmazás, Undo) úgy, hogy egyszerre csak egy futtató romolhat el. Ez csak az első
 lépcső, nem a végleges kör: a 200 típusból 25 fut tisztán ONNX-szel, 104-hez PyTorch, 28-hoz
 helyi LLM kell. A többi futtató a későbbi kapukban jön, ugyanarra a protokollra.
+
+**Tulajdonosi pontosítás (István, 2026-11-01): az ONNX nem kötelező.** Amihez nincs megfelelő
+ONNX-modell, ahhoz más megoldást keresünk (candle, a közös PyTorch-környezet vagy más futtató); a
+futtatót képességenként választjuk. Az első kör sorrendje a csővezeték igazolására megmarad, de
+egy képesség nem esik ki azért, mert nincs ONNX-változata. A tiszta licencű tanítóadat
+követelménye ettől független: a futtató cseréje nem oldja meg.
 
 1. **ONNX Runtime** (F2–F4): futtatókörnyezetek (EP) közül az első körben a CUDA és a CPU. Ez az út
    a gyártófüggetlen funkcióké, például a SAM2-é (Kdenlive-paritás K4). Mivel natív könyvtár,

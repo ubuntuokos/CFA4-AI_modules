@@ -1,6 +1,6 @@
 # #91 Videó-felskálázás (Video Super-Resolution): modellválasztás az F3 kapuhoz
 
-> **Állapot:** javaslat; két tulajdonosi döntés 2026-10-31-én (1. és 3. pont), a 3. pont javaslata döntésre vár · **Utolsó átnézés:** 2026-10-31 ·
+> **Állapot:** javaslat; két tulajdonosi döntés 2026-10-31-én (1. és 3. pont), a 3. pont javaslata döntésre vár · **Utolsó átnézés:** 2026-11-01 ·
 > **Változás:** major (első változat) · **Döntés:** [ADR 0006](../adr/ADR-0006-ai-processing-layer.md)
 > F3 kapu, manifest v3 licencszabály ([CFA4-sdk `docs/protocol.md`](https://github.com/ubuntuokos/CFA4-sdk/blob/main/docs/protocol.md) 5. pont)
 
@@ -86,6 +86,29 @@ maga a #91 egyszerű, képkockánkénti változata:
 
 Ez nem a RealBasicVSR-szintű, hetes munka: kis modell, egyetlen képkockán, nincs mozgásbecslő.
 
+### 3.1 Hangképesség: az első tiszta, előtanított jelölt
+
+A tulajdonos kérésére (István, 2026-10-31: „keress tovább, hang is”) a hangfunkciókat is
+átnéztem. A Piper-hangok adatlapja hangonként megadja a tanítóadatot és azt, hogy nulláról vagy
+finomhangolással készült a hang, így a négy rész ellenőrizhető.
+
+| Hang | Kód | Függőségek | Súly | Tanítóadat | Eredmény |
+|---|---|---|---|---|---|
+| **Piper `en_US-ljspeech-high`** (AU-010 Beszédgenerálás) | saját GPL-es ONNX-inferencia | `onnxruntime` (MIT); eSpeak NG (GPL-3.0) külön folyamatban, fonemizálóként | MIT ([rhasspy/piper-voices](https://huggingface.co/rhasspy/piper-voices)) | LJ Speech: közkincs (LibriVox), „no restrictions” ([LJ Speech](https://keithito.com/LJ-Speech-Dataset/)); az adatlap szerint „Trained from scratch” | **mind a négy rész tiszta** |
+| Piper `hu_HU-anna`, `hu_HU-imre` | ugyanaz | ugyanaz | MIT | CC0 ([OHF-Voice/voice-datasets](https://huggingface.co/datasets/OHF-Voice/voice-datasets)), de „Finetuned from U.S. English lessac voice” | **nem tiszta**: a lessac alaphang a Blizzard 2013 adatán tanult, ami csak kutatásra engedett (a kereskedelmi felhasználás kizárva) |
+
+Ezzel két tiszta út van az F3-hoz:
+
+1. **Piper `en_US-ljspeech-high` TTS mint F3-képesség.** Azonnal mérhető, nincs tanítás. Az F3
+   kilépési feltétele ekkor nem 2K-s klip, hanem: szövegből generált beszéd új hangassetként
+   kerül az idővonalra, Előnézettel, Alkalmazással, projektverzió-ellenőrzéssel és Visszavonással,
+   a minimumkorlátok alatt. Ehhez az ADR 0006 F3 pontját módosítani kell. Csak angol.
+2. **Saját tanítású magyar Piper-hang nulláról**, a CC0 magyar adaton. Tiszta, de tanítást kér
+   (becslés mérés nélkül: néhány nap–egy hét egy 12 GB-os kártyán).
+
+A 3. pont elején javasolt saját tanítású SRVGGNetCompact (REDS) harmadik útként megmarad; ez
+megtartaná a videós F3-kilépési feltételt.
+
 ## 4. Mérési terv (F3)
 
 A `scripts/dev/run-minspec.sh` alatt (32 GB RAM, 8 mag, csak a 3060):
@@ -98,6 +121,8 @@ A `scripts/dev/run-minspec.sh` alatt (32 GB RAM, 8 mag, csak a 3060):
 
 ## 5. Nyitott kérdések
 
-- Saját tanítású SRVGGNetCompact REDS-en legyen-e az F3 képessége (3. pont)?
+- Melyik tiszta út legyen az F3: Piper `en_US-ljspeech-high` TTS (az ADR F3 kilépési
+  feltételének módosításával), saját tanítású magyar Piper-hang, vagy saját tanítású
+  SRVGGNetCompact REDS-en (3. és 3.1 pont)?
 - Kell-e jogi vélemény a zárt worker kiadása előtt (DIV2K, FlyingChairs)?
 - Írjunk-e a RealBasicVSR és a BasicVSR++ szerzőjének a súlylicenc tisztázásáért?
