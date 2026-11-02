@@ -1,0 +1,16 @@
+# CFA4 #91 mérőkörnyezet (felskálázás, Real-ESRGAN). Ugyanaz a CUDA 12.x-es csomagsor, mint az F3-é.
+[project]
+name = "cfa4-vsr-measure"
+version = "0.1.0"
+description = "CFA4 #91: Real-ESRGAN felskálázó mérése (nem része a terméknek)"
+license = "GPL-3.0-or-later"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+  "numpy==2.1.3",
+  "torch==2.5.1",
+  "onnx==1.17.0",
+  "onnxruntime-gpu==1.20.2",
+]
+
+[tool.uv]
+package = false
