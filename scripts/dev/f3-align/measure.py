@@ -525,7 +525,6 @@ def main() -> int:
             p.add_argument("--out", type=Path, required=True)
         else:
             p.add_argument("--device", choices=("cuda", "cpu"), default="cuda")
-        else:
             p.add_argument("--onnx-dir", type=Path, required=True)
         if name in ("parity", "speed"):
             p.add_argument("--audio", type=Path, required=True)
