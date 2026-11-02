@@ -237,6 +237,15 @@ def ort_logits(session, wave: np.ndarray) -> np.ndarray:
     return out[0].astype(np.float32)
 
 
+def check_vocab_width(logits: np.ndarray, vocab: dict[str, int]) -> np.ndarray:
+    """A kimenet szélessége pontosan a rögzített szókészleté legyen; a többlet osztályok a
+    log_softmax-ot torzítanák, a kevesebb pedig hibás indexelést adna."""
+    width = max(vocab.values()) + 1
+    if logits.ndim != 2 or logits.shape[1] != width:
+        raise ValueError(f"az ONNX-kimenet szélessége {logits.shape[-1]}, a szókészleté {width}")
+    return logits
+
+
 def windowed_logits(session, wave: np.ndarray) -> np.ndarray:
     """30 s-os ablakok 1 s-os környezettel; minden ablakból csak a saját szakasza marad meg."""
     rate, step = ca.SAMPLE_RATE, ca.FRAME_SAMPLES
@@ -326,7 +335,7 @@ def cmd_parity(args: argparse.Namespace) -> dict:
     ref_words = ca.align(log_softmax(ref).tolist(), words, vocab, blank=vocab["<pad>"])
     report: dict = {"revision": revision, "safetensors_sha256": weights_sha256}
     for onnx_path in onnx_models(args.onnx_dir, args.device):
-        got = ort_logits(ort_session(onnx_path, args.device), x)
+        got = check_vocab_width(ort_logits(ort_session(onnx_path, args.device), x), vocab)
         # Eltérő kockaszám (csonkított vagy kipárnázott kimenet) önmagában eltérés: nem vetjük
         # össze a közös elejüket, mert a különböző vég üres kockákból állva is egyező illesztést adna.
         same_shape = got.shape == ref.shape
@@ -438,7 +447,7 @@ def accuracy_for(session, labels: list[dict], vocab: dict[str, int], base: Path)
     ious, overlaps, failures = [], 0, []
     for clip in labels:
         wave = load_audio(base / clip["audio"])
-        lp = log_softmax(windowed_logits(session, wave))
+        lp = log_softmax(check_vocab_width(windowed_logits(session, wave), vocab))
         prev_end = -1.0
         for line in clip["lines"]:
             words, dropped = ca.normalize(line["text"], vocab)
