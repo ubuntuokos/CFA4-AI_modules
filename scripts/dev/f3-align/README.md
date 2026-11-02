@@ -45,7 +45,7 @@ A hang bármilyen mintavételű lehet: a szkript monóra keveri és 16 kHz-re mi
   ugyanaz-e, mint a PyTorch-csal.
 - `speed`: betöltési idő, valós idejű tényező (RTF) és csúcs-VRAM 30 s-os ablakokkal, 1 s
   környezettel. Ez a manifest `resources` része (`vram_mb` kulcsa `any@fp32`, `any@fp16`).
-- `accuracy`: a szók kezdete és vége 50 ms-on, a feliratsorok kezdete és vége 100 ms-on belül,
+- `accuracy`: minden mért pontosságon (CUDA-n fp32 és fp16, CPU-n fp32) a szók kezdete és vége 50 ms-on, a feliratsorok kezdete és vége 100 ms-on belül,
   a sorok átfedése (IoU) a kézi jelöléssel, és az egymást átfedő sorok száma (0 kell).
 
 A címkézett klipeknek CFA4 tulajdonú, saját felvételeknek kell lenniük; LDC-s vagy más

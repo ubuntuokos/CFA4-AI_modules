@@ -280,11 +280,16 @@ def cmd_accuracy(args: argparse.Namespace) -> dict:
     "words": [{"text": "...", "start": s, "end": s}]}]}]; az időket kézzel jelöltük."""
     labels = validate_labels(json.loads(args.labels.read_text(encoding="utf-8")))
     vocab = load_vocab(args.model)
-    session = ort_session(next(iter(sorted(args.onnx_dir.glob("*fp32.onnx")))), args.device)
+    # Minden futtatási pontosságon mérünk (CPU-n csak fp32): a küszöb mindegyikre vonatkozik.
+    return {path.name: accuracy_for(ort_session(path, args.device), labels, vocab, args.labels.parent)
+            for path in onnx_models(args.onnx_dir, args.device)}
+
+
+def accuracy_for(session, labels: list[dict], vocab: dict[str, int], base: Path) -> dict:
     word_hits = word_total = line_hits = line_total = 0
     ious, overlaps, failures = [], 0, []
     for clip in labels:
-        wave = load_audio(args.labels.parent / clip["audio"])
+        wave = load_audio(base / clip["audio"])
         lp = log_softmax(windowed_logits(session, wave))
         prev_end = -1.0
         for line in clip["lines"]:
