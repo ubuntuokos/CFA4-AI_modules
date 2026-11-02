@@ -138,13 +138,18 @@ class VramSampler:
         pid = str(os.getpid())
         while not self._stop.is_set():
             try:
-                out = subprocess.run(
+                proc = subprocess.run(
                     ["nvidia-smi", "--query-compute-apps=pid,used_memory",
                      "--format=csv,noheader,nounits"],
-                    capture_output=True, text=True, timeout=5, check=False).stdout
+                    capture_output=True, text=True, timeout=5, check=False)
             except (OSError, subprocess.TimeoutExpired) as err:
                 self.error = f"nvidia-smi nem futott: {err}"
                 return
+            if proc.returncode != 0:
+                self.error = (f"nvidia-smi hibával lépett ki ({proc.returncode}): "
+                              f"{proc.stderr.strip()[:200]}")
+                return
+            out = proc.stdout
             for line in out.splitlines():
                 parts = [p.strip() for p in line.split(",")]
                 if len(parts) == 2 and parts[0] == pid and parts[1].isdigit():

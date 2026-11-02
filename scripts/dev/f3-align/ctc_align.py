@@ -99,6 +99,13 @@ def normalize(text: str, vocab: dict[str, int]) -> tuple[list[str], list[str]]:
             return " "
         return " " + number_words(int(m.group())) + " "
 
+    # Sorszámnév („1st”, „22nd”): a kiírása nem a tőszámnévé, ezért nem illesztjük, hanem
+    # eldobottként jelezzük (a hívó az ilyen sort kihagyja vagy elutasítja).
+    def ordinal(m: re.Match[str]) -> str:
+        dropped.append(m.group())
+        return " "
+
+    text = re.sub(r"\b\d+(?:st|nd|rd|th)\b", ordinal, text, flags=re.IGNORECASE)
     # Ezres tagolás („1,000”, „12,500,000”): egy számként olvassuk.
     text = re.sub(r"\b\d{1,3}(?:,\d{3})+\b", lambda m: m.group().replace(",", ""), text)
     text = re.sub(r"\d+", spell, text)
