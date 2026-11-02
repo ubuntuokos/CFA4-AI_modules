@@ -155,7 +155,9 @@ a döntés kell rájuk is.
 ### 3.3 Harmadik tulajdonosi döntés: F3 = angol felirat-időzítés (2026-11-02)
 
 István a 3.2 pont tiszta jelöltjei közül a **`facebook/wav2vec2-base-960h`-val végzett angol
-felirat-időzítést** választotta. A képesség:
+felirat-időzítést** választotta. Ez a hanglista 37. sora (AU-037, „Szavankénti időzítés és
+feliratigazítás”) és a Kdenlive-terv K27 pontja (kényszerített igazítás); a `cfa4-speech` mai
+Whisper-szóidőit pontosítja vagy helyettesíti. A képesség:
 
 - bemenet: egy klip hangja és a hozzá tartozó szöveg (sima szöveg vagy SRT, például forgatókönyv
   vagy kézzel írt felirat);
