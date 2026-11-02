@@ -347,7 +347,8 @@ tulajdonos választotta (István, 2026-11-02), mert mind a négy licencrésze ti
 LibriSpeech CC BY 4.0), tanítás nélkül; részletek: [modellválasztás](../ai/modellvalasztas-091.md)
 3. pont. *Kilépés:* egy angol beszédes klip és a hozzá adott szöveg (sima szöveg vagy SRT)
 alapján időzített feliratsáv kerül az idővonalra a referenciakártyán, a minimumkorlátok alatt; a
-klip változatlan, az Undo a sávot visszaveszi. A #91 videó-felskálázás későbbi kapuban jön,
+klip változatlan, az Undo a sávot visszaveszi, és a mérés teljesíti a modellválasztás
+4. pontjának küszöbeit. A #91 videó-felskálázás későbbi kapuban jön,
 saját tanítású súllyal.
 
 **F4 – Többi ONNX-képesség.** Zajszűrés, képkocka-interpoláció és a többi tisztán ONNX-es

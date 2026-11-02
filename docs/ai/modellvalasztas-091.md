@@ -194,6 +194,21 @@ A `scripts/dev/run-minspec.sh` alatt (32 GB RAM, 8 mag, csak a 3060):
   visszalépés ideje ugyanarra.
 - Az eredmény a manifest `resources.vram_mb` mezőjébe és a képesség sebességjelzőjébe kerül.
 
+**Átmeneti küszöbök az F3 kilépéséhez** (az első mérés után a tulajdonos véglegesíti):
+
+| Mérőszám | Küszöb |
+|---|---|
+| Szóhatár (kezdet és vég) 50 ms-on belül | legalább 80% |
+| Feliratsor-határ (kezdet és vég) 100 ms-on belül | legalább 90% |
+| A sorok átlagos IoU-ja a kézi jelöléssel | legalább 0,85 |
+| Egymást átfedő vagy levágott sor | 0 |
+| Illesztési hiba (`AlignError`) a tesztkészleten | 0 |
+| ONNX és PyTorch illesztése | azonos útvonal fp32-n |
+| RTF a 3060-on, fp16 | legfeljebb 0,1 (60 perc hang legfeljebb 6 perc alatt) |
+
+Ha egy küszöb nem teljesül, az F3 nem zárul le; a képesség ekkor sem kerülhet ki
+„kísérleti” jelölés nélkül.
+
 ## 4.1 Mérési terv (#91, későbbre)
 
 A `scripts/dev/run-minspec.sh` alatt (32 GB RAM, 8 mag, csak a 3060):
