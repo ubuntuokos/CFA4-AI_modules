@@ -258,6 +258,18 @@ def check_vocab_width(logits: np.ndarray, vocab: dict[str, int]) -> np.ndarray:
     return logits
 
 
+# A wav2vec2-base konvolúciós jellemzőkinyerőjének (kernel, lépés) párjai (config.json:
+# conv_kernel, conv_stride); ebből pontosan kiszámolható, hány kockát kell adnia egy ablaknak.
+CONV_LAYERS = ((10, 5), (3, 2), (3, 2), (3, 2), (3, 2), (2, 2), (2, 2))
+
+
+def expected_frames(samples: int) -> int:
+    n = samples
+    for kernel, stride in CONV_LAYERS:
+        n = (n - kernel) // stride + 1 if n >= kernel else 0
+    return n
+
+
 def windowed_logits(session, wave: np.ndarray) -> np.ndarray:
     """30 s-os ablakok 1 s-os környezettel; minden ablakból csak a saját szakasza marad meg."""
     rate, step = ca.SAMPLE_RATE, ca.FRAME_SAMPLES
@@ -269,6 +281,10 @@ def windowed_logits(session, wave: np.ndarray) -> np.ndarray:
         end = min(start + win, len(wave))
         lo, hi = max(0, start - ctx), min(len(wave), end + ctx)
         logits = ort_logits(session, normalize_wave(wave[lo:hi]))
+        if len(logits) != expected_frames(hi - lo):
+            # Csonkított vagy kipárnázott gráf: a kockák nem 20 ms-os rácson lennének.
+            raise ValueError(f"az ONNX-modell {len(logits)} kockát adott {hi - lo} mintára, "
+                             f"{expected_frames(hi - lo)} helyett")
         keep_from = (start - lo) // step
         keep = (end - start) // step
         parts.append(logits[keep_from:keep_from + keep])
