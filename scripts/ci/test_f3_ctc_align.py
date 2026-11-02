@@ -50,6 +50,9 @@ class Normalize(unittest.TestCase):
         self.assertEqual(dropped, ["É"])
         words, dropped = ca.normalize("call 1234567890 now", VOCAB)
         self.assertEqual((words, dropped), (["CALL", "NOW"], ["1234567890"]))
+        words, _ = ca.normalize("1,000 and 12,500,000 or 3,4", VOCAB)
+        self.assertEqual(" ".join(words), "ONE THOUSAND AND TWELVE MILLION FIVE HUNDRED "
+                                          "THOUSAND OR THREE FOUR")
 
     def test_long_text_is_refused(self):
         with self.assertRaises(ca.AlignError):
@@ -84,6 +87,8 @@ class Align(unittest.TestCase):
             "unknown character": (["É"], lp),
             "short frame row": (["A"], [[0.0]] * 3),
             "too many frames": (["A"], [[0.0] * len(VOCAB)] * (ca.MAX_FRAMES + 1)),
+            # Each limit alone holds, but frames × states exceeds the table limit.
+            "too many cells": (["AB"] * 2000, [[0.0] * len(VOCAB)] * ca.MAX_FRAMES),
         }
         for why, (words, frames) in cases.items():
             with self.subTest(why), self.assertRaises(ca.AlignError):

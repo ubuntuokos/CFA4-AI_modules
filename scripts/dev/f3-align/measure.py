@@ -105,7 +105,35 @@ def ort_session(onnx_path: Path, device: str):
     providers = ["CPUExecutionProvider"]
     if device == "cuda":
         providers.insert(0, "CUDAExecutionProvider")
-    return ort.InferenceSession(str(onnx_path), providers=providers)
+    session = ort.InferenceSession(str(onnx_path), providers=providers)
+    # Az ONNX Runtime csendben CPU-ra vált, ha a CUDA nem használható: ezt nem mérjük GPU-ként.
+    active = session.get_providers()
+    if device == "cuda" and (not active or active[0] != "CUDAExecutionProvider"):
+        raise ValueError(f"{onnx_path.name}: a CUDA nem aktív (aktív: {active})")
+    return session
+
+
+def onnx_models(onnx_dir: Path, device: str) -> list[Path]:
+    """A mérendő ONNX-fájlok; CPU-n az fp16 kimarad, mert a CPU-s futtató nem támogatja."""
+    paths = sorted(onnx_dir.glob("*.onnx"))
+    if device == "cpu":
+        paths = [p for p in paths if "fp16" not in p.name]
+    if not paths:
+        raise ValueError(f"nincs mérhető ONNX-fájl itt: {onnx_dir}")
+    return paths
+
+
+def model_revision(model_dir: Path) -> str:
+    """A ténylegesen betöltött modell commitja; eltérő vagy ismeretlen változatot nem fogadunk el."""
+    try:
+        out = subprocess.run(["git", "-C", str(model_dir), "rev-parse", "HEAD"],
+                             capture_output=True, text=True, timeout=10, check=False)
+    except (OSError, subprocess.TimeoutExpired) as err:
+        raise ValueError(f"a modell változata nem állapítható meg: {err}") from err
+    rev = out.stdout.strip()
+    if out.returncode != 0 or rev != REVISION:
+        raise ValueError(f"a modellmappa nem a rögzített {REVISION} változat (hanem: {rev or 'ismeretlen'})")
+    return rev
 
 
 def ort_logits(session, wave: np.ndarray) -> np.ndarray:
@@ -143,7 +171,7 @@ def cmd_export(args: argparse.Namespace) -> dict:
     from transformers import Wav2Vec2ForCTC
 
     weights = args.model / "model.safetensors"
-    report = {"revision": REVISION, "safetensors_sha256": sha256(weights)}
+    report = {"revision": model_revision(args.model), "safetensors_sha256": sha256(weights)}
     model = Wav2Vec2ForCTC.from_pretrained(str(args.model)).eval()
     args.out.mkdir(parents=True, exist_ok=True)
     for precision in ("fp32", "fp16"):
@@ -179,7 +207,7 @@ def cmd_parity(args: argparse.Namespace) -> dict:
     words, _ = ca.normalize(args.text.read_text(encoding="utf-8"), vocab)
     ref_words = ca.align(log_softmax(ref).tolist(), words, vocab, blank=vocab["<pad>"])
     report = {}
-    for onnx_path in sorted(args.onnx_dir.glob("*.onnx")):
+    for onnx_path in onnx_models(args.onnx_dir, args.device):
         got = ort_logits(ort_session(onnx_path, args.device), x)
         frames = min(len(got), len(ref))
         got_words = ca.align(log_softmax(got).tolist(), words, vocab, blank=vocab["<pad>"])
@@ -196,7 +224,7 @@ def cmd_speed(args: argparse.Namespace) -> dict:
     wave = load_audio(args.audio)
     seconds = len(wave) / ca.SAMPLE_RATE
     report = {"audio_s": round(seconds, 1), "device": args.device}
-    for onnx_path in sorted(args.onnx_dir.glob("*.onnx")):
+    for onnx_path in onnx_models(args.onnx_dir, args.device):
         with VramSampler() as vram:
             t0 = time.perf_counter()
             session = ort_session(onnx_path, args.device)
@@ -222,10 +250,35 @@ def iou(a: tuple[float, float], b: tuple[float, float]) -> float:
     return inter / union if union > 0 else 0.0
 
 
+def validate_labels(labels: object) -> list[dict]:
+    """A címkefájl ellenőrzése, hogy hibás bemenetre érthető hibát adjunk, ne veremkiírást."""
+    def num(x: object) -> bool:
+        return isinstance(x, (int, float)) and not isinstance(x, bool) and x >= 0
+
+    if not isinstance(labels, list):
+        raise ValueError("a címkefájl gyökere lista kell legyen")
+    for ci, clip in enumerate(labels):
+        if not isinstance(clip, dict) or not isinstance(clip.get("audio"), str) \
+                or not isinstance(clip.get("lines"), list):
+            raise ValueError(f"{ci}. klip: kell egy 'audio' szöveg és egy 'lines' lista")
+        for li, line in enumerate(clip["lines"]):
+            where = f"{clip['audio']}, {li}. sor"
+            if not isinstance(line, dict) or not isinstance(line.get("text"), str) \
+                    or not num(line.get("start")) or not num(line.get("end")) \
+                    or line["end"] <= line["start"]:
+                raise ValueError(f"{where}: kell 'text', és 'start' < 'end' nemnegatív számok")
+            words = line.get("words", [])
+            if not isinstance(words, list) or not all(
+                    isinstance(w, dict) and num(w.get("start")) and num(w.get("end"))
+                    and w["end"] > w["start"] for w in words):
+                raise ValueError(f"{where}: a 'words' elemeiben 'start' < 'end' számok kellenek")
+    return labels
+
+
 def cmd_accuracy(args: argparse.Namespace) -> dict:
     """A címkefájl (JSON): [{"audio": "...", "lines": [{"text": "...", "start": s, "end": s,
     "words": [{"text": "...", "start": s, "end": s}]}]}]; az időket kézzel jelöltük."""
-    labels = json.loads(args.labels.read_text(encoding="utf-8"))
+    labels = validate_labels(json.loads(args.labels.read_text(encoding="utf-8")))
     vocab = load_vocab(args.model)
     session = ort_session(next(iter(sorted(args.onnx_dir.glob("*fp32.onnx")))), args.device)
     word_hits = word_total = line_hits = line_total = 0
@@ -235,7 +288,12 @@ def cmd_accuracy(args: argparse.Namespace) -> dict:
         lp = log_softmax(windowed_logits(session, wave))
         prev_end = -1.0
         for line in clip["lines"]:
-            words, _ = ca.normalize(line["text"], vocab)
+            words, dropped = ca.normalize(line["text"], vocab)
+            if dropped:
+                # A csonkított célszövegre mért idő nem a valódi kiejtésé, ezért kihagyjuk.
+                failures.append({"audio": clip["audio"], "text": line["text"],
+                                 "error": f"szókészleten kívüli rész: {dropped}"})
+                continue
             # Soronként, a kézi sor körül 2 s-os tűréssel illesztünk (a termék is így ablakol).
             lo = max(0, int((line["start"] - 2.0) * ca.SAMPLE_RATE / ca.FRAME_SAMPLES))
             hi = min(len(lp), int((line["end"] + 2.0) * ca.SAMPLE_RATE / ca.FRAME_SAMPLES))

@@ -26,6 +26,8 @@ WORD_SEP = "|"
 MAX_TEXT_CHARS = 20_000
 MAX_FRAMES = 30_000  # 10 perc egy illesztésben; a hosszabb hangot soronként ablakolva illesztjük
 MAX_STATES = 20_001
+# A Viterbi-tábla (kockák × állapotok) együttes korlátja: a visszamutató tábla ennyi bájt.
+MAX_CELLS = 20_000_000
 
 _ONES = ("zero one two three four five six seven eight nine ten eleven twelve thirteen "
          "fourteen fifteen sixteen seventeen eighteen nineteen").split()
@@ -97,6 +99,8 @@ def normalize(text: str, vocab: dict[str, int]) -> tuple[list[str], list[str]]:
             return " "
         return " " + number_words(int(m.group())) + " "
 
+    # Ezres tagolás („1,000”, „12,500,000”): egy számként olvassuk.
+    text = re.sub(r"\b\d{1,3}(?:,\d{3})+\b", lambda m: m.group().replace(",", ""), text)
     text = re.sub(r"\d+", spell, text)
     for raw in text.upper().split():
         kept = []
@@ -134,8 +138,9 @@ def align(log_probs: Sequence[Sequence[float]], words: Sequence[str], vocab: dic
             owner.append(wi)
     frames = len(log_probs)
     states = 2 * len(tokens) + 1
-    if frames > MAX_FRAMES or states > MAX_STATES:
-        raise AlignError(f"túl hosszú illesztés: {frames} kocka, {states} állapot")
+    if frames > MAX_FRAMES or states > MAX_STATES or frames * states > MAX_CELLS:
+        raise AlignError(f"túl hosszú illesztés: {frames} kocka, {states} állapot "
+                         f"(legfeljebb {MAX_CELLS} cella); soronként ablakolva illessz")
     # A CTC-nek ismételt token között üres kocka kell, ezért ennyi kocka a minimum.
     repeats = sum(1 for a, b in zip(tokens, tokens[1:]) if a == b)
     if frames < len(tokens) + repeats:
