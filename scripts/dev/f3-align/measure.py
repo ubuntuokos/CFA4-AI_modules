@@ -259,6 +259,10 @@ def cmd_export(args: argparse.Namespace) -> dict:
     args.out.mkdir(parents=True, exist_ok=True)
     for precision in ("fp32", "fp16"):
         dev = "cuda" if precision == "fp16" else "cpu"
+        path = args.out / f"wav2vec2-base-960h-{precision}.onnx"
+        # Egy korábbi exportból maradt fájlt ne mérjünk a mostani helyett (például ha most nincs
+        # CUDA, és az fp16 kimarad): előbb töröljük, csak a mostani export hozhatja létre újra.
+        path.unlink(missing_ok=True)
         if dev == "cuda" and not torch.cuda.is_available():
             report[precision] = "kihagyva: nincs CUDA"
             continue
@@ -266,7 +270,6 @@ def cmd_export(args: argparse.Namespace) -> dict:
         dummy = torch.zeros(1, ca.SAMPLE_RATE * 2, device=dev)
         if precision == "fp16":
             m, dummy = m.half(), dummy.half()
-        path = args.out / f"wav2vec2-base-960h-{precision}.onnx"
         with torch.no_grad():
             torch.onnx.export(m, (dummy,), str(path), input_names=["input_values"],
                               output_names=["logits"], opset_version=17,
