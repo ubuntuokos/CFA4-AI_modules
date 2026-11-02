@@ -19,7 +19,6 @@ import argparse
 import gc
 import hashlib
 import json
-import math
 import os
 from pathlib import Path
 import subprocess
@@ -265,7 +264,7 @@ def validate_labels(labels: object) -> list[dict]:
     """A címkefájl ellenőrzése, hogy hibás bemenetre érthető hibát adjunk, ne veremkiírást."""
     def num(x: object) -> bool:
         return (isinstance(x, (int, float)) and not isinstance(x, bool)
-                and math.isfinite(x) and 0 <= x <= MAX_LABEL_S)
+                and 0 <= x <= MAX_LABEL_S)  # NaN, végtelen és túl nagy egész is kiesik
 
     if not isinstance(labels, list):
         raise ValueError("a címkefájl gyökere lista kell legyen")
@@ -368,7 +367,7 @@ def main() -> int:
                "accuracy": cmd_accuracy}[args.cmd]
     try:
         report = handler(args)
-    except (ca.AlignError, OSError, ValueError, StopIteration) as err:
+    except (ca.AlignError, OSError, ValueError, OverflowError, StopIteration) as err:
         print(json.dumps({"error": str(err)}, ensure_ascii=False), file=sys.stderr)
         return 1
     print(json.dumps(report, ensure_ascii=False, indent=2))
