@@ -167,6 +167,16 @@ def model_revision(model_dir: Path) -> str:
     rev = out.stdout.strip()
     if out.returncode != 0 or rev != REVISION:
         raise ValueError(f"a modellmappa nem a rögzített {REVISION} változat (hanem: {rev or 'ismeretlen'})")
+    # A HEAD egyezése nem elég: a követett súly-, konfig- vagy szókészletfájl helyben módosulhatott.
+    try:
+        st = subprocess.run(["git", "-C", str(model_dir), "status", "--porcelain",
+                             "--untracked-files=no"],
+                            capture_output=True, text=True, timeout=120, check=False)
+    except (OSError, subprocess.TimeoutExpired) as err:
+        raise ValueError(f"a modellmappa állapota nem ellenőrizhető: {err}") from err
+    if st.returncode != 0 or st.stdout.strip():
+        changed = st.stdout.strip().splitlines()[:5] or [st.stderr.strip()]
+        raise ValueError(f"a modellmappa követett fájljai módosultak vagy nem ellenőrizhetők: {changed}")
     return rev
 
 
@@ -233,6 +243,7 @@ def cmd_parity(args: argparse.Namespace) -> dict:
     from transformers import Wav2Vec2ForCTC
 
     revision = model_revision(args.model)  # a PyTorch-referencia is a rögzített változat legyen
+    weights_sha256 = sha256(args.model / "model.safetensors")
     wave = load_audio(args.audio)[: int(WINDOW_S * ca.SAMPLE_RATE)]
     x = normalize_wave(wave)
     model = Wav2Vec2ForCTC.from_pretrained(str(args.model)).eval()
@@ -241,7 +252,7 @@ def cmd_parity(args: argparse.Namespace) -> dict:
     vocab = load_vocab(args.model)
     words, _ = ca.normalize(args.text.read_text(encoding="utf-8"), vocab)
     ref_words = ca.align(log_softmax(ref).tolist(), words, vocab, blank=vocab["<pad>"])
-    report: dict = {"revision": revision}
+    report: dict = {"revision": revision, "safetensors_sha256": weights_sha256}
     for onnx_path in onnx_models(args.onnx_dir, args.device):
         got = ort_logits(ort_session(onnx_path, args.device), x)
         # Eltérő kockaszám (csonkított vagy kipárnázott kimenet) önmagában eltérés: nem vetjük
@@ -320,9 +331,11 @@ def validate_labels(labels: object) -> list[dict]:
                 raise ValueError(f"{where}: kell 'text', és 'start' < 'end' nemnegatív számok")
             words = line.get("words", [])
             if not isinstance(words, list) or not all(
-                    isinstance(w, dict) and num(w.get("start")) and num(w.get("end"))
+                    isinstance(w, dict) and isinstance(w.get("text"), str)
+                    and num(w.get("start")) and num(w.get("end"))
                     and w["end"] > w["start"] for w in words):
-                raise ValueError(f"{where}: a 'words' elemeiben 'start' < 'end' számok kellenek")
+                raise ValueError(f"{where}: a 'words' elemeiben 'text' és 'start' < 'end' számok "
+                                 "kellenek")
     return labels
 
 
@@ -330,6 +343,7 @@ def cmd_accuracy(args: argparse.Namespace) -> dict:
     """A címkefájl (JSON): [{"audio": "...", "lines": [{"text": "...", "start": s, "end": s,
     "words": [{"text": "...", "start": s, "end": s}]}]}]; az időket kézzel jelöltük."""
     labels = validate_labels(json.loads(args.labels.read_text(encoding="utf-8")))
+    model_revision(args.model)  # a szókészlet is a rögzített, módosítatlan változatból jöjjön
     vocab = load_vocab(args.model)
     # Minden futtatási pontosságon mérünk (CPU-n csak fp32): a küszöb mindegyikre vonatkozik.
     return {path.name: accuracy_for(ort_session(path, args.device), labels, vocab, args.labels.parent)
@@ -360,10 +374,14 @@ def accuracy_for(session, labels: list[dict], vocab: dict[str, int], base: Path)
                 continue
             offset = lo * ca.FRAME_SAMPLES / ca.SAMPLE_RATE
             refs = line.get("words", [])
-            if refs and len(refs) != len(got):
-                # A kézi szavakat a normalize() szerint kell felírni (például a számokat kiírva).
+            # A kézi szavakat a normalize() szerint kell felírni (például a számokat kiírva), és
+            # sorrendben: szövegük szavanként egyezzen az átiratéval, különben nem párosítjuk őket.
+            ref_texts = [ca.normalize(r["text"], vocab)[0] for r in refs]
+            if refs and ref_texts != [[g.text] for g in got]:
                 failures.append({"audio": clip["audio"], "text": line["text"],
-                                 "error": f"szószám eltér: {len(got)} ≠ {len(refs)}"})
+                                 "error": "a kézi szavak nem egyeznek az átirat szavaival: "
+                                          f"{[' '.join(t) for t in ref_texts]} ≠ "
+                                          f"{[g.text for g in got]}"})
                 refs = []
             for g, ref in zip(got, refs):
                 word_total += 2
