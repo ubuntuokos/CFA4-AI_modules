@@ -273,7 +273,12 @@ def cmd_parity(args: argparse.Namespace) -> dict:
 
     revision = model_revision(args.model)  # a PyTorch-referencia is a rögzített változat legyen
     weights_sha256 = sha256(args.model / "model.safetensors")
-    wave = load_audio(args.audio)[: int(WINDOW_S * ca.SAMPLE_RATE)]
+    wave = load_audio(args.audio)
+    # A parity egy ablakon fut; a hosszabb hangot nem vágjuk le csendben, mert a teljes átirat
+    # szavait akkor az első 30 s-ba kényszerítenénk.
+    if len(wave) > int(WINDOW_S * ca.SAMPLE_RATE):
+        raise ValueError(f"{args.audio}: a parity legfeljebb {WINDOW_S:.0f} s-os klipet vár "
+                         f"(ez {len(wave) / ca.SAMPLE_RATE:.1f} s); vágd le a hangot és az átiratot")
     x = normalize_wave(wave)
     model = Wav2Vec2ForCTC.from_pretrained(str(args.model)).eval()
     with torch.no_grad():

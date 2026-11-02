@@ -43,8 +43,10 @@ A hang bármilyen mintavételű lehet: a szkript monóra keveri és 16 kHz-re mi
   Ez kerül a manifest `[[weights]]` részébe (CFA4-sdk `examples/manifests/align-wav2vec2.toml`).
 - Minden alparancs, amely a modellmappát használja, elutasítja a más commitra állt vagy helyben
   módosított (követett fájljában eltérő) checkoutot.
-- `parity`: a modell rögzített változata és a safetensors SHA-256-ja, a kockaszám mindkét oldalon, a logitok legnagyobb
-  eltérése, az egyező argmax aránya, és hogy az illesztés ugyanaz-e, mint a PyTorch-csal.
+- `parity`: legfeljebb 30 s-os klipen és a hozzá tartozó átiraton fut (hosszabb hangot elutasít).
+  Jelenti a modell rögzített változatát, a safetensors SHA-256-ját, a kockaszámot mindkét
+  oldalon, a logitok legnagyobb eltérését, az egyező argmax arányát, és azt, hogy az illesztés
+  ugyanaz-e, mint a PyTorch-csal.
   Eltérő kockaszám esetén a `parity_ok` hamis.
 - A hangfájl legfeljebb 2 óra és legfeljebb 2 óra × 48 000 bemeneti kocka lehet, 64 csatornáig;
   a hosszt dekódolás előtt ellenőrizzük.
