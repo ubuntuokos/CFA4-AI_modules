@@ -1,12 +1,13 @@
 # #91 Videó-felskálázás (Video Super-Resolution): modellválasztás az F3 kapuhoz
 
-> **Állapot:** javaslat; két tulajdonosi döntés 2026-10-31-én (1. és 3. pont), a 3. pont javaslata döntésre vár · **Utolsó átnézés:** 2026-11-02 ·
+> **Állapot:** elfogadva; tulajdonosi döntések 2026-10-31-én (1. és 3. pont) és 2026-11-02-án (F3: angol felirat-időzítés, 3.3 pont) · **Utolsó átnézés:** 2026-11-02 ·
 > **Változás:** major (első változat) · **Döntés:** [ADR 0006](../adr/ADR-0006-ai-processing-layer.md)
 > F3 kapu, manifest v3 licencszabály ([CFA4-sdk `docs/protocol.md`](https://github.com/ubuntuokos/CFA4-sdk/blob/main/docs/protocol.md) 5. pont)
 
-Az F3 kapu célja egy valódi AI-képesség végigvitele a minimumgépen (RTX 3060 12 GB): 2K-s klip,
-Előnézet és Alkalmazás, projektverzió-ellenőrzés, Visszavonás. A képesség a #91, mert ez az
-egyetlen tisztán ONNX-es, 1. fázisú típus a 200-as listában. Tartalék: #93 (videózajszűrés).
+Az F3 kapu célja egy valódi AI-képesség végigvitele a minimumgépen (RTX 3060 12 GB): Előnézet
+és Alkalmazás, projektverzió-ellenőrzés, Visszavonás. Eredetileg a #91 lett volna az, mert ez az
+egyetlen tisztán ONNX-es, 1. fázisú típus a 200-as listában. A licencvizsgálat után a tulajdonos
+**az angol felirat-időzítést választotta F3-nak (wav2vec2, 3.3 pont)**; a #91 később jön.
 
 A licenceket 2026-10-31-én a repókból és az adathalmazok oldaláról ellenőriztem; a VRAM- és
 sebességadatok **becslések**, mérés még nincs (`scripts/dev/run-minspec.sh`).
@@ -151,9 +152,44 @@ tanítóadata nincs nyilvánosságra hozva, a Kokoróé nincs felsorolva, ezért
 szabálya szerint mindkettő `dataset` része `NOASSERTION`. Ha ezek AI-workerbe kerülnek, ugyanez
 a döntés kell rájuk is.
 
-## 4. Mérési terv (F3)
+### 3.3 Harmadik tulajdonosi döntés: F3 = angol felirat-időzítés (2026-11-02)
+
+István a 3.2 pont tiszta jelöltjei közül a **`facebook/wav2vec2-base-960h`-val végzett angol
+felirat-időzítést** választotta. A képesség:
+
+- bemenet: egy klip hangja és a hozzá tartozó szöveg (sima szöveg vagy SRT, például forgatókönyv
+  vagy kézzel írt felirat);
+- Elemzés: a modell 20 ms-onként karakter-valószínűséget ad (CTC), a szöveget erre illesztjük
+  (Viterbi-alapú kényszerített illesztés, saját GPL-es Rust-kód);
+- Javaslat és Előnézet: szavanként és feliratsoronként kezdő- és végidő, alacsony biztonságú
+  helyek jelölésével;
+- Alkalmazás: új feliratsáv az idővonalon, a klip változatlan, az Undo visszaveszi.
+
+Korlátok: csak angol; a modell szókészlete nagybetűk és aposztróf, ezért a szöveget előbb
+normalizálni kell (számok kiírása, írásjelek). Ami a modell számára ismeretlen szó, ott az
+illesztés bizonytalanabb, ezt a Javaslat jelzi. A súly és a LibriSpeech miatt
+forrásmegjelölés kell (Apache-2.0 NOTICE, CC BY 4.0).
+
+## 4. Mérési terv (F3: felirat-időzítés)
 
 A `scripts/dev/run-minspec.sh` alatt (32 GB RAM, 8 mag, csak a 3060):
+
+- ONNX-export fp32 és fp16, `onnxruntime` 1.2x CUDA EP-vel; egyezés a PyTorch-csal ugyanazon a
+  bemeneten (logitok legnagyobb eltérése, és azonos illesztési útvonal).
+- Hosszú hang darabolása: 30 s-os ablakok átfedéssel; az ablakhatárokon nem csúszhat el az
+  illesztés.
+- Pontosság: saját, CFA4 tulajdonú, kézzel jelölt angol tesztklipeken a szókezdetek hány
+  százaléka esik 50 ms-on belül, és a feliratsorok kezdete 100 ms-on belül. (LDC-s korpuszt, például
+  TIMIT-et, nem használunk.)
+- Sebesség: 60 perces hang valós idejű tényezője (RTF) és csúcs-VRAM a 3060-on, valamint a CPU-s
+  visszalépés ideje ugyanarra.
+- Az eredmény a manifest `resources.vram_mb` mezőjébe és a képesség sebességjelzőjébe kerül.
+
+## 4.1 Mérési terv (#91, későbbre)
+
+A `scripts/dev/run-minspec.sh` alatt (32 GB RAM, 8 mag, csak a 3060):
+
+Saját tanítású felskálázóhoz, amikor a #91 sorra kerül:
 
 - ONNX-export fp32 és fp16, `onnxruntime` 1.2x CUDA EP-vel; az eredmény egyezése a PyTorch-csal
   (PSNR ≥ 45 dB ugyanazon a bemeneten).
@@ -163,8 +199,7 @@ A `scripts/dev/run-minspec.sh` alatt (32 GB RAM, 8 mag, csak a 3060):
 
 ## 5. Nyitott kérdések
 
-- Melyik tiszta út legyen az F3 (3., 3.1 és 3.2 pont): angol Piper TTS, angol wav2vec2-es
-  felirat-illesztés, saját magyar Piper-hang vagy saját felskálázó REDS-en?
+- Legyen-e a felirat-időzítésnek magyar változata (saját tanítású vagy a Parakeet v3 alapján)?
 - Elfogadható-e a Parakeet v3 (magyar beszédfelismerés) a GPL-es workerben a Fisher- és a belső
   adat ellenére, vagy csak a zárt workerben?
 - Mi legyen a már használt Whisperrel és Kokoróval (ismeretlen tanítóadat)?

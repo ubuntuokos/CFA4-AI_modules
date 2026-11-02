@@ -4,7 +4,7 @@
 **Állapot:** ELFOGADVA (tulajdonosi jóváhagyás, 2026-10-30); KÓD MÉG NINCS  
 **Kiadás:** HOLD
 
-> **Utolsó átnézés:** 2026-11-01 (a 6. pont: az ONNX nem kötelező; 2026-10-31: a 2. pont kivétele a zárt workerekre) · **Változás:** major (CFA4-AI-PLAN-001 és a CFA3/FA3 elődtervek
+> **Utolsó átnézés:** 2026-11-02 (F3: angol felirat-időzítés; 2026-11-01: a 6. pont, az ONNX nem kötelező; 2026-10-31: a 2. pont kivétele a zárt workerekre) · **Változás:** major (CFA4-AI-PLAN-001 és a CFA3/FA3 elődtervek
 > beépítése: F0–F6 kapuk, ONNX-es első kör, modellkezelő, erőforrás-kezelési szabályok, tartós
 > jobtár, bővített jobállapotok, szétbontott licencmezők) · **Részletes terv:**
 > [CFA4 AI tervdokumentum](https://claude.ai/artifact/MLd6UfHG1uPBdJ16B2JZBh) ·
@@ -340,14 +340,15 @@ nem), és a felület ezt mutatja; minden hibás bemenetre hibát ad, pánik nél
 `run-minspec.sh` alatt a job végigmegy az összes állapoton; a worker összeomlása, a megszakítás,
 az OOM és a CFA4 újraindítása tesztelten kezelt.
 
-**F3 – Első képesség.** #91 Video Super-Resolution ONNX-en, a teljes Elemzés → Javaslat →
-Előnézet → Alkalmazás lánccal, projektverzió-ellenőrzéssel, Undo/Redo-val és Qt 6 panellel.
-*Kilépés:* egy 2K-s (2048×1080) klip a referenciakártyán, a minimumkorlátok alatt, új assetként kerül az
-idővonalra, az eredeti klip változatlan.
-*Felülvizsgálat alatt (2026-11-02):* a #91-nek nincs tiszta licencű előtanított modellje, ezért a
-tulajdonos döntése szerint az F3 más, tiszta képességgel teljesül; a képesség kiválasztása
-folyamatban van ([modellválasztás](../ai/modellvalasztas-091.md) 3. pont). A kiválasztás után ez a
-pont a kilépési feltétellel együtt módosul.
+**F3 – Első képesség: angol felirat-időzítés.** Szöveg–hang illesztés (CTC-alapú kényszerített
+illesztés) a `facebook/wav2vec2-base-960h` modellel ONNX-en, a teljes Elemzés → Javaslat →
+Előnézet → Alkalmazás lánccal, projektverzió-ellenőrzéssel, Undo/Redo-val és Qt 6 panellel. A
+tulajdonos választotta (István, 2026-11-02), mert mind a négy licencrésze tiszta (Apache-2.0 súly,
+LibriSpeech CC BY 4.0), tanítás nélkül; részletek: [modellválasztás](../ai/modellvalasztas-091.md)
+3. pont. *Kilépés:* egy angol beszédes klip és a hozzá adott szöveg (sima szöveg vagy SRT)
+alapján időzített feliratsáv kerül az idővonalra a referenciakártyán, a minimumkorlátok alatt; a
+klip változatlan, az Undo a sávot visszaveszi. A #91 videó-felskálázás későbbi kapuban jön,
+saját tanítású súllyal.
 
 **F4 – Többi ONNX-képesség.** Zajszűrés, képkocka-interpoláció és a többi tisztán ONNX-es
 képjavító (a 25-ből), valamint a SAM2-alapú maszkolás és háttéreltávolítás (K4).
@@ -373,4 +374,4 @@ a kaput a futtató határozza meg: ONNX → F3/F4, candle → F5, PyTorch és he
 - A fizetős workerekben 2K fölött vízjel jár kulcs nélkül; kell-e mellé időtartam-korlát is?
 - Milyen hozzájárulási és vízjelezési szabály vonatkozzon az arccserére (38. típus)?
 - Mi helyettesítse a SeamlessM4T v2 fordítót, amelynek a licence nem kereskedelmi?
-- Melyik ONNX-modell legyen a #91 alapja (licenc és 2K-s sebesség alapján)?
+- Melyik saját tanítású modell legyen a #91 alapja (licenc és 2K-s sebesség alapján)?
