@@ -50,6 +50,8 @@ class Normalize(unittest.TestCase):
         self.assertEqual(dropped, ["É"])
         words, dropped = ca.normalize("call 1234567890 now", VOCAB)
         self.assertEqual((words, dropped), (["CALL", "NOW"], ["1234567890"]))
+        words, _ = ca.normalize("wait\u2014what?no.YES,ok it's", VOCAB)
+        self.assertEqual(words, ["WAIT", "WHAT", "NO", "YES", "OK", "IT'S"])
         words, _ = ca.normalize("1,000 and 12,500,000 or 3,4", VOCAB)
         self.assertEqual(" ".join(words), "ONE THOUSAND AND TWELVE MILLION FIVE HUNDRED "
                                           "THOUSAND OR THREE FOUR")

@@ -34,6 +34,7 @@ import ctc_align as ca  # noqa: E402
 
 REVISION = "22aad52d435eb6dbaf354bdad9b0da84ce7d6156"
 WINDOW_S = 30.0
+MAX_LABEL_S = 24 * 3600.0  # címkeidő felső korlátja: egy nap
 CONTEXT_S = 1.0
 
 
@@ -264,7 +265,7 @@ def validate_labels(labels: object) -> list[dict]:
     """A címkefájl ellenőrzése, hogy hibás bemenetre érthető hibát adjunk, ne veremkiírást."""
     def num(x: object) -> bool:
         return (isinstance(x, (int, float)) and not isinstance(x, bool)
-                and math.isfinite(x) and x >= 0)
+                and math.isfinite(x) and 0 <= x <= MAX_LABEL_S)
 
     if not isinstance(labels, list):
         raise ValueError("a címkefájl gyökere lista kell legyen")
@@ -334,7 +335,7 @@ def accuracy_for(session, labels: list[dict], vocab: dict[str, int], base: Path)
             line_hits += within(start, line["start"], 0.10) + within(end, line["end"], 0.10)
             ious.append(iou((start, end), (line["start"], line["end"])))
             overlaps += start < prev_end
-            prev_end = end
+            prev_end = max(prev_end, end)  # a sor a korábbi leghosszabbal is átfedhet
     return {
         "word_edges_within_50ms": word_hits / word_total if word_total else None,
         "line_edges_within_100ms": line_hits / line_total if line_total else None,

@@ -102,6 +102,8 @@ def normalize(text: str, vocab: dict[str, int]) -> tuple[list[str], list[str]]:
     # Ezres tagolás („1,000”, „12,500,000”): egy számként olvassuk.
     text = re.sub(r"\b\d{1,3}(?:,\d{3})+\b", lambda m: m.group().replace(",", ""), text)
     text = re.sub(r"\d+", spell, text)
+    # Írásjel (gondolatjel, pont, vessző stb.) szóhatár; az aposztróf a szó része marad.
+    text = re.sub(r"[^\w'\s]|_", " ", text)
     for raw in text.upper().split():
         kept = []
         for ch in raw:
