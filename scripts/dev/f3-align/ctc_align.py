@@ -22,6 +22,13 @@ TICKS_PER_FRAME = TICKS_PER_SECOND * FRAME_SAMPLES // SAMPLE_RATE  # pontos: 5 0
 
 WORD_SEP = "|"
 
+# A rögzített facebook/wav2vec2-base-960h (22aad52) vocab.json-ja. A mérés a modellmappából
+# olvassa; ez a másolat a modell nélküli eszközöknek (címke-ellenőrzés, tesztek) kell.
+WAV2VEC2_VOCAB = {"<pad>": 0, "<s>": 1, "</s>": 2, "<unk>": 3, "|": 4, "E": 5, "T": 6, "A": 7,
+                  "O": 8, "N": 9, "I": 10, "H": 11, "S": 12, "R": 13, "D": 14, "L": 15, "U": 16,
+                  "M": 17, "W": 18, "C": 19, "F": 20, "G": 21, "Y": 22, "P": 23, "B": 24, "V": 25,
+                  "K": 26, "'": 27, "X": 28, "J": 29, "Q": 30, "Z": 31}
+
 # A szövegnormalizálás felső korlátai: ellenséges bemenetre se nőjön a munka korlát nélkül.
 MAX_TEXT_CHARS = 20_000
 MAX_FRAMES = 30_000  # 10 perc egy illesztésben; a hosszabb hangot soronként ablakolva illesztjük
@@ -113,9 +120,9 @@ def normalize(text: str, vocab: dict[str, int]) -> tuple[list[str], list[str]]:
     text = re.sub(r"\b\d+(?:st|nd|rd|th)\b", drop, text, flags=re.IGNORECASE)
     # Ezres tagolás („1,000”, „12,500,000”): egy számként olvassuk.
     text = re.sub(r"\b\d{1,3}(?:,\d{3})+\b", lambda m: m.group().replace(",", ""), text)
-    # Tizedes tört („3.14”), tartomány („3-5”) és előjeles szám („-5”): a kiejtésük nem a
+    # Tizedes tört („3.14”), időpont („10:20”), tartomány („3-5”) és előjeles szám („-5”): a kiejtésük nem a
     # számjegycsoportok tőszámneve, ezért eldobottként jelezzük őket.
-    text = re.sub(r"\d+(?:\.\d+)+|\d+\s*[-–−]\s*\d+|(?<!\w)[-–−]\d+", drop, text)
+    text = re.sub(r"\d+(?:[.:]\d+)+|\d+\s*[-–−]\s*\d+|(?<!\w)[-–−]\d+", drop, text)
     text = re.sub(r"\d+", spell, text)
     # Írásjel (gondolatjel, pont, vessző stb.) szóhatár; az aposztróf a szó része marad.
     # A kimondott jeleket kiírjuk; a kiejtésükben nem egyértelműeket (pénznem, perjel stb.)

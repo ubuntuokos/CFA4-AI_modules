@@ -10,7 +10,9 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts/dev/f3-align"))
 
+import check_labels as cl  # noqa: E402
 import ctc_align as ca  # noqa: E402
+import from_audacity as fa  # noqa: E402
 
 # The facebook/wav2vec2-base-960h vocabulary (vocab.json at revision 22aad52).
 VOCAB = {"<pad>": 0, "<s>": 1, "</s>": 2, "<unk>": 3, "|": 4, "E": 5, "T": 6, "A": 7, "O": 8,
@@ -62,6 +64,7 @@ class Normalize(unittest.TestCase):
         words, dropped = ca.normalize("pi is 3.14, pages 3-5, minus -5 ok", VOCAB)
         self.assertEqual(words, ["PI", "IS", "PAGES", "MINUS", "OK"])
         self.assertEqual(dropped, ["3.14", "3-5", "-5"])
+        self.assertEqual(ca.normalize("at 10:20", VOCAB), (["AT"], ["10:20"]))
         words, _ = ca.normalize("1,000 and 12,500,000 or 3,4", VOCAB)
         self.assertEqual(" ".join(words), "ONE THOUSAND AND TWELVE MILLION FIVE HUNDRED "
                                           "THOUSAND OR THREE FOUR")
@@ -112,6 +115,51 @@ class Align(unittest.TestCase):
         lp = [[-math.inf] * len(VOCAB) for _ in range(3)]
         with self.assertRaises(ca.AlignError):
             ca.align(lp, ["A"], VOCAB)
+
+
+class Labels(unittest.TestCase):
+    def test_vocab_copy_matches(self):
+        self.assertEqual(ca.WAV2VEC2_VOCAB, VOCAB)
+
+    def test_example_is_valid(self):
+        import json
+        import tempfile
+
+        example = ROOT / "scripts/dev/f3-align/labels.example.json"
+        labels = json.loads(example.read_text(encoding="utf-8"))
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "klip01.wav").touch()
+            self.assertEqual(cl.check(labels, Path(tmp)), ([], 2, 5))
+            errors, _, _ = cl.check(labels, Path(tmp) / "nincs")
+            self.assertEqual(len(errors), 1)  # csak a hiányzó hangfájl
+
+    def test_checker_catches_mistakes(self):
+        bad = [{"audio": "a.wav", "lines": [
+            {"text": "at 10:20", "start": 1.0, "end": 2.0},
+            {"text": "go now", "start": 1.5, "end": 3.0,
+             "words": [{"text": "now", "start": 1.5, "end": 2.0},
+                       {"text": "go", "start": 2.0, "end": 3.5}]}]}]
+        errors, _, _ = cl.check(bad, ROOT)
+        text = " ".join(errors)
+        for part in ("10:20", "korábbi sor", "kilóg", "nem egyeznek", "nem található"):
+            with self.subTest(part):
+                self.assertIn(part, text)
+
+    def test_audacity_import(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            lines, words = Path(tmp) / "s.txt", Path(tmp) / "w.txt"
+            lines.write_text("0,5\t1,5\tHi you\n2.0\t3.0\tBye\n", encoding="utf-8")
+            words.write_text("0.5\t0.9\tHi\n1.0\t1.5\tyou\n", encoding="utf-8")
+            clip = fa.build_clip("a.wav", lines, words)
+            self.assertEqual([len(ln.get("words", [])) for ln in clip["lines"]], [2, 0])
+            words.write_text("5.0\t6.0\tlost\n", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                fa.build_clip("a.wav", lines, words)
+            lines.write_text("2.0\t1.0\tbackwards\n", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                fa.read_audacity(lines)
 
 
 if __name__ == "__main__":

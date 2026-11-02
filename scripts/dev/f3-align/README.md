@@ -12,6 +12,10 @@ Qt 6 átállás vége előtt AI-crate nem indul).
 |---|---|
 | `ctc_align.py` | Szövegnormalizálás és Viterbi-alapú illesztés, csak standard könyvtárral; a Rust-változat referenciája. Teszt: `scripts/ci/test_f3_ctc_align.py`. |
 | `measure.py` | `export`, `parity`, `speed`, `accuracy` alparancs, JSON-jelentéssel. |
+| `check_labels.py` | A kézi címkefájl ellenőrzése a mérés előtt (modell nélkül, csak standard könyvtár). |
+| `from_audacity.py` | Audacity-címkeexportból (sorok és szavak) címkefájl-bejegyzés. |
+| `labels.example.json` | A címkefájl mintája. |
+| `JELOLES.md` | Jelölési útmutató: milyen hang kell, hogyan írd a szöveget, hogyan jelölj Audacityben. |
 | `pyproject.toml`, `uv.lock` | Rögzített környezet: egy CUDA 12.x (torch 2.5.1, onnxruntime-gpu 1.20.2). |
 
 ## Futtatás a minimumgépen
@@ -83,6 +87,6 @@ A jegyzőkönyvbe kerüljön az `lscpu` kimenete, a rögzített magok, a kártya
   a sorok átfedése (IoU) a kézi jelöléssel, és az egymást átfedő sorok száma (0 kell).
 
 A címkézett klipeknek CFA4 tulajdonú, saját felvételeknek kell lenniük; LDC-s vagy más
-korlátozott licencű korpusz (például TIMIT) nem használható. A címkefájl formáját a
-`measure.py accuracy` leírása adja meg; a kézi szavakat a `ctc_align.normalize()` szerint kell
-felírni (a számokat kiírva).
+korlátozott licencű korpusz (például TIMIT) nem használható. A jelölés menetét, a címkefájl
+formáját és az ellenőrzést a [JELOLES.md](JELOLES.md) írja le; a kézi szavakat a
+`ctc_align.normalize()` szerint kell felírni (a számokat kiírva).
