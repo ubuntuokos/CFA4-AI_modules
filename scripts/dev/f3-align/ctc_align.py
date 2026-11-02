@@ -123,8 +123,10 @@ def align(log_probs: Sequence[Sequence[float]], words: Sequence[str], vocab: dic
 
     `log_probs[t][v]`: a t-edik kocka log-valószínűsége a v-edik szókészletelemre.
     """
-    if not words:
-        raise AlignError("nincs illeszthető szó")
+    if not words or any(not w for w in words):
+        raise AlignError("nincs illeszthető szó, vagy üres szó van a listában")
+    if not log_probs:
+        raise AlignError("nincs egyetlen kocka sem")
     tokens: list[int] = []
     owner: list[int] = []  # melyik szóhoz tartozik a token
     sep = vocab.get(WORD_SEP)

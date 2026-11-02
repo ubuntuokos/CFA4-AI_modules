@@ -86,6 +86,8 @@ class Align(unittest.TestCase):
         lp = frames_for([("A", 3)])
         cases = {
             "no words": ([], lp),
+            "empty word, no frames": ([""], []),
+            "no frames": (["A"], []),
             "unknown character": (["É"], lp),
             "short frame row": (["A"], [[0.0]] * 3),
             "too many frames": (["A"], [[0.0] * len(VOCAB)] * (ca.MAX_FRAMES + 1)),

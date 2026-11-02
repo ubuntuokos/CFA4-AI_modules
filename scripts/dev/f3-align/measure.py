@@ -165,7 +165,10 @@ def ort_session(onnx_path: Path, device: str):
     providers = ["CPUExecutionProvider"]
     if device == "cuda":
         providers.insert(0, "CUDAExecutionProvider")
-    session = ort.InferenceSession(str(onnx_path), providers=providers)
+    try:
+        session = ort.InferenceSession(str(onnx_path), providers=providers)
+    except Exception as err:  # noqa: BLE001 – az ONNX Runtime saját kivételtípusai (sérült, csonka fájl)
+        raise ValueError(f"{onnx_path.name}: az ONNX-modell nem tölthető be: {err}") from err
     # Az ONNX Runtime csendben CPU-ra vált, ha a CUDA nem használható: ezt nem mérjük GPU-ként.
     active = session.get_providers()
     if device == "cuda" and (not active or active[0] != "CUDAExecutionProvider"):
