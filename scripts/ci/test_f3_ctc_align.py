@@ -59,6 +59,9 @@ class Normalize(unittest.TestCase):
                          ("R AND D AT FIFTY PERCENT PLUS TAX AT HOME", []))
         _, dropped = ca.normalize("costs $5 / day", VOCAB)
         self.assertEqual(dropped, ["$", "/"])
+        words, dropped = ca.normalize("pi is 3.14, pages 3-5, minus -5 ok", VOCAB)
+        self.assertEqual(words, ["PI", "IS", "PAGES", "MINUS", "OK"])
+        self.assertEqual(dropped, ["3.14", "3-5", "-5"])
         words, _ = ca.normalize("1,000 and 12,500,000 or 3,4", VOCAB)
         self.assertEqual(" ".join(words), "ONE THOUSAND AND TWELVE MILLION FIVE HUNDRED "
                                           "THOUSAND OR THREE FOUR")

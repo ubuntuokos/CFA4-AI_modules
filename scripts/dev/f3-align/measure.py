@@ -244,6 +244,8 @@ def ort_logits(session, wave: np.ndarray) -> np.ndarray:
         raise ValueError(f"az ONNX-futtatás nem sikerült: {err}") from err
     if out.ndim != 3 or out.shape[0] != 1:
         raise ValueError(f"az ONNX-kimenet alakja nem [1, kocka, szókészlet]: {out.shape}")
+    if not np.isfinite(out).all():
+        raise ValueError("az ONNX-kimenetben nem véges logit (NaN vagy végtelen) van")
     return out[0].astype(np.float32)
 
 
@@ -518,9 +520,11 @@ def main() -> int:
         p = sub.add_parser(name)
         p.add_argument("--model", type=Path, required=True,
                        help=f"a facebook/wav2vec2-base-960h mappája ({REVISION[:7]})")
-        p.add_argument("--device", choices=("cuda", "cpu"), default="cuda")
         if name == "export":
+            # Az export eszköze rögzített (fp32 CPU-n, fp16 CUDA-n), ezért itt nincs --device.
             p.add_argument("--out", type=Path, required=True)
+        else:
+            p.add_argument("--device", choices=("cuda", "cpu"), default="cuda")
         else:
             p.add_argument("--onnx-dir", type=Path, required=True)
         if name in ("parity", "speed"):
