@@ -47,7 +47,10 @@ A hang bármilyen mintavételű lehet: a szkript monóra keveri és 16 kHz-re mi
   Jelenti a modell rögzített változatát, a safetensors SHA-256-ját, a kockaszámot mindkét
   oldalon, a logitok legnagyobb eltérését, az egyező argmax arányát, és azt, hogy az illesztés
   ugyanaz-e, mint a PyTorch-csal.
-  Eltérő kockaszám esetén a `parity_ok` hamis.
+  A `parity_ok` csak akkor igaz, ha a kockaszám és az illesztés egyezik, és a logit-eltérés
+  meg az argmax-egyezés a `PARITY_LIMITS` küszöbén belül van (fp32: legfeljebb 0,001 és
+  legalább 99,9%; fp16: legfeljebb 0,25 és legalább 98%). A küszöbök ideiglenesek: az első
+  3060-as mérés után pontosítjuk őket.
 - A hangfájl legfeljebb 2 óra és legfeljebb 2 óra × 48 000 bemeneti kocka lehet, 64 csatornáig;
   a hosszt dekódolás előtt ellenőrizzük.
 - `speed`: betöltési idő, valós idejű tényező (RTF) és csúcs-VRAM 30 s-os ablakokkal, 1 s

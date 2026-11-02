@@ -44,6 +44,9 @@ MAX_CHANNELS = 64
 READ_BLOCK = 1 << 20
 MAX_LABEL_S = 24 * 3600.0  # címkeidő felső korlátja: egy nap
 CONTEXT_S = 1.0
+# A parity elfogadási küszöbei pontosságonként (ideiglenesek, az első 3060-as mérés után
+# pontosítjuk): a logitok legnagyobb abszolút eltérése és az egyező argmax legkisebb aránya.
+PARITY_LIMITS = {"fp32": (1e-3, 0.999), "fp16": (0.25, 0.98)}
 # Szöveges bemenetek mérete beolvasás előtt: a címkefájl, az átirat és a szókészlet.
 MAX_LABELS_BYTES = 16 << 20
 MAX_TEXT_BYTES = 1 << 20
@@ -82,7 +85,10 @@ def load_audio(path: Path) -> np.ndarray:
                                      f"a(z) {pos}. kockától kezdődő blokkban")
                 mono[pos:pos + len(block)] = mixed
                 pos += len(block)
-            mono = mono[:pos]
+            if pos != frames:
+                # A fejléc több kockát ígért, mint amennyi olvasható: csonka fájlt nem mérünk.
+                raise ValueError(f"{path}: csonka hangfájl ({pos} kocka olvasható a fejlécben "
+                                 f"jelzett {frames} helyett)")
     except (RuntimeError, TypeError) as err:  # soundfile.LibsndfileError: sérült vagy ismeretlen fájl
         raise ValueError(f"{path}: a hang nem olvasható: {err}") from err
     if rate != ca.SAMPLE_RATE:
@@ -329,14 +335,20 @@ def cmd_parity(args: argparse.Namespace) -> dict:
             got_words = ca.align(log_softmax(got).tolist(), words, vocab, blank=vocab["<pad>"])
             same_alignment = ([(w.start_frame, w.end_frame) for w in got_words]
                               == [(w.start_frame, w.end_frame) for w in ref_words])
+        diff = float(np.abs(got - ref).max()) if same_shape else None
+        argmax = float((got.argmax(-1) == ref.argmax(-1)).mean()) if same_shape else None
+        max_diff, min_argmax = PARITY_LIMITS["fp16" if "fp16" in onnx_path.name else "fp32"]
         report[onnx_path.name] = {
             "ref_frames": int(ref.shape[0]),
             "onnx_frames": int(got.shape[0]),
-            "max_abs_logit_diff": float(np.abs(got - ref).max()) if same_shape else None,
-            "same_argmax_ratio": float((got.argmax(-1) == ref.argmax(-1)).mean())
-                                 if same_shape else None,
+            "max_abs_logit_diff": diff,
+            "same_argmax_ratio": argmax,
             "same_alignment": same_alignment,
-            "parity_ok": same_shape and same_alignment,
+            "limits": {"max_abs_logit_diff": max_diff, "min_same_argmax_ratio": min_argmax},
+            # Az egyező illesztés önmagában nem elég: a logitok és az argmax is a küszöbön belül.
+            "parity_ok": bool(same_shape and same_alignment and diff is not None
+                              and argmax is not None and diff <= max_diff
+                              and argmax >= min_argmax),
         }
     return report
 
