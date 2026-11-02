@@ -210,8 +210,18 @@ def model_revision(model_dir: Path) -> str:
 
 
 def ort_logits(session, wave: np.ndarray) -> np.ndarray:
-    dtype = np.float16 if session.get_inputs()[0].type == "tensor(float16)" else np.float32
-    out = session.run(["logits"], {"input_values": wave[None, :].astype(dtype)})[0]
+    # Más be- vagy kimenetű (betölthető, de nem ilyen exportú) ONNX-fájlra érthető hiba jöjjön.
+    inputs = session.get_inputs()
+    if len(inputs) != 1 or inputs[0].name != "input_values" \
+            or "logits" not in [o.name for o in session.get_outputs()]:
+        raise ValueError("az ONNX-modell nem 'input_values' → 'logits' felületű")
+    dtype = np.float16 if inputs[0].type == "tensor(float16)" else np.float32
+    try:
+        out = session.run(["logits"], {"input_values": wave[None, :].astype(dtype)})[0]
+    except Exception as err:  # noqa: BLE001 – az ONNX Runtime saját kivételtípusai
+        raise ValueError(f"az ONNX-futtatás nem sikerült: {err}") from err
+    if out.ndim != 3 or out.shape[0] != 1:
+        raise ValueError(f"az ONNX-kimenet alakja nem [1, kocka, szókészlet]: {out.shape}")
     return out[0].astype(np.float32)
 
 
@@ -284,7 +294,10 @@ def cmd_parity(args: argparse.Namespace) -> dict:
     with torch.no_grad():
         ref = model(torch.from_numpy(x)[None, :]).logits[0].numpy()
     vocab = load_vocab(args.model)
-    words, _ = ca.normalize(read_bounded(args.text, MAX_TEXT_BYTES), vocab)
+    words, dropped = ca.normalize(read_bounded(args.text, MAX_TEXT_BYTES), vocab)
+    if dropped:
+        # A csonkított átiratra mért egyezés félrevezető lenne (az accuracy is kihagyja az ilyet).
+        raise ValueError(f"{args.text}: az átiratban szókészleten kívüli rész van: {dropped[:10]}")
     ref_words = ca.align(log_softmax(ref).tolist(), words, vocab, blank=vocab["<pad>"])
     report: dict = {"revision": revision, "safetensors_sha256": weights_sha256}
     for onnx_path in onnx_models(args.onnx_dir, args.device):
