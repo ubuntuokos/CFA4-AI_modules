@@ -70,7 +70,13 @@ def load_audio(path: Path) -> np.ndarray:
                 if not np.isfinite(block).all():
                     raise ValueError(f"{path}: a hang nem véges mintát (NaN vagy végtelen) tartalmaz "
                                      f"a(z) {pos}. kockától kezdődő blokkban")
-                mono[pos:pos + len(block)] = block.mean(axis=1)
+                # float64-ben keverünk: véges float32 csatornák átlaga így nem csordulhat túl,
+                # és a float32-be visszaírt érték is véges marad.
+                mixed = block.mean(axis=1, dtype=np.float64)
+                if not np.isfinite(mixed).all():
+                    raise ValueError(f"{path}: a monóra kevert hang nem véges "
+                                     f"a(z) {pos}. kockától kezdődő blokkban")
+                mono[pos:pos + len(block)] = mixed
                 pos += len(block)
             mono = mono[:pos]
     except (RuntimeError, TypeError) as err:  # soundfile.LibsndfileError: sérült vagy ismeretlen fájl
@@ -86,7 +92,9 @@ def load_audio(path: Path) -> np.ndarray:
 
 def normalize_wave(x: np.ndarray) -> np.ndarray:
     # A feature_extractor_config do_normalize=true: nulla átlag, egységnyi szórás.
-    return ((x - x.mean()) / np.sqrt(x.var() + 1e-7)).astype(np.float32)
+    # float64-ben számolunk, mert nagy amplitúdónál a float32 négyzetösszeg túlcsordulhat.
+    x64 = x.astype(np.float64)
+    return ((x64 - x64.mean()) / np.sqrt(x64.var() + 1e-7)).astype(np.float32)
 
 
 def load_vocab(model_dir: Path) -> dict[str, int]:
@@ -345,7 +353,11 @@ def validate_labels(labels: object) -> list[dict]:
 def cmd_accuracy(args: argparse.Namespace) -> dict:
     """A címkefájl (JSON): [{"audio": "...", "lines": [{"text": "...", "start": s, "end": s,
     "words": [{"text": "...", "start": s, "end": s}]}]}]; az időket kézzel jelöltük."""
-    labels = validate_labels(json.loads(args.labels.read_text(encoding="utf-8")))
+    try:
+        raw = json.loads(args.labels.read_text(encoding="utf-8"))
+    except RecursionError as err:  # túl mélyen egymásba ágyazott JSON
+        raise ValueError(f"{args.labels}: a címkefájl túl mélyen egymásba ágyazott") from err
+    labels = validate_labels(raw)
     model_revision(args.model)  # a szókészlet is a rögzített, módosítatlan változatból jöjjön
     vocab = load_vocab(args.model)
     # Minden futtatási pontosságon mérünk (CPU-n csak fp32): a küszöb mindegyikre vonatkozik.
