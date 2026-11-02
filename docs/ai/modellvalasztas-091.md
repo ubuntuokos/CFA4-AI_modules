@@ -76,8 +76,9 @@ A többi ONNX-es képesség jelöltjeit ugyanígy megnéztem. Egyiknek sincs tis
 | #76 Háttércsere | RVM és társai | VideoMatte240K, COCO stb. | vegyes, részben ismeretlen |
 
 **Következtetés:** a nyilvános, előtanított képi modellek közül egyik sem teljesíti a négy tiszta
-részt. Tiszta F3-képesség csak **saját tanítással** készülhet, tiszta adaton. A legolcsóbb ilyen út
-maga a #91 egyszerű, képkockánkénti változata:
+részt. Tiszta **képi** képesség csak **saját tanítással** készülhet, tiszta adaton (az F3 végül
+előtanított beszédmodellel teljesül, lásd 3.2 és 3.3 pont). A legolcsóbb képi út maga a #91
+egyszerű, képkockánkénti változata:
 
 - architektúra: SRVGGNetCompact (a Real-ESRGAN repóból, BSD-3-Clause), kb. 1,2 M paraméter,
   tisztán konvolúciós, ONNX-re triviálisan exportálható;
