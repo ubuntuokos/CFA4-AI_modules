@@ -67,6 +67,9 @@ def load_audio(path: Path) -> np.ndarray:
                 block = f.read(min(READ_BLOCK, frames - pos), dtype="float32", always_2d=True)
                 if len(block) == 0:
                     break
+                if not np.isfinite(block).all():
+                    raise ValueError(f"{path}: a hang nem véges mintát (NaN vagy végtelen) tartalmaz "
+                                     f"a(z) {pos}. kockától kezdődő blokkban")
                 mono[pos:pos + len(block)] = block.mean(axis=1)
                 pos += len(block)
             mono = mono[:pos]
@@ -376,8 +379,15 @@ def accuracy_for(session, labels: list[dict], vocab: dict[str, int], base: Path)
             refs = line.get("words", [])
             # A kézi szavakat a normalize() szerint kell felírni (például a számokat kiírva), és
             # sorrendben: szövegük szavanként egyezzen az átiratéval, különben nem párosítjuk őket.
-            ref_texts = [ca.normalize(r["text"], vocab)[0] for r in refs]
-            if refs and ref_texts != [[g.text] for g in got]:
+            ref_norm = [ca.normalize(r["text"], vocab) for r in refs]
+            ref_texts = [words for words, _ in ref_norm]
+            ref_dropped = [d for _, dropped in ref_norm for d in dropped]
+            if ref_dropped:
+                # Veszteséges normalizálás után az egyezés hamis lenne (például CAFÉ → CAF).
+                failures.append({"audio": clip["audio"], "text": line["text"],
+                                 "error": f"kézi szóban szókészleten kívüli rész: {ref_dropped}"})
+                refs = []
+            elif refs and ref_texts != [[g.text] for g in got]:
                 failures.append({"audio": clip["audio"], "text": line["text"],
                                  "error": "a kézi szavak nem egyeznek az átirat szavaival: "
                                           f"{[' '.join(t) for t in ref_texts]} ≠ "
