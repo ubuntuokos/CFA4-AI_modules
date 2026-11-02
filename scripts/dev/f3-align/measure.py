@@ -16,8 +16,10 @@ A minimumgépen így fut:  scripts/dev/run-minspec.sh uv run --project scripts/d
 from __future__ import annotations
 
 import argparse
+import gc
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import subprocess
@@ -41,7 +43,12 @@ def load_audio(path: Path) -> np.ndarray:
     from math import gcd
     from scipy.signal import resample_poly
 
-    data, rate = sf.read(str(path), dtype="float32", always_2d=True)
+    try:
+        data, rate = sf.read(str(path), dtype="float32", always_2d=True)
+    except (RuntimeError, TypeError) as err:  # soundfile.LibsndfileError: sérült vagy ismeretlen fájl
+        raise ValueError(f"{path}: a hang nem olvasható: {err}") from err
+    if rate <= 0 or data.size == 0:
+        raise ValueError(f"{path}: üres hang vagy hibás mintavételi frekvencia ({rate})")
     mono = data.mean(axis=1)
     if rate != ca.SAMPLE_RATE:
         g = gcd(rate, ca.SAMPLE_RATE)
@@ -237,6 +244,9 @@ def cmd_speed(args: argparse.Namespace) -> dict:
             "frames": int(len(logits)),
             "peak_vram_mb": vram.peak_mb if args.device == "cuda" else 0,
         }
+        # A következő modell előtt felszabadítjuk ezt, hogy a csúcs-VRAM csak egy modellé legyen.
+        del session, logits
+        gc.collect()
     return report
 
 
@@ -253,7 +263,8 @@ def iou(a: tuple[float, float], b: tuple[float, float]) -> float:
 def validate_labels(labels: object) -> list[dict]:
     """A címkefájl ellenőrzése, hogy hibás bemenetre érthető hibát adjunk, ne veremkiírást."""
     def num(x: object) -> bool:
-        return isinstance(x, (int, float)) and not isinstance(x, bool) and x >= 0
+        return (isinstance(x, (int, float)) and not isinstance(x, bool)
+                and math.isfinite(x) and x >= 0)
 
     if not isinstance(labels, list):
         raise ValueError("a címkefájl gyökere lista kell legyen")
