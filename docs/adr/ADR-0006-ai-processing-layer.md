@@ -344,6 +344,10 @@ az OOM és a CFA4 újraindítása tesztelten kezelt.
 Előnézet → Alkalmazás lánccal, projektverzió-ellenőrzéssel, Undo/Redo-val és Qt 6 panellel.
 *Kilépés:* egy 2K-s (2048×1080) klip a referenciakártyán, a minimumkorlátok alatt, új assetként kerül az
 idővonalra, az eredeti klip változatlan.
+*Felülvizsgálat alatt (2026-11-02):* a #91-nek nincs tiszta licencű előtanított modellje, ezért a
+tulajdonos döntése szerint az F3 más, tiszta képességgel teljesül; a képesség kiválasztása
+folyamatban van ([modellválasztás](../ai/modellvalasztas-091.md) 3. pont). A kiválasztás után ez a
+pont a kilépési feltétellel együtt módosul.
 
 **F4 – Többi ONNX-képesség.** Zajszűrés, képkocka-interpoláció és a többi tisztán ONNX-es
 képjavító (a 25-ből), valamint a SAM2-alapú maszkolás és háttéreltávolítás (K4).
