@@ -41,8 +41,11 @@ A hang bármilyen mintavételű lehet: a szkript monóra keveri és 16 kHz-re mi
 
 - `export`: a safetensors SHA-256-ja és a két ONNX-fájl (fp32 CPU-n, fp16 CUDA-n) hash-e és mérete.
   Ez kerül a manifest `[[weights]]` részébe (CFA4-sdk `examples/manifests/align-wav2vec2.toml`).
-- `parity`: a logitok legnagyobb eltérése, az egyező argmax aránya, és hogy az illesztés
-  ugyanaz-e, mint a PyTorch-csal.
+- `parity`: a modell rögzített változata, a kockaszám mindkét oldalon, a logitok legnagyobb
+  eltérése, az egyező argmax aránya, és hogy az illesztés ugyanaz-e, mint a PyTorch-csal.
+  Eltérő kockaszám esetén a `parity_ok` hamis.
+- A hangfájl legfeljebb 2 óra és legfeljebb 2 óra × 48 000 bemeneti kocka lehet, 64 csatornáig;
+  a hosszt dekódolás előtt ellenőrizzük.
 - `speed`: betöltési idő, valós idejű tényező (RTF) és csúcs-VRAM 30 s-os ablakokkal, 1 s
   környezettel. Ez a manifest `resources` része (`vram_mb` kulcsa `any@fp32`, `any@fp16`).
 - `accuracy`: minden mért pontosságon (CUDA-n fp32 és fp16, CPU-n fp32) a szók kezdete és vége 50 ms-on, a feliratsorok kezdete és vége 100 ms-on belül,

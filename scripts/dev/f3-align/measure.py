@@ -35,6 +35,12 @@ REVISION = "22aad52d435eb6dbaf354bdad9b0da84ce7d6156"
 WINDOW_S = 30.0
 MIN_RATE, MAX_RATE = 8_000, 384_000
 MIN_SAMPLES = 400  # a modell receptív mezője: ennél rövidebb hangból nincs kocka
+# A dekódolás korlátja a beolvasás előtt: legfeljebb 2 óra, és legfeljebb ennyi bemeneti kocka
+# (2 óra 48 kHz-en, kb. 1,4 GB float32 monóban); a csatornákat blokkonként keverjük monóra.
+MAX_AUDIO_S = 2 * 3600
+MAX_INPUT_FRAMES = MAX_AUDIO_S * 48_000
+MAX_CHANNELS = 64
+READ_BLOCK = 1 << 20
 MAX_LABEL_S = 24 * 3600.0  # címkeidő felső korlátja: egy nap
 CONTEXT_S = 1.0
 
@@ -46,14 +52,26 @@ def load_audio(path: Path) -> np.ndarray:
     from scipy.signal import resample_poly
 
     try:
-        data, rate = sf.read(str(path), dtype="float32", always_2d=True)
+        with sf.SoundFile(str(path)) as f:
+            rate, frames, channels = f.samplerate, f.frames, f.channels
+            if not MIN_RATE <= rate <= MAX_RATE or frames <= 0 or not 1 <= channels <= MAX_CHANNELS:
+                # A határ az átmintavételező szűrő méretét is korlátozza.
+                raise ValueError(f"{path}: üres hang, {channels} csatorna, vagy a mintavételi "
+                                 f"frekvencia ({rate}) nincs {MIN_RATE}..{MAX_RATE} Hz között")
+            if frames > MAX_INPUT_FRAMES or frames > MAX_AUDIO_S * rate:
+                raise ValueError(f"{path}: túl hosszú hang ({frames} kocka {rate} Hz-en; legfeljebb "
+                                 f"{MAX_AUDIO_S} s és {MAX_INPUT_FRAMES} kocka)")
+            mono = np.empty(frames, dtype=np.float32)
+            pos = 0
+            while pos < frames:
+                block = f.read(min(READ_BLOCK, frames - pos), dtype="float32", always_2d=True)
+                if len(block) == 0:
+                    break
+                mono[pos:pos + len(block)] = block.mean(axis=1)
+                pos += len(block)
+            mono = mono[:pos]
     except (RuntimeError, TypeError) as err:  # soundfile.LibsndfileError: sérült vagy ismeretlen fájl
         raise ValueError(f"{path}: a hang nem olvasható: {err}") from err
-    if not MIN_RATE <= rate <= MAX_RATE or data.size == 0:
-        # A határ az átmintavételező szűrő méretét is korlátozza.
-        raise ValueError(f"{path}: üres hang, vagy a mintavételi frekvencia ({rate}) nincs "
-                         f"{MIN_RATE}..{MAX_RATE} Hz között")
-    mono = data.mean(axis=1)
     if rate != ca.SAMPLE_RATE:
         g = gcd(rate, ca.SAMPLE_RATE)
         mono = resample_poly(mono, ca.SAMPLE_RATE // g, rate // g).astype(np.float32)
@@ -214,6 +232,7 @@ def cmd_parity(args: argparse.Namespace) -> dict:
     import torch
     from transformers import Wav2Vec2ForCTC
 
+    revision = model_revision(args.model)  # a PyTorch-referencia is a rögzített változat legyen
     wave = load_audio(args.audio)[: int(WINDOW_S * ca.SAMPLE_RATE)]
     x = normalize_wave(wave)
     model = Wav2Vec2ForCTC.from_pretrained(str(args.model)).eval()
@@ -222,16 +241,25 @@ def cmd_parity(args: argparse.Namespace) -> dict:
     vocab = load_vocab(args.model)
     words, _ = ca.normalize(args.text.read_text(encoding="utf-8"), vocab)
     ref_words = ca.align(log_softmax(ref).tolist(), words, vocab, blank=vocab["<pad>"])
-    report = {}
+    report: dict = {"revision": revision}
     for onnx_path in onnx_models(args.onnx_dir, args.device):
         got = ort_logits(ort_session(onnx_path, args.device), x)
-        frames = min(len(got), len(ref))
-        got_words = ca.align(log_softmax(got).tolist(), words, vocab, blank=vocab["<pad>"])
+        # Eltérő kockaszám (csonkított vagy kipárnázott kimenet) önmagában eltérés: nem vetjük
+        # össze a közös elejüket, mert a különböző vég üres kockákból állva is egyező illesztést adna.
+        same_shape = got.shape == ref.shape
+        same_alignment = False
+        if same_shape:
+            got_words = ca.align(log_softmax(got).tolist(), words, vocab, blank=vocab["<pad>"])
+            same_alignment = ([(w.start_frame, w.end_frame) for w in got_words]
+                              == [(w.start_frame, w.end_frame) for w in ref_words])
         report[onnx_path.name] = {
-            "max_abs_logit_diff": float(np.abs(got[:frames] - ref[:frames]).max()),
-            "same_argmax_ratio": float((got[:frames].argmax(-1) == ref[:frames].argmax(-1)).mean()),
-            "same_alignment": [(w.start_frame, w.end_frame) for w in got_words]
-                              == [(w.start_frame, w.end_frame) for w in ref_words],
+            "ref_frames": int(ref.shape[0]),
+            "onnx_frames": int(got.shape[0]),
+            "max_abs_logit_diff": float(np.abs(got - ref).max()) if same_shape else None,
+            "same_argmax_ratio": float((got.argmax(-1) == ref.argmax(-1)).mean())
+                                 if same_shape else None,
+            "same_alignment": same_alignment,
+            "parity_ok": same_shape and same_alignment,
         }
     return report
 
