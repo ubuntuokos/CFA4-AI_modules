@@ -43,6 +43,9 @@ MAX_CHANNELS = 64
 READ_BLOCK = 1 << 20
 MAX_LABEL_S = 24 * 3600.0  # címkeidő felső korlátja: egy nap
 CONTEXT_S = 1.0
+# Szöveges bemenetek mérete beolvasás előtt: a címkefájl, az átirat és a szókészlet.
+MAX_LABELS_BYTES = 16 << 20
+MAX_TEXT_BYTES = 1 << 20
 
 
 def load_audio(path: Path) -> np.ndarray:
@@ -97,8 +100,20 @@ def normalize_wave(x: np.ndarray) -> np.ndarray:
     return ((x64 - x64.mean()) / np.sqrt(x64.var() + 1e-7)).astype(np.float32)
 
 
+def read_bounded(path: Path, limit: int) -> str:
+    """UTF-8 szövegfájl, legfeljebb `limit` bájt; a nagyobbat beolvasás nélkül elutasítjuk."""
+    with path.open("rb") as f:
+        data = f.read(limit + 1)
+    if len(data) > limit:
+        raise ValueError(f"{path}: a fájl nagyobb {limit} bájtnál")
+    try:
+        return data.decode("utf-8")
+    except UnicodeDecodeError as err:
+        raise ValueError(f"{path}: nem UTF-8 szöveg: {err}") from err
+
+
 def load_vocab(model_dir: Path) -> dict[str, int]:
-    return json.loads((model_dir / "vocab.json").read_text(encoding="utf-8"))
+    return json.loads(read_bounded(model_dir / "vocab.json", MAX_TEXT_BYTES))
 
 
 def sha256(path: Path) -> str:
@@ -261,7 +276,7 @@ def cmd_parity(args: argparse.Namespace) -> dict:
     with torch.no_grad():
         ref = model(torch.from_numpy(x)[None, :]).logits[0].numpy()
     vocab = load_vocab(args.model)
-    words, _ = ca.normalize(args.text.read_text(encoding="utf-8"), vocab)
+    words, _ = ca.normalize(read_bounded(args.text, MAX_TEXT_BYTES), vocab)
     ref_words = ca.align(log_softmax(ref).tolist(), words, vocab, blank=vocab["<pad>"])
     report: dict = {"revision": revision, "safetensors_sha256": weights_sha256}
     for onnx_path in onnx_models(args.onnx_dir, args.device):
@@ -354,7 +369,7 @@ def cmd_accuracy(args: argparse.Namespace) -> dict:
     """A címkefájl (JSON): [{"audio": "...", "lines": [{"text": "...", "start": s, "end": s,
     "words": [{"text": "...", "start": s, "end": s}]}]}]; az időket kézzel jelöltük."""
     try:
-        raw = json.loads(args.labels.read_text(encoding="utf-8"))
+        raw = json.loads(read_bounded(args.labels, MAX_LABELS_BYTES))
     except RecursionError as err:  # túl mélyen egymásba ágyazott JSON
         raise ValueError(f"{args.labels}: a címkefájl túl mélyen egymásba ágyazott") from err
     labels = validate_labels(raw)
