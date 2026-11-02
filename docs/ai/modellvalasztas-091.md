@@ -1,6 +1,6 @@
 # #91 Videó-felskálázás (Video Super-Resolution): modellválasztás az F3 kapuhoz
 
-> **Állapot:** javaslat; két tulajdonosi döntés 2026-10-31-én (1. és 3. pont), a 3. pont javaslata döntésre vár · **Utolsó átnézés:** 2026-11-01 ·
+> **Állapot:** javaslat; két tulajdonosi döntés 2026-10-31-én (1. és 3. pont), a 3. pont javaslata döntésre vár · **Utolsó átnézés:** 2026-11-02 ·
 > **Változás:** major (első változat) · **Döntés:** [ADR 0006](../adr/ADR-0006-ai-processing-layer.md)
 > F3 kapu, manifest v3 licencszabály ([CFA4-sdk `docs/protocol.md`](https://github.com/ubuntuokos/CFA4-sdk/blob/main/docs/protocol.md) 5. pont)
 
@@ -109,6 +109,48 @@ Ezzel két tiszta út van az F3-hoz:
 A 3. pont elején javasolt saját tanítású SRVGGNetCompact (REDS) harmadik útként megmarad; ez
 megtartaná a videós F3-kilépési feltételt.
 
+### 3.2 Harmadik kör: ONNX-en kívül is (2026-11-02)
+
+A tulajdonos kérésére (István, 2026-11-02: „keress tovább”; 2026-11-01: „nincs kőbe vésve az ONNX
+használat”) a candle- és PyTorch-modelleket is átnéztem. A futtató nem változtat a licencen, ezért
+itt is a tanítóadat dönt.
+
+**Tiszta (mind a négy rész):**
+
+| Jelölt | Képesség | Súly | Tanítóadat | Megjegyzés |
+|---|---|---|---|---|
+| Piper `en_US-ljspeech-high` | beszédgenerálás (AU-010), angol, 1 hang | MIT | LJ Speech, közkincs; nulláról | lásd 3.1 |
+| Piper `en_US-libritts-high` | beszédgenerálás, angol, sok beszélő (LibriTTS: 904) | MIT | LibriTTS train-clean-360, CC BY 4.0 ([adatlap](https://huggingface.co/rhasspy/piper-voices/blob/main/en/en_US/libritts/high/MODEL_CARD): „Trained from scratch”) | forrásmegjelölés kell; a `libritts_r` változat a lessac hangból finomhangolt, az nem tiszta |
+| wav2vec2 `facebook/wav2vec2-base-960h` | angol beszédfelismerés és szöveg–hang illesztés (felirat időzítése a klipre) | Apache-2.0 | LibriSpeech 960 h, CC BY 4.0; elő- és finomtanítás is csak ezen ([adatlap](https://huggingface.co/facebook/wav2vec2-base-960h)) | ONNX-re exportálható; forrásmegjelölés kell |
+
+**Majdnem tiszta, tulajdonosi döntést kér:**
+
+- NVIDIA Parakeet TDT 0.6B v3 ([adatlap](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3)):
+  beszédfelismerés 25 nyelven, **magyarral is**; súly CC BY 4.0, a kiadó szerint kereskedelmi
+  célra is használható. A tanítóadat nagy része nyílt (LibriSpeech, Common Voice, MLS, VCTK, AMI,
+  YouTube-Commons, YODAS), de benne van a Fisher-korpusz (LDC-licenc) és egy belső
+  („in-house”) NeMo ASR Set 3.0 is. A szabályunk szerint a `dataset` rész ezért `NOASSERTION`,
+  tehát a GPL-es workerben blokkol.
+
+**Nem tiszta:**
+
+- Kokoro-82M: a tanítóadat nincs felsorolva, és zárt TTS-ek szintetikus hangja is benne van
+  (`NOASSERTION`).
+- Piper `hu_HU` berta is (anna és imre mellett): lessac-finomhangolás.
+- Képi helyreállítás: az LSDIR „academic research purpose only”
+  ([LSDIR](https://data.vision.ee.ethz.ch/yawli/index.html)), így az erre tanított nyílt
+  súlyok (például `4xLSDIRDAT`, CC BY 4.0 súly) adata sem tiszta; a HQ-50K CC BY 4.0-t ír, de a
+  képek webes gyűjtésből jönnek, eredeti licenc nélkül.
+
+**Következtetés:** előtanított, tiszta **képi** modellt ONNX-en kívül sem találtam. Tiszta
+előtanított modell csak angol beszédre van (generálás és felismerés/illesztés). Videós F3-hoz
+továbbra is saját tanítás kell (3. pont), magyar beszédhez saját Piper-hang (3.1).
+
+Mellékes, de fontos: a CFA4 már használja a Whispert (`speech`) és a Kokorót (`tts`). A Whisper
+tanítóadata nincs nyilvánosságra hozva, a Kokoróé nincs felsorolva, ezért a manifest v3
+szabálya szerint mindkettő `dataset` része `NOASSERTION`. Ha ezek AI-workerbe kerülnek, ugyanez
+a döntés kell rájuk is.
+
 ## 4. Mérési terv (F3)
 
 A `scripts/dev/run-minspec.sh` alatt (32 GB RAM, 8 mag, csak a 3060):
@@ -121,8 +163,10 @@ A `scripts/dev/run-minspec.sh` alatt (32 GB RAM, 8 mag, csak a 3060):
 
 ## 5. Nyitott kérdések
 
-- Melyik tiszta út legyen az F3: Piper `en_US-ljspeech-high` TTS (az ADR F3 kilépési
-  feltételének módosításával), saját tanítású magyar Piper-hang, vagy saját tanítású
-  SRVGGNetCompact REDS-en (3. és 3.1 pont)?
+- Melyik tiszta út legyen az F3 (3., 3.1 és 3.2 pont): angol Piper TTS, angol wav2vec2-es
+  felirat-illesztés, saját magyar Piper-hang vagy saját felskálázó REDS-en?
+- Elfogadható-e a Parakeet v3 (magyar beszédfelismerés) a GPL-es workerben a Fisher- és a belső
+  adat ellenére, vagy csak a zárt workerben?
+- Mi legyen a már használt Whisperrel és Kokoróval (ismeretlen tanítóadat)?
 - Kell-e jogi vélemény a zárt worker kiadása előtt (DIV2K, FlyingChairs)?
 - Írjunk-e a RealBasicVSR és a BasicVSR++ szerzőjének a súlylicenc tisztázásáért?
