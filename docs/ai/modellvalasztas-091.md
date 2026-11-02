@@ -159,6 +159,9 @@ felirat-időzítést** választotta. A képesség:
 
 - bemenet: egy klip hangja és a hozzá tartozó szöveg (sima szöveg vagy SRT, például forgatókönyv
   vagy kézzel írt felirat);
+- előkészítés: a klip hangját monóra keverjük és 16 kHz-re mintavételezzük át (a modell csak 16 kHz-es
+  bemenettel tanult); a 20 ms-os modellkockák idejét a klip kezdetéhez képest `Tick`-ben
+  számoljuk vissza a projektidőre, a klip be- és kivágási pontját figyelembe véve;
 - Elemzés: a modell 20 ms-onként karakter-valószínűséget ad (CTC), a szöveget erre illesztjük
   (Viterbi-alapú kényszerített illesztés, saját GPL-es Rust-kód);
 - Javaslat és Előnézet: szavanként és feliratsoronként kezdő- és végidő, alacsony biztonságú
@@ -174,12 +177,16 @@ forrásmegjelölés kell (Apache-2.0 NOTICE, CC BY 4.0).
 
 A `scripts/dev/run-minspec.sh` alatt (32 GB RAM, 8 mag, csak a 3060):
 
+- 44,1 és 48 kHz-es forrásklipek is: az átmintavételezés után az időbélyegek ugyanazok, mint
+  16 kHz-es forrásnál.
 - ONNX-export fp32 és fp16, `onnxruntime` 1.2x CUDA EP-vel; egyezés a PyTorch-csal ugyanazon a
   bemeneten (logitok legnagyobb eltérése, és azonos illesztési útvonal).
 - Hosszú hang darabolása: 30 s-os ablakok átfedéssel; az ablakhatárokon nem csúszhat el az
   illesztés.
-- Pontosság: saját, CFA4 tulajdonú, kézzel jelölt angol tesztklipeken a szókezdetek hány
-  százaléka esik 50 ms-on belül, és a feliratsorok kezdete 100 ms-on belül. (LDC-s korpuszt, például
+- Pontosság: saját, CFA4 tulajdonú, kézzel jelölt angol tesztklipeken a szók kezdetének és
+  végének hány százaléka esik 50 ms-on belül, a feliratsorok kezdete és vége 100 ms-on belül, és a
+  sorok időtartamának átfedése a kézi jelöléssel (IoU). Egymást átfedő vagy levágott sor nem
+  lehet. (LDC-s korpuszt, például
   TIMIT-et, nem használunk.)
 - Sebesség: 60 perces hang valós idejű tényezője (RTF) és csúcs-VRAM a 3060-on, valamint a CPU-s
   visszalépés ideje ugyanarra.
