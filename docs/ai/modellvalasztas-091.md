@@ -162,8 +162,12 @@ Whisper-szóidőit pontosítja vagy helyettesíti. A képesség:
 - bemenet: egy klip hangja és a hozzá tartozó szöveg (sima szöveg vagy SRT, például forgatókönyv
   vagy kézzel írt felirat);
 - előkészítés: a klip hangját monóra keverjük és 16 kHz-re mintavételezzük át (a modell csak 16 kHz-es
-  bemenettel tanult); a 20 ms-os modellkockák idejét a klip kezdetéhez képest `Tick`-ben
-  számoljuk vissza a projektidőre, a klip be- és kivágási pontját figyelembe véve;
+  bemenettel tanult). A bemenet a forrásmédia hangja a klip `source_in` és `source_out` pontja
+  között, forrásidőben. A szóidőket a `TrackItem` saját leképezésének inverzével számoljuk
+  vissza projektidőre (`crates/project`, `moving_source_time_at`): előre játszott klipnél
+  t = `start` + (s − `source_in`) / |`speed`|, `Tick`-ben, kerekítéssel. A fordítva lejátszott
+  (`reverse`) és a kimerevített (`frame_hold`) klipet a képesség elutasítja, mert ott a beszéd
+  nem követhető; a kivágott részre eső szavak nem kerülnek a sávba;
 - Elemzés: a modell 20 ms-onként karakter-valószínűséget ad (CTC), a szöveget erre illesztjük
   (Viterbi-alapú kényszerített illesztés, saját GPL-es Rust-kód);
 - Javaslat és Előnézet: szavanként és feliratsoronként kezdő- és végidő, alacsony biztonságú
