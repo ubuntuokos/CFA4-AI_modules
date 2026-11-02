@@ -169,9 +169,19 @@ class VramSampler:
     def __exit__(self, *exc: object) -> None:
         self._stop.set()
         self._thread.join(timeout=10)
+        if self.peak_mb is None and self.error is None:
+            # Sikeres lekérdezés, de egyetlen sor sem volt erre a folyamatra (vagy nem szám).
+            self.error = "az nvidia-smi nem adott használható sort ehhez a folyamathoz"
 
 
 def ort_session(onnx_path: Path, device: str):
+    if device == "cuda":
+        # Az ONNX Runtime CUDA-futtatója a PyTorch-csal érkező CUDA/cuDNN-könyvtárakat csak akkor
+        # találja meg, ha a torch előbb betöltődik (ONNX Runtime CUDA EP dokumentáció).
+        try:
+            import torch  # noqa: F401
+        except ImportError:
+            pass
     import onnxruntime as ort
 
     providers = ["CPUExecutionProvider"]

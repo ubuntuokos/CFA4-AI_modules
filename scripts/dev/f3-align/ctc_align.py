@@ -34,6 +34,11 @@ _ONES = ("zero one two three four five six seven eight nine ten eleven twelve th
 _TENS = "_ _ twenty thirty forty fifty sixty seventy eighty ninety".split()
 
 
+# Kimondott jelek és kiírásuk, illetve a nem egyértelmű kiejtésű (nem támogatott) jelek.
+_SPOKEN_SYMBOLS = {"&": "and", "%": "percent", "+": "plus", "@": "at"}
+_UNSUPPORTED_SYMBOLS = frozenset("$€£¥#=/\\*~^<>|`§°")
+
+
 class AlignError(ValueError):
     """Az illesztés nem végezhető el (üres szöveg, túl hosszú bemenet, kevés kocka)."""
 
@@ -110,6 +115,13 @@ def normalize(text: str, vocab: dict[str, int]) -> tuple[list[str], list[str]]:
     text = re.sub(r"\b\d{1,3}(?:,\d{3})+\b", lambda m: m.group().replace(",", ""), text)
     text = re.sub(r"\d+", spell, text)
     # Írásjel (gondolatjel, pont, vessző stb.) szóhatár; az aposztróf a szó része marad.
+    # A kimondott jeleket kiírjuk; a kiejtésükben nem egyértelműeket (pénznem, perjel stb.)
+    # eldobottként jelezzük, nem hallgatjuk el.
+    for sym, spoken in _SPOKEN_SYMBOLS.items():
+        text = text.replace(sym, f" {spoken} ")
+    for ch in text:
+        if ch in _UNSUPPORTED_SYMBOLS:
+            dropped.append(ch)
     text = re.sub(r"[^\w'\s]|_", " ", text)
     for raw in text.upper().split():
         kept = []
