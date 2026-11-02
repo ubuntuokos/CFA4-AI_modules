@@ -16,6 +16,7 @@ A minimumgépen így fut:  scripts/dev/run-minspec.sh uv run --project scripts/d
 from __future__ import annotations
 
 import argparse
+import contextlib
 import gc
 import hashlib
 import json
@@ -249,13 +250,24 @@ def log_softmax(logits: np.ndarray) -> np.ndarray:
     return logits - peak - np.log(np.exp(logits - peak).sum(axis=-1, keepdims=True))
 
 
+def load_torch_model(model_dir: Path):
+    """A PyTorch-modell betöltése; a betöltési hibát (például be nem töltött Git LFS-mutató a
+    súlyfájl helyén) érthető hibává alakítjuk."""
+    from transformers import Wav2Vec2ForCTC
+
+    try:
+        return Wav2Vec2ForCTC.from_pretrained(str(model_dir)).eval()
+    except Exception as err:  # noqa: BLE001 – a safetensors és a transformers saját kivételei
+        raise ValueError(f"{model_dir}: a modell nem tölthető be (a súlyfájl Git LFS-ből "
+                         f"letöltött-e?): {err}") from err
+
+
 def cmd_export(args: argparse.Namespace) -> dict:
     import torch
-    from transformers import Wav2Vec2ForCTC
 
     weights = args.model / "model.safetensors"
     report = {"revision": model_revision(args.model), "safetensors_sha256": sha256(weights)}
-    model = Wav2Vec2ForCTC.from_pretrained(str(args.model)).eval()
+    model = load_torch_model(args.model)
     args.out.mkdir(parents=True, exist_ok=True)
     for precision in ("fp32", "fp16"):
         dev = "cuda" if precision == "fp16" else "cpu"
@@ -282,7 +294,6 @@ def cmd_export(args: argparse.Namespace) -> dict:
 
 def cmd_parity(args: argparse.Namespace) -> dict:
     import torch
-    from transformers import Wav2Vec2ForCTC
 
     revision = model_revision(args.model)  # a PyTorch-referencia is a rögzített változat legyen
     weights_sha256 = sha256(args.model / "model.safetensors")
@@ -293,7 +304,7 @@ def cmd_parity(args: argparse.Namespace) -> dict:
         raise ValueError(f"{args.audio}: a parity legfeljebb {WINDOW_S:.0f} s-os klipet vár "
                          f"(ez {len(wave) / ca.SAMPLE_RATE:.1f} s); vágd le a hangot és az átiratot")
     x = normalize_wave(wave)
-    model = Wav2Vec2ForCTC.from_pretrained(str(args.model)).eval()
+    model = load_torch_model(args.model)
     with torch.no_grad():
         ref = model(torch.from_numpy(x)[None, :]).logits[0].numpy()
     vocab = load_vocab(args.model)
@@ -330,7 +341,9 @@ def cmd_speed(args: argparse.Namespace) -> dict:
     seconds = len(wave) / ca.SAMPLE_RATE
     report = {"audio_s": round(seconds, 1), "device": args.device}
     for onnx_path in onnx_models(args.onnx_dir, args.device):
-        with VramSampler() as vram:
+        # CPU-n nem indítunk nvidia-smi-t: a folyamatai a mért CPU-időt torzítanák.
+        vram = VramSampler() if args.device == "cuda" else None
+        with vram if vram is not None else contextlib.nullcontext():
             t0 = time.perf_counter()
             session = ort_session(onnx_path, args.device)
             t1 = time.perf_counter()
@@ -341,9 +354,8 @@ def cmd_speed(args: argparse.Namespace) -> dict:
             "rtf": round((t2 - t1) / seconds, 4) if seconds > 0 else None,
             "frames": int(len(logits)),
             # CUDA-n a mért csúcs; ha nem sikerült mérni, null és a hiba oka, nem 0.
-            "peak_vram_mb": vram.peak_mb if args.device == "cuda" else 0,
-            "vram_error": vram.error if args.device == "cuda" and vram.peak_mb is None
-                          else None,
+            "peak_vram_mb": vram.peak_mb if vram is not None else 0,
+            "vram_error": vram.error if vram is not None and vram.peak_mb is None else None,
         }
         # A következő modell előtt felszabadítjuk ezt, hogy a csúcs-VRAM csak egy modellé legyen.
         del session, logits
