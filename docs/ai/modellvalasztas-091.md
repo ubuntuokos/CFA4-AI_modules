@@ -43,6 +43,11 @@ rész `NOASSERTION`/`unknown` értéke nem blokkol, csak figyelmeztet. A `code` 
 `unknown` rész mindenhol elutasítást ad. A CFA4-gyel szállított workerekre nincs kivétel. A
 CFA4-sdk `docs/protocol.md` 5. pontját ugyanígy frissíteni kell (külön SDK-PR).
 
+**Következmény:** a kivétel a kereskedelmi kérést nem nyitja meg. A Real-ESRGAN zárt workeres
+útja (DIV2K: `no`, Flickr2K és OST: `NOASSERTION`) ezért **csak nem kereskedelmi kérésre** futhat;
+kereskedelmi projektben (`request.commercial = true`) a gazda elutasítja, amíg a tanítóadat
+licence nem tisztázódik, vagy a súlyt saját, tiszta adaton újra nem tanítjuk.
+
 Kockázat: a fizetős worker maga kereskedelmi terjesztés, ezért a kutatási célú tanítóadat
 (DIV2K, FlyingChairs) ott a legnagyobb jogi kockázat. A zárt worker kiadása előtt jogi
 véleményt érdemes kérni, vagy saját tanítású súlyt használni.
