@@ -211,8 +211,9 @@ A `scripts/dev/run-minspec.sh` alatt (32 GB RAM, 8 mag, csak a 3060):
 | ONNX és PyTorch illesztése | azonos útvonal fp32-n |
 | RTF a 3060-on, fp16 | legfeljebb 0,1 (60 perc hang legfeljebb 6 perc alatt) |
 
-Ha egy küszöb nem teljesül, az F3 nem zárul le; a képesség ekkor sem kerülhet ki
-„kísérleti” jelölés nélkül.
+A pontossági küszöböknek (az első öt sor) minden olyan pontosságon teljesülniük kell, amelyen a
+worker fut: fp32-n, és ha a sebességhez fp16 kell, fp16-on is. Ha egy küszöb nem teljesül, az F3
+nem zárul le.
 
 ## 4.1 Mérési terv (#91, későbbre)
 
