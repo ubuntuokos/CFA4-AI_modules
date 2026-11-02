@@ -33,6 +33,8 @@ import ctc_align as ca  # noqa: E402
 
 REVISION = "22aad52d435eb6dbaf354bdad9b0da84ce7d6156"
 WINDOW_S = 30.0
+MIN_RATE, MAX_RATE = 8_000, 384_000
+MIN_SAMPLES = 400  # a modell receptív mezője: ennél rövidebb hangból nincs kocka
 MAX_LABEL_S = 24 * 3600.0  # címkeidő felső korlátja: egy nap
 CONTEXT_S = 1.0
 
@@ -47,12 +49,17 @@ def load_audio(path: Path) -> np.ndarray:
         data, rate = sf.read(str(path), dtype="float32", always_2d=True)
     except (RuntimeError, TypeError) as err:  # soundfile.LibsndfileError: sérült vagy ismeretlen fájl
         raise ValueError(f"{path}: a hang nem olvasható: {err}") from err
-    if rate <= 0 or data.size == 0:
-        raise ValueError(f"{path}: üres hang vagy hibás mintavételi frekvencia ({rate})")
+    if not MIN_RATE <= rate <= MAX_RATE or data.size == 0:
+        # A határ az átmintavételező szűrő méretét is korlátozza.
+        raise ValueError(f"{path}: üres hang, vagy a mintavételi frekvencia ({rate}) nincs "
+                         f"{MIN_RATE}..{MAX_RATE} Hz között")
     mono = data.mean(axis=1)
     if rate != ca.SAMPLE_RATE:
         g = gcd(rate, ca.SAMPLE_RATE)
         mono = resample_poly(mono, ca.SAMPLE_RATE // g, rate // g).astype(np.float32)
+    if len(mono) < MIN_SAMPLES:
+        raise ValueError(f"{path}: túl rövid hang ({len(mono)} minta 16 kHz-en, "
+                         f"legalább {MIN_SAMPLES} kell egy modellkockához)")
     return mono
 
 
@@ -77,7 +84,8 @@ class VramSampler:
     """A saját folyamat GPU-memóriája nvidia-smi-vel, 50 ms-onként; a csúcsot tartja meg."""
 
     def __init__(self) -> None:
-        self.peak_mb = 0
+        self.peak_mb: int | None = None  # None: nem sikerült mérni
+        self.error: str | None = None
         self._stop = threading.Event()
         self._thread = threading.Thread(target=self._run, daemon=True)
 
@@ -89,12 +97,13 @@ class VramSampler:
                     ["nvidia-smi", "--query-compute-apps=pid,used_memory",
                      "--format=csv,noheader,nounits"],
                     capture_output=True, text=True, timeout=5, check=False).stdout
-            except (OSError, subprocess.TimeoutExpired):
+            except (OSError, subprocess.TimeoutExpired) as err:
+                self.error = f"nvidia-smi nem futott: {err}"
                 return
             for line in out.splitlines():
                 parts = [p.strip() for p in line.split(",")]
                 if len(parts) == 2 and parts[0] == pid and parts[1].isdigit():
-                    self.peak_mb = max(self.peak_mb, int(parts[1]))
+                    self.peak_mb = max(self.peak_mb or 0, int(parts[1]))
             self._stop.wait(0.05)
 
     def __enter__(self) -> "VramSampler":
@@ -242,7 +251,10 @@ def cmd_speed(args: argparse.Namespace) -> dict:
             "load_ms": round((t1 - t0) * 1000),
             "rtf": round((t2 - t1) / seconds, 4) if seconds > 0 else None,
             "frames": int(len(logits)),
+            # CUDA-n a mért csúcs; ha nem sikerült mérni, null és a hiba oka, nem 0.
             "peak_vram_mb": vram.peak_mb if args.device == "cuda" else 0,
+            "vram_error": vram.error if args.device == "cuda" and vram.peak_mb is None
+                          else None,
         }
         # A következő modell előtt felszabadítjuk ezt, hogy a csúcs-VRAM csak egy modellé legyen.
         del session, logits
