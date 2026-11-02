@@ -436,6 +436,9 @@ def validate_labels(labels: object) -> list[dict]:
                     and w["end"] > w["start"] for w in words):
                 raise ValueError(f"{where}: a 'words' elemeiben 'text' és 'start' < 'end' számok "
                                  "kellenek")
+    if not any(clip["lines"] for clip in labels):
+        # Üres címkekészlettel a futás sikeresnek látszana, pedig semmit sem mért.
+        raise ValueError("a címkefájlban nincs egyetlen sor sem")
     return labels
 
 
@@ -508,6 +511,7 @@ def accuracy_for(session, labels: list[dict], vocab: dict[str, int], base: Path)
         "word_edges_within_50ms": word_hits / word_total if word_total else None,
         "line_edges_within_100ms": line_hits / line_total if line_total else None,
         "line_iou_mean": sum(ious) / len(ious) if ious else None,
+        "scored_lines": len(ious),
         "overlapping_lines": overlaps,
         "failures": failures,
     }
