@@ -23,7 +23,7 @@ git clone https://huggingface.co/facebook/wav2vec2-base-960h ~/models/wav2vec2-b
 git -C ~/models/wav2vec2-base-960h checkout 22aad52d435eb6dbaf354bdad9b0da84ce7d6156
 ```
 
-Minden mérés a `run-minspec.sh` alatt fut (32 GB RAM, 8 mag, csak a 3060):
+Minden mérés a `run-minspec.sh` alatt fut (32 GB RAM, 8 mag, egyetlen referencia-GPU; a végleges a 3060):
 
 ```sh
 M=~/models/wav2vec2-base-960h
@@ -36,6 +36,28 @@ $R accuracy --model $M --onnx-dir target/f3-align/onnx --labels cimkek/labels.js
 ```
 
 A hang bármilyen mintavételű lehet: a szkript monóra keveri és 16 kHz-re mintavételezi át.
+
+### Amíg nincs RTX 3060: mérés az RTX A4000-en
+
+A referenciagép (CinemaFundArchitecture4 `docs/development/reference-machine.md`) számítási
+kártyája most RTX A4000 (16 GB); az RTX A1000 csak a kijelzőt hajtja. A `run-minspec.sh` a 3060-at
+keresi, ezért addig a kártyát kézzel kell megadni:
+
+```sh
+nvidia-smi --query-gpu=index,name --format=csv   # az A4000 indexe
+export CFA4_REF_GPU=<az A4000 indexe>
+```
+
+Mi érvényes így, és mi nem:
+
+| Mérés | A4000-en | Indok |
+|---|---|---|
+| `export`, `parity` | végleges | nem függ a kártyától |
+| `accuracy` (fp32 és fp16) | végleges | az A4000 és a 3060 ugyanaz az Ampere-generáció (8.6-os számítási képesség), így az fp16-os számítás is ugyanaz |
+| `speed`: csúcs-VRAM | ideiglenes, a manifestbe beírható | ugyanazzal a futtatóval és architektúrával a foglalás közel azonos; a 3060-on újramérjük |
+| `speed`: RTF | csak tájékoztató | az A4000 gyorsabb a 3060-nál, ezért a ≤ 0,1-es küszöb teljesítése itt nem bizonyítja a 3060-at |
+
+A jegyzőkönyvbe kerüljön az `lscpu` kimenete, a rögzített magok, a kártya neve és a terhelés.
 
 ## Mit mér, és hová kerül
 
