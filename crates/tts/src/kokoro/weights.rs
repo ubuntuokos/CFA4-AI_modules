@@ -138,7 +138,8 @@ pub(crate) fn read_voice(path: &Path) -> Result<Vec<f32>, TtsError> {
         .filter_map(|i| z.by_index(i).ok().and_then(|e| e.name().ok().map(std::borrow::Cow::into_owned)))
         .find(|n| n.ends_with("/data/0"))
         .ok_or_else(|| err(format!("{}: not a voice pack", path.display())))?;
-    let order = (0..z.len()).filter_map(|i| z.by_index(i).ok().and_then(|e| e.name().ok().map(std::borrow::Cow::into_owned))).find(|n| n.ends_with("/byteorder"));
+    let order =
+        (0..z.len()).filter_map(|i| z.by_index(i).ok().and_then(|e| e.name().ok().map(std::borrow::Cow::into_owned))).find(|n| n.ends_with("/byteorder"));
     if let Some(o) = order {
         let mut s = String::new();
         z.by_name(&o).map_err(err)?.take(16).read_to_string(&mut s).map_err(err)?;
