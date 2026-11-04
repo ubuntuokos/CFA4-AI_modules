@@ -1,3 +1,10 @@
+# actionlint 1.7.x does not yet know the GitHub-hosted `ubuntu-26.04` image used by
+# every CFA4 workflow (scripts/ci/require-ubuntu-2604.sh); declare it here, together with
+# the trusted self-hosted release runner label used by cfa4-release-candidate.yml.
+self-hosted-runner:
+  labels:
+    - ubuntu-26.04
+    - cfa4-ubuntu-26-04
 paths:
   .github/workflows/cfa4-source-detachment.yml:
     ignore:
