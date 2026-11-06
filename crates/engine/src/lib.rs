@@ -577,8 +577,9 @@ impl Session {
     /// ([`Session::recovery_candidates`]).
     pub fn start_autosave(&mut self, cfg: autosave::AutosaveConfig) -> std::io::Result<()> {
         let prefs_path = cfg.data_dir.join("preferences.json");
+        let previous_hw = self.prefs.playback.hardware_decoding.clone();
         self.prefs = autosave::Preferences::load(&prefs_path);
-        self.prefs.apply_hardware_decoding();
+        self.apply_hardware_decoding_if_changed(&previous_hw);
         self.media.set_use_proxies(self.prefs.media.enable_proxies);
         self.shortcuts.set_dir(&cfg.data_dir);
         self.presets.set_dir(&cfg.data_dir);
@@ -646,11 +647,20 @@ impl Session {
         self.sync_persistence();
     }
 
+    /// Push Settings ▸ Playback ▸ Hardware decoding to the process-wide decoder switch only when
+    /// the value changed. The switch is global, so rewriting an unchanged value from one session
+    /// would undo a change another session (or a parallel test) just made.
+    fn apply_hardware_decoding_if_changed(&self, previous: &str) {
+        if self.prefs.playback.hardware_decoding != previous {
+            self.prefs.apply_hardware_decoding();
+        }
+    }
+
     /// Replace preferences (persisting them and updating the worker).
     pub fn set_prefs(&mut self, p: autosave::Preferences) -> std::io::Result<()> {
         let cache_changed = self.prefs.media_cache != p.media_cache;
-        self.prefs = p;
-        self.prefs.apply_hardware_decoding();
+        let previous_hw = std::mem::replace(&mut self.prefs, p).playback.hardware_decoding;
+        self.apply_hardware_decoding_if_changed(&previous_hw);
         if cache_changed {
             self.apply_media_cache();
         }
