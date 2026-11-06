@@ -12,7 +12,7 @@ license = { text = "GPL-3.0-or-later" }
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest>=8,<10", "ruff>=0.9,<1"]
+dev = ["pytest>=8,<10", "ruff>=0.9,<1", "mypy>=2.4,<3"]
 qt = ["PySide6>=6.10,<7"]
 
 [project.scripts]
@@ -29,3 +29,10 @@ line-length = 120
 
 [tool.pytest.ini_options]
 testpaths = ["python/tests"]
+
+[tool.mypy]
+python_version = "3.12"
+files = ["python/cfa4_devtools", "python/tests"]
+mypy_path = "python"
+explicit_package_bases = true
+warn_unused_ignores = true
