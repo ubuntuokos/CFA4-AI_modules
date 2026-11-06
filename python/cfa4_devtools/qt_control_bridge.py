@@ -4,6 +4,7 @@ Never call this synchronous adapter from the Qt GUI event thread. A future Qt
 controller must invoke it in QThread/QThreadPool and deliver results by signals.
 No network services, subprocess shell, cloud calls or package installation.
 """
+
 from __future__ import annotations
 
 import json
@@ -23,8 +24,12 @@ class LocalBridgeError(RuntimeError):
 
 
 def bridge_read(
-    cli: Path, port: int, operation: str, params: dict[str, Any] | None = None,
-    *, timeout: int = 10,
+    cli: Path,
+    port: int,
+    operation: str,
+    params: dict[str, Any] | None = None,
+    *,
+    timeout: int = 10,
 ) -> dict[str, Any]:
     """Query a running Rust editor on 127.0.0.1 only."""
     if operation not in READ_ONLY_OPERATIONS:
@@ -47,14 +52,15 @@ def bridge_read(
     argv = [str(cli), "--bridge", f"127.0.0.1:{port}", "exec", operation, payload]
     try:
         completed = subprocess.run(
-            argv, capture_output=True, check=False, timeout=timeout,
+            argv,
+            capture_output=True,
+            check=False,
+            timeout=timeout,
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise LocalBridgeError(f"local bridge command unavailable or timed out: {exc}") from exc
     if completed.returncode:
-        raise LocalBridgeError(
-            f"local bridge command failed: exit {completed.returncode}"
-        )
+        raise LocalBridgeError(f"local bridge command failed: exit {completed.returncode}")
     if not completed.stdout or len(completed.stdout) > MAX_RESPONSE_BYTES:
         raise LocalBridgeError("local bridge response empty or too large")
     try:

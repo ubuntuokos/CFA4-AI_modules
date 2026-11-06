@@ -59,9 +59,7 @@ def test_missing_locked_package_is_rejected() -> None:
 def test_unexpected_transitive_git_package_is_rejected() -> None:
     manifest, lock = snapshot()
     lock = copy.deepcopy(lock)
-    lock["package"].append(
-        {"name": "unknown-git", "version": "0.1.0", "source": "git+https://example.org/rogue#123"}
-    )
+    lock["package"].append({"name": "unknown-git", "version": "0.1.0", "source": "git+https://example.org/rogue#123"})
     assert any("unapproved Git package" in error for error in validate_snapshot(manifest, lock))
 
 
@@ -77,6 +75,7 @@ def test_pins_are_full_commit_shas() -> None:
         path = ROOT / "vendor" / "cfa4-libs" / name / "SOURCE_MANIFEST.json"
         rev = json.loads(path.read_text(encoding="utf-8"))["source_commit"]
         assert len(rev) == 40 and all(c in "0123456789abcdef" for c in rev)
+
 
 def test_docpath_is_local_without_locked_git_source() -> None:
     manifest, lock = snapshot()

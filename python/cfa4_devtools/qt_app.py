@@ -33,9 +33,7 @@ def engine_version(executable: Path | None) -> str:
     if executable is None:
         return "Rust CLI: not built (cargo build --release -p cfa4-cli)"
     try:
-        process = subprocess.run(
-            [str(executable), "--version"], capture_output=True, text=True, timeout=8, check=False
-        )
+        process = subprocess.run([str(executable), "--version"], capture_output=True, text=True, timeout=8, check=False)
     except (OSError, subprocess.TimeoutExpired) as exc:
         return f"Rust CLI unavailable: {exc}"
     if process.returncode != 0:
