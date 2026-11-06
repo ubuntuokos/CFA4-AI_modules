@@ -100,9 +100,8 @@ jobs:
         run: python -m pip install "ruff==${RUFF_VERSION}"
       - name: ruff check (blocking)
         run: ruff check --output-format=github python
-      - name: ruff format --check (report-only in stage 1)
-        continue-on-error: true
-        run: ruff format --check python
+      - name: ruff format --check (blocking)
+        run: ruff format --check --diff python
 
   workflows:
     name: Workflow security (actionlint, zizmor)

@@ -1,4 +1,5 @@
 """F9 release decision fails closed, and source PASS cannot hide runtime gaps."""
+
 from __future__ import annotations
 
 import json

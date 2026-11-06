@@ -19,9 +19,7 @@ class NativeMediaE2ESourceTests(unittest.TestCase):
             result = audit.bridge(Path("/tmp/cfa4-cli"), 19274, "file.newSequenceFromClip", params)
         self.assertEqual(result["sequence"], 101)
         args = mocked.call_args.args[0]
-        self.assertEqual(
-            args[:5], ["/tmp/cfa4-cli", "--bridge", "127.0.0.1:19274", "exec", "file.newSequenceFromClip"]
-        )
+        self.assertEqual(args[:5], ["/tmp/cfa4-cli", "--bridge", "127.0.0.1:19274", "exec", "file.newSequenceFromClip"])
         self.assertEqual(json.loads(args[5]), params)
 
     def test_hardware_export_failure_does_not_pass(self) -> None:

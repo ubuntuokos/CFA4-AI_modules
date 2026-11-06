@@ -50,9 +50,7 @@ def run(argv: list[str]) -> str | None:
     # Parsers expect untranslated output (dpkg prints "diversion by" in English only under C).
     env = {**os.environ, "LC_ALL": "C", "LANGUAGE": ""}
     try:
-        result = subprocess.run(
-            argv, capture_output=True, text=True, timeout=TOOL_TIMEOUT_S, check=False, env=env
-        )
+        result = subprocess.run(argv, capture_output=True, text=True, timeout=TOOL_TIMEOUT_S, check=False, env=env)
     except (OSError, subprocess.SubprocessError):
         return None
     return result.stdout if result.returncode == 0 else None
@@ -145,9 +143,7 @@ def audit_binary(path: Path) -> dict:
     entry["symbol_versions"] = parse_symbol_versions(objdump_t) if objdump_t is not None else {}
     resolved = parse_ldd(ldd) if ldd is not None else {}
     entry["resolved"] = {name: resolved.get(name, "unresolved") for name in needed}
-    entry["packages"] = {
-        name: pkg for name in needed if (pkg := package_for(entry["resolved"][name])) is not None
-    }
+    entry["packages"] = {name: pkg for name in needed if (pkg := package_for(entry["resolved"][name])) is not None}
     entry["dlopen_candidates"] = embedded_libraries(data, needed)
     entry["tools_missing"] = [
         tool for tool, out in (("objdump -p", objdump_p), ("objdump -T", objdump_t), ("ldd", ldd)) if out is None

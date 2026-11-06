@@ -7,8 +7,21 @@ from cfa4_devtools.license_inventory import build_inventory, main, review_reason
 
 
 def _metadata() -> dict:
-    def pkg(name: str, license: str | None, source: str | None = "registry+https://github.com/rust-lang/crates.io-index", links: str | None = None) -> dict:
-        return {"id": f"{name}-id", "name": name, "version": "1.0.0", "license": license, "source": source, "links": links, "license_file": None if license else "LICENSE"}
+    def pkg(
+        name: str,
+        license: str | None,
+        source: str | None = "registry+https://github.com/rust-lang/crates.io-index",
+        links: str | None = None,
+    ) -> dict:
+        return {
+            "id": f"{name}-id",
+            "name": name,
+            "version": "1.0.0",
+            "license": license,
+            "source": source,
+            "links": links,
+            "license_file": None if license else "LICENSE",
+        }
 
     packages = [
         pkg("cfa4-engine", "GPL-3.0-or-later", source=None),
