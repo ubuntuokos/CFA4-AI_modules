@@ -237,10 +237,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("-o", "--output-dir", type=Path, required=True)
     args = parser.parse_args(argv)
     binaries = [audit_binary(path) for path in args.binaries]
+    host = host_info()
     report = {
         "schema": SCHEMA,
         "measured_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "host": host_info(),
+        "host": host,
         "binaries": binaries,
         "summary": summarize(binaries),
     }
@@ -255,7 +256,7 @@ def main(argv: list[str] | None = None) -> int:
     if any("error" in b for b in binaries):
         print("runtime deps: some binaries could not be audited (see report)", file=sys.stderr)
         return 1
-    if not report["host"]["ubuntu_2604"]:
+    if not host["ubuntu_2604"]:
         print("runtime deps: host is not Ubuntu 26.04 AMD64; the report is NOT F9 evidence", file=sys.stderr)
     return 0
 

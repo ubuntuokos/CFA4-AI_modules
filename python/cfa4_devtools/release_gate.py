@@ -39,24 +39,26 @@ class ReleaseGateError(ValueError):
 def evaluate(data: dict) -> dict:
     if not isinstance(data, dict):
         raise ReleaseGateError("release inventory must be a JSON object")
-    for key, expected in (
+    for field, expected in (
         ("schema", "cfa4-release-readiness-v1"),
         ("repository", "ubuntuokos/CinemaFundArchitecture4"),
         ("target", "Ubuntu 26.04 AMD64"),
         ("parent_repository_policy", "READ_ONLY_UPSTREAM"),
     ):
-        if data.get(key) != expected:
-            raise ReleaseGateError(f"invalid CFA4 {key}")
+        if data.get(field) != expected:
+            raise ReleaseGateError(f"invalid CFA4 {field}")
     if set(data.get("artifact_formats", [])) != FORMATS:
         raise ReleaseGateError("CFA4 must require exactly four formats")
     items = data.get("gates")
     if not isinstance(items, list) or len(items) != len(REQUIRED):
         raise ReleaseGateError("missing or duplicated required release gates")
-    by_id = {}
+    by_id: dict[str, dict] = {}
     for item in items:
         if not isinstance(item, dict):
             raise ReleaseGateError("malformed release gate")
         key = item.get("id")
+        if not isinstance(key, str):
+            raise ReleaseGateError("release gate id must be a string")
         if key in by_id:
             raise ReleaseGateError(f"duplicate release gate: {key}")
         if item.get("status") not in {"PASS", "OPEN"}:

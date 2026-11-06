@@ -96,7 +96,7 @@ def test_hostile_inputs_do_not_crash(tmp_path: Path) -> None:
 
 
 def test_summary_takes_the_highest_requirement_per_namespace() -> None:
-    binaries = [
+    binaries: list[dict] = [
         {
             "symbol_versions": {"GLIBC": "2.34"},
             "packages": {"libc.so.6": {"package": "libc6:amd64", "version": "2.42"}},

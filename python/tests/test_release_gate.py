@@ -62,6 +62,14 @@ class ReleaseDecisionTests(unittest.TestCase):
         with self.assertRaisesRegex(release_gate.ReleaseGateError, "duplicate"):
             release_gate.evaluate(data)
 
+    def test_non_string_gate_id_is_a_gate_error_not_a_crash(self):
+        # Before the id check, a numeric id reached sorted() on a mixed str/int set
+        # and raised TypeError, which main() does not catch.
+        data = deepcopy(self.inventory)
+        data["gates"][0]["id"] = 7
+        with self.assertRaisesRegex(release_gate.ReleaseGateError, "id must be a string"):
+            release_gate.evaluate(data)
+
 
 if __name__ == "__main__":
     unittest.main()
