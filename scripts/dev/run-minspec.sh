@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# CFA4 AI – parancs futtatása a működési minimumon.
-# Minimum: 32 GB RAM (swap nélkül), 8 CPU-mag, egyetlen 12 GB-os referencia-GPU.
+# CFA4 AI – parancs futtatása a referenciagép korlátai között.
+# Két profil (István, 2026-11-07): ajánlott = 32 GB RAM, minimum = 16 GB RAM; mindkettő swap nélkül,
+# 8 CPU-maggal és egyetlen 12 GB-os referencia-GPU-val.
 # Referenciakártyák: NVIDIA RTX 3060 12 GB, valamint egy 12 GB-os AMD és egy 12 GB-os Intel kártya.
 #
 # Használat:  scripts/dev/run-minspec.sh <parancs> [argumentumok...]
@@ -8,7 +9,8 @@
 #             CFA4_REF_VENDOR=amd CFA4_REF_GPU=0 scripts/dev/run-minspec.sh python -m pytest
 #
 # Felülírható környezeti változók:
-#   CFA4_MIN_RAM     (alap: 32G)
+#   CFA4_PROFILE     ajanlott | minimum (alap: ajanlott; 32G, illetve 16G RAM)
+#   CFA4_MIN_RAM     (alap: a profil szerint; megadva felülírja a profilt)
 #   CFA4_MIN_CPUS    (alap: 8)
 #   CFA4_REF_VENDOR  nvidia | amd | intel (alap: nvidia)
 #   CFA4_REF_GPU     a kártya indexe az adott gyártó saját számozásában.
@@ -22,7 +24,16 @@
 # a Vulkan-munka egy másik kártyát is választhat.
 set -euo pipefail
 
-MIN_RAM="${CFA4_MIN_RAM:-32G}"
+PROFILE="${CFA4_PROFILE:-ajanlott}"
+case "$PROFILE" in
+  ajanlott) PROFILE_RAM=32G ;;
+  minimum) PROFILE_RAM=16G ;;
+  *)
+    echo "Ismeretlen CFA4_PROFILE: $PROFILE (ajanlott | minimum)" >&2
+    exit 64
+    ;;
+esac
+MIN_RAM="${CFA4_MIN_RAM:-$PROFILE_RAM}"
 MIN_CPUS="${CFA4_MIN_CPUS:-8}"
 VENDOR="${CFA4_REF_VENDOR:-nvidia}"
 REF_GPU="${CFA4_REF_GPU:-}"
@@ -85,7 +96,7 @@ else
 fi
 
 LAST_CPU=$((MIN_CPUS - 1))
-echo "[minspec] RAM=${MIN_RAM} (swap nélkül), CPU=0-${LAST_CPU}, GPU=${VENDOR}:${REF_GPU}, Vulkan=${VK_DEVICE:-szűretlen}" >&2
+echo "[minspec] profil=${PROFILE}, RAM=${MIN_RAM} (swap nélkül), CPU=0-${LAST_CPU}, GPU=${VENDOR}:${REF_GPU}, Vulkan=${VK_DEVICE:-szűretlen}" >&2
 
 # MemorySwapMax=0: a swap ne takarja el a memórianyomást.
 # A cgroup memóriakorlátja a gyerekfolyamatokra (Python workerek) is vonatkozik.

@@ -1,7 +1,7 @@
 # #91 Videó-felskálázás (Video Super-Resolution): modellválasztás az F3 kapuhoz
 
 > **Állapot:** elfogadva; tulajdonosi döntések 2026-10-31-én (1. és 3. pont), 2026-11-02-án (F3: angol felirat-időzítés, 3.3 pont) és 2026-11-07-én (a felhasználó felelőssége, 1.1 pont) · **Utolsó átnézés:** 2026-11-07 ·
-> **Változás:** major (első változat) · **Döntés:** [ADR 0006](../adr/ADR-0006-ai-processing-layer.md)
+> **Változás:** major (első változat) · **Döntés:** [ADR 0008](../adr/ADR-0008-ai-processing-layer.md)
 > F3 kapu, manifest v3 licencszabály ([CFA4-sdk `docs/protocol.md`](https://github.com/ubuntuokos/CFA4-sdk/blob/main/docs/protocol.md) 5. pont)
 
 Az F3 kapu célja egy valódi AI-képesség végigvitele a minimumgépen (RTX 3060 12 GB): Előnézet
@@ -36,7 +36,7 @@ A GPL-es magban és a CFA4-gyel szállított GPL-es workerekben nincs olyan mode
 bármelyik licencrésze ismeretlen vagy csak kutatási célú. A zárt worker kínálhatja, a
 manifestjében a valós licencrészekkel; a felelősség a worker kiadójáé.
 
-Ehhez a gazda befogadási szabálya kivételt kap ([ADR 0006](../adr/ADR-0006-ai-processing-layer.md)
+Ehhez a gazda befogadási szabálya kivételt kap ([ADR 0008](../adr/ADR-0008-ai-processing-layer.md)
 2. pont): a CFA4-gyel nem szállított zárt worker implementációjánál a `weights` és a `dataset`
 rész `NOASSERTION`/`unknown` értéke nem blokkol, csak figyelmeztet. A `code` és a
 `dependencies` ismeretlen értéke ott is blokkol, kereskedelmi kérésre pedig a `no` vagy
@@ -88,7 +88,7 @@ lenti szövegek saját tanításra vonatkozó részei (3. pont, 3.1, 3.2) a kor�
 
 ## 3. Második tulajdonosi döntés: az F3 más képességgel
 
-A zárt worker az ADR 0006 szerint az első körön kívül van, ezért az F3 nem épülhet rá. A
+A zárt worker az ADR 0008 szerint az első körön kívül van, ezért az F3 nem épülhet rá. A
 tulajdonos döntése (István, 2026-10-31): **az F3 olyan ONNX-képességgel teljesüljön, amelynek
 mind a négy licencrésze tiszta; a #91 később jön.** A #91 zárt workeres útja (Real-ESRGAN
 `RealESRGAN_x2plus`) a fizetős workerek kapujában marad.
@@ -132,7 +132,7 @@ Ezzel két tiszta út van az F3-hoz:
 1. **Piper `en_US-ljspeech-high` TTS mint F3-képesség.** Azonnal mérhető, nincs tanítás. Az F3
    kilépési feltétele ekkor nem 2K-s klip, hanem: szövegből generált beszéd új hangassetként
    kerül az idővonalra, Előnézettel, Alkalmazással, projektverzió-ellenőrzéssel és Visszavonással,
-   a minimumkorlátok alatt. Ehhez az ADR 0006 F3 pontját módosítani kell. Csak angol.
+   a minimumkorlátok alatt. Ehhez az ADR 0008 F3 pontját módosítani kell. Csak angol.
 2. **Saját tanítású magyar Piper-hang nulláról**, a CC0 magyar adaton. Tiszta, de tanítást kér
    (becslés mérés nélkül: néhány nap–egy hét egy 12 GB-os kártyán).
 
