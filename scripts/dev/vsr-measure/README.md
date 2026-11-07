@@ -7,8 +7,7 @@ A #91 (videó-felskálázás) elsődleges jelöltje a Real-ESRGAN. Kódja és s�
 tanítóadata nem tiszta (DIV2K: csak kutatásra, Flickr2K és OST: nincs megadott licenc). István
 döntése szerint (2026-11-07) ez a felhasználó felelőssége, mert a CFA4 nem terjeszt modellt: a
 modell egyszeri licencelfogadás után az ingyenes, GPL-es workerben is futhat (modellválasztás
-1.1 pont). Ez a mappa azt méri, elfér-e és milyen gyors a minimumgépen 2K-s kimenettel. Ugyanez a
-szkript méri majd a saját, tiszta adaton tanított súlyt is, ha az ugyanilyen RRDBNet-architektúrájú.
+1.1 pont). Ez a mappa azt méri, elfér-e és milyen gyors a minimumgépen 2K-s kimenettel.
 
 | Fájl | Tartalom |
 |---|---|

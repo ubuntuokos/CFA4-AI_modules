@@ -69,9 +69,11 @@ letöltő az ő kérésére, közvetlenül a forrásból, ahogy a legtöbb alkal
 - A `code` és a `dependencies` ismeretlen licence továbbra is blokkol.
 
 **Következmény a #91-re:** a Real-ESRGAN `RealESRGAN_x2plus` az ingyenes, GPL-es workerben is
-futhat, saját tanítás nélkül; a mérése a `scripts/dev/vsr-measure` (CFA4-AI_modules #15). A
-saját tanítás ([terv](felskalazo-sajat-tanitas.md)) nem feltétele a #91-nek, csak egy tiszta
-licencű alternatíva lehetősége. A lenti szövegek a 2026-10-31-i állapotot rögzítik.
+futhat; a mérése a `scripts/dev/vsr-measure` (CFA4-AI_modules #15).
+
+**Saját modellt nem tanítunk** (István döntése, 2026-11-07: „nem csinálunk saját modellt”). A
+lenti szövegek saját tanításra vonatkozó részei (3. pont, 3.1, 3.2) a korábbi állapotot rögzítik,
+és nem érvényesek.
 
 ## 2. Jelöltek
 
@@ -241,11 +243,12 @@ A pontossági küszöböknek (az első öt sor) minden olyan pontosságon teljes
 worker fut: fp32-n, és ha a sebességhez fp16 kell, fp16-on is. Ha egy küszöb nem teljesül, az F3
 nem zárul le.
 
-## 4.1 Mérési terv (#91, későbbre)
+## 4.1 Mérési terv (#91: Real-ESRGAN)
 
 A `scripts/dev/run-minspec.sh` alatt (32 GB RAM, 8 mag, csak a 3060):
 
-Saját tanítású felskálázóhoz, amikor a #91 sorra kerül:
+A felhasználó által letöltött Real-ESRGAN `RealESRGAN_x2plus`-hoz, a `scripts/dev/vsr-measure`
+eszközzel:
 
 - ONNX-export fp32 és fp16, `onnxruntime` 1.2x CUDA EP-vel; az eredmény egyezése a PyTorch-csal
   (PSNR ≥ 45 dB ugyanazon a bemeneten).
@@ -255,7 +258,7 @@ Saját tanítású felskálázóhoz, amikor a #91 sorra kerül:
 
 ## 5. Nyitott kérdések
 
-- Legyen-e a felirat-időzítésnek magyar változata (saját tanítású vagy a Parakeet v3 alapján)?
+- Legyen-e a felirat-időzítésnek magyar változata (kész modellel, például a Parakeet v3 alapján; saját tanítás nincs)?
 - Elfogadható-e a Parakeet v3 (magyar beszédfelismerés) a GPL-es workerben a Fisher- és a belső
   adat ellenére, vagy csak a zárt workerben?
 - Mi legyen a már használt Whisperrel és Kokoróval (ismeretlen tanítóadat)?
