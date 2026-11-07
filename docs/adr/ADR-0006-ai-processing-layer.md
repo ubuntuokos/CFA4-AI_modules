@@ -202,7 +202,7 @@ A tervezett rétegbesorolás a crate-ek létrehozásakor az `xtask layers` szab�
 | `cfa4-ai-types` | L1 | Közös típusok: képességazonosító, alak (frame/window/clip/generative), jobállapotok, hibakódok |
 | `cfa4-ai-models` | L2 | Modelltár, modellrekordok, SHA-256 ellenőrzés, deduplikáció, verziók |
 | `cfa4-ai-registry` | L2 | Manifestolvasás, sémaellenőrzés, hardver szerinti szűrés, útválasztás |
-| `cfa4-store` | L2 | PostgreSQL-kapcsolatkészlet, migrációk, típusos lekérdezések (a wasm-ellenőrzésen kívül vagy jellemző mögött, a rétegtábla módosításakor dől el) |
+| `cfa4-store` | L2 | PostgreSQL-kapcsolatkészlet, migrációk, típusos lekérdezések (a `cargo xtask wasm` nem kapu, a WASM nem CFA4-cél) |
 | `cfa4-ai-jobs` | L2 | Feladatgráf, erőforrás-kezelő, VRAM-nyilvántartás, gyorsítótár-kulcs, tartós jobtár (a `cfa4-store`-on át) |
 | `cfa4-ai-workers` | L3 | Worker-folyamatok indítása, felügyelete és újraindítása, az IPC kliensoldala |
 | `ai.*` parancsok | L4 | A `crates/engine` parancsregiszterében, nem a `ui-egui`-ban |

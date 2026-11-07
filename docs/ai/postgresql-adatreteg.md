@@ -2,7 +2,7 @@
 
 > **Állapot:** ELFOGADVA (István, 2026-11-07); KÓD MÉG NINCS · **Utolsó átnézés:** 2026-11-07 ·
 > **Változás:** major (első változat; a tartós jobtár redb helyett PostgreSQL; a Media Intelligence és a pgvector a tervben, István, 2026-11-07) · **Beépítve:**
-> [ADR 0006](../adr/ADR-0006-ai-processing-layer.md) F1 és F2 kapu · **Kapcsolódik:** CFA4
+> [ADR 0006](../adr/ADR-0006-ai-processing-layer.md) F1, F2, F4 és F5 kapu · **Kapcsolódik:** CFA4
 > `docs/adr/ADR-0006-backlothub-postgresql.md` (BacklotHub: PostgreSQL, 2026-11-02),
 > CFA4 `docs/plans/CFA4-EVENT-FABRIC-001-1.0.md` és illesztési melléklete,
 > CFA4-ADAPTIVE-CAPABILITY-001 (adaptív erőforrás-kezelés, tulajdonosi specifikáció, 2026-11-07)
@@ -171,8 +171,9 @@ keverhet.
   közvetlenül nem.
 - Meghajtó: tiszta Rust (`tokio-postgres` vagy `sqlx`), MIT/Apache-licenccel, `cargo deny`
   ellenőrzéssel; a végleges választás a BacklotHub G2 kapujával közös, hogy egy meghajtó legyen.
-- A `cargo xtask wasm` az L0–L4 crate-eket ellenőrzi. A `cfa4-store` ezért vagy a
-  wasm-ellenőrzésen kívüli rétegbe kerül, vagy jellemző mögé; ez a rétegtábla módosításakor dől el.
+- A `cfa4-store` L2-es crate, felület nélkül; a rétegtáblába (`cargo xtask layers`) a létrehozásakor
+  kerül be. A `cargo xtask wasm` a CFA4 fő repójában már nem kapu (a WASM nem CFA4-cél), ezért a
+  meghajtó natív függősége nem akadály.
 - Migráció: egy út minden módban, egy verzió visszafelé, valós méretű adaton tesztelve.
 
 ## 10. Tesztek
@@ -203,8 +204,8 @@ keverhet.
 ## 12. Hatás más tervekre
 
 - **AI ADR 0006:** a tartós jobtár redb helyett PostgreSQL, a gyorsítótár-index SQLite helyett
-  PostgreSQL; az F1 és az F2 kapu a PG-1…PG-3 fázist tartalmazza (ebben a változtatásban
-  átvezetve).
+  PostgreSQL; az F1 és az F2 kapu a PG-1…PG-3, az F4 és az F5 kapu a PG-4 fázist tartalmazza
+  (ebben a változtatásban átvezetve).
 - **CFA4 Event Fabric illesztés:** az E1 (erőforrás-hatóság) és az E3 (Execution Fabric) erre a
   tervre és az adaptív erőforrás-kezelési specifikációra hivatkozhat.
 - **CFA4 BacklotHub ADR 0006:** kiegészül azzal, hogy a klasztert a feladatsor, az AI és a Media
