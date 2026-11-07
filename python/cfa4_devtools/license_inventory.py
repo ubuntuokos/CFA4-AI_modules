@@ -83,9 +83,7 @@ def build_inventory(metadata: dict[str, Any]) -> dict[str, Any]:
         entries.append(entry)
     entries.sort(key=lambda e: (e["name"], e["version"]))
 
-    workspace_licenses = Counter(
-        packages[w].get("license") or "none" for w in workspace if w in packages
-    )
+    workspace_licenses = Counter(packages[w].get("license") or "none" for w in workspace if w in packages)
     return {
         "schema": SCHEMA,
         "target": TARGET,

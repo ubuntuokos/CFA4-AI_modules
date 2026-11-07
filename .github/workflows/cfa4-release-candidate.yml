@@ -6,6 +6,7 @@ on:
       - 'packaging/**'
       - 'scripts/release/**'
       - '.github/workflows/cfa4-release-candidate.yml'
+      - 'Cargo.lock'
   workflow_dispatch:
     inputs:
       build_four_packages:
@@ -25,6 +26,8 @@ jobs:
     steps:
       - name: Checkout CFA4 repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Policy and format script syntax
         run: |
           bash scripts/ci/require-ubuntu-2604.sh
@@ -33,6 +36,7 @@ jobs:
           bash -n packaging/linux/package.sh
           bash -n packaging/linux/flatpak-bundle.sh
           bash -n packaging/linux/install.sh
+          bash -n scripts/release/generate-cfa4-sbom.sh
           test "$(grep -c 'gh-releases-zsync|' packaging/linux/package.sh)" -eq 1
           grep -Fq 'REPO="ubuntuokos/CinemaFundArchitecture4"' packaging/linux/package.sh
       - name: XDG identity and desktop metadata audit (no graphical session)
@@ -41,6 +45,36 @@ jobs:
         run: python3 -m unittest discover -s packaging/linux -p 'test_*.py' -v
       - name: Four-format and isolated runtime regression tests (synthetic files)
         run: python3 -m unittest discover -s scripts/release -p 'test_*.py' -v
+
+  sbom:
+    # CycloneDX SBOMs of the shipped binaries from Cargo.lock (no CFA4 compilation).
+    # Kept as a 30-day workflow artifact for review; nothing is published.
+    name: CFA4 SBOM (CycloneDX, cfa4 and cfa4-cli)
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    env:
+      CARGO_CYCLONEDX_VERSION: "0.5.9"
+    steps:
+      - name: Checkout CFA4 repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Toolchain from rust-toolchain.toml
+        run: rustup show active-toolchain || rustup toolchain install
+      - name: Install cargo-cyclonedx (locked, reviewed version)
+        run: cargo install --locked cargo-cyclonedx --version "${CARGO_CYCLONEDX_VERSION}"
+      - name: Generate and check SBOMs (every component must carry a licence)
+        run: |
+          DIST="$RUNNER_TEMP/cfa4-dist" bash scripts/release/generate-cfa4-sbom.sh | tee -a "$GITHUB_STEP_SUMMARY"
+          git diff --exit-code
+          test -z "$(git status --porcelain)"
+      - name: Keep SBOMs as a workflow artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: cfa4-sbom
+          path: ${{ runner.temp }}/cfa4-dist/sbom/
+          retention-days: 30
+          if-no-files-found: error
 
   four-formats:
     # This job never runs automatically, never uploads a public GitHub Release,
@@ -53,6 +87,8 @@ jobs:
     steps:
       - name: Checkout CFA4 repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Verify offline packaging prerequisites before any build
         env:
           APPIMAGETOOL: ${{ vars.CFA4_APPIMAGETOOL }}
@@ -64,6 +100,8 @@ jobs:
           APPIMAGETOOL: ${{ vars.CFA4_APPIMAGETOOL }}
           CFA4_APPIMAGETOOL_SHA256: ${{ vars.CFA4_APPIMAGETOOL_SHA256 }}
         run: bash scripts/release/build-cfa4-four-formats.sh
+      - name: CycloneDX SBOMs for the packaged binaries (needs cargo-cyclonedx 0.5.9 on the runner)
+        run: bash scripts/release/generate-cfa4-sbom.sh
       - name: Stage package payloads and audit local runtime (no host-wide installation)
         run: |
           python3 scripts/release/f5_staged_runtime.py \
@@ -73,4 +111,6 @@ jobs:
         run: |
           test -s dist/release/SHA256SUMS
           cat dist/release/SHA256SUMS
+          test -s dist/release/sbom/SHA256SUMS
+          cat dist/release/sbom/SHA256SUMS
           echo 'RELEASE HOLD: package files remain on the trusted runner only.'

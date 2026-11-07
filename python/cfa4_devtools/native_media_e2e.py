@@ -39,9 +39,17 @@ def parse_command_json(proc: subprocess.CompletedProcess[str], what: str) -> dic
 
 def check_ffprobe(ffprobe: str, path: Path, codec: str, *, frames: int = 8) -> dict[str, Any]:
     cmd = [
-        ffprobe, "-v", "error", "-count_frames", "-select_streams", "v:0",
-        "-show_entries", "stream=codec_name,width,height,nb_read_frames",
-        "-of", "json", str(path),
+        ffprobe,
+        "-v",
+        "error",
+        "-count_frames",
+        "-select_streams",
+        "v:0",
+        "-show_entries",
+        "stream=codec_name,width,height,nb_read_frames",
+        "-of",
+        "json",
+        str(path),
     ]
     result = parse_command_json(run(cmd, timeout=30), f"ffprobe {path.name}")
     streams = result.get("streams", [])
@@ -96,7 +104,7 @@ def preflight(cli: Path, editor: Path, sources: Path, out: Path, ffprobe: str) -
     if platform.system() != "Linux" or platform.machine() != "x86_64":
         raise RuntimeError("R0 #16 is strictly Linux AMD64")
     os_release = Path("/etc/os-release").read_text(encoding="utf-8")
-    if 'ID=ubuntu' not in os_release or 'VERSION_ID="26.04"' not in os_release and "VERSION_ID=26.04" not in os_release:
+    if "ID=ubuntu" not in os_release or 'VERSION_ID="26.04"' not in os_release and "VERSION_ID=26.04" not in os_release:
         raise RuntimeError("Ubuntu 26.04 is required for the authoritative R0 test")
     if os.environ.get("XDG_SESSION_TYPE") != "wayland":
         raise RuntimeError("native GUI acceptance requires an actual Wayland session")
@@ -125,7 +133,11 @@ def preflight(cli: Path, editor: Path, sources: Path, out: Path, ffprobe: str) -
     import_path = Path(__file__).resolve().parents[2]
     qt_env = dict(os.environ, PYTHONPATH=str(import_path / "python"), QT_QPA_PLATFORM="wayland")
     qt_versions = run(
-        [sys.executable, "-c", "import PySide6; from PySide6.QtCore import qVersion; print(PySide6.__version__); print(qVersion())"],
+        [
+            sys.executable,
+            "-c",
+            "import PySide6; from PySide6.QtCore import qVersion; print(PySide6.__version__); print(qVersion())",
+        ],
         timeout=12,
     )
     if qt_versions.returncode:
@@ -204,7 +216,9 @@ def main(argv: list[str] | None = None) -> int:
         with (out / "native-editor.log").open("w", encoding="utf-8") as log:
             proc = subprocess.Popen(
                 [str(editor), "--empty", "--no-recover", "--control", str(port), "--data-dir", str(out / "data")],
-                stdout=log, stderr=subprocess.STDOUT, env=editor_env,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                env=editor_env,
             )
             try:
                 await_control(port, proc)
@@ -215,7 +229,11 @@ def main(argv: list[str] | None = None) -> int:
                 checkpoint("ui_control_readiness", {"status": "PASS", "method": "perf.stats"})
                 checkpoint("native_window_control", "PASS: native Rust/egui Wayland editor answered a control request")
                 items = []
-                for source_name, source_codec in (("h264.mp4", "h264"), ("hevc.mp4", "hevc"), ("av1-software.mkv", "av1")):
+                for source_name, source_codec in (
+                    ("h264.mp4", "h264"),
+                    ("hevc.mp4", "hevc"),
+                    ("av1-software.mkv", "av1"),
+                ):
                     source = sources / source_name
                     # Persist the active path before the bridge call, so a stalled
                     # import is identifiable in results.json after the timeout.
@@ -223,9 +241,15 @@ def main(argv: list[str] | None = None) -> int:
                     imported_one = bridge(cli, port, "file.import", {"paths": [str(source)]})
                     checkpoint(f"import_{source_codec}", imported_one)
                     if imported_one.get("errors"):
-                        raise RuntimeError(f"{source_codec}: native CFA4 importer returned errors: {imported_one['errors']}")
+                        raise RuntimeError(
+                            f"{source_codec}: native CFA4 importer returned errors: {imported_one['errors']}"
+                        )
                     imported_items = imported_one.get("items")
-                    if not isinstance(imported_items, list) or len(imported_items) != 1 or not isinstance(imported_items[0], int):
+                    if (
+                        not isinstance(imported_items, list)
+                        or len(imported_items) != 1
+                        or not isinstance(imported_items[0], int)
+                    ):
                         raise RuntimeError(f"{source_codec}: expected one imported media item: {imported_one}")
                     items.extend(imported_items)
                 imported = {"items": items, "errors": []}
@@ -240,9 +264,17 @@ def main(argv: list[str] | None = None) -> int:
                         raise TypeError(f"{source_codec}: native sequence not created")
                     path = out / f"cfa4-editor-{source_codec}-to-{output_codec}.mp4"
                     result = bridge(
-                        cli, port, "file.exportMedia",
-                        {"path": str(path), "format": output_codec, "range": "entire",
-                         "hardwareEncoding": "auto", "audio": False, "wait": True},
+                        cli,
+                        port,
+                        "file.exportMedia",
+                        {
+                            "path": str(path),
+                            "format": output_codec,
+                            "range": "entire",
+                            "hardwareEncoding": "auto",
+                            "audio": False,
+                            "wait": True,
+                        },
                         timeout=120,
                     )
                     checkpoint(f"export_{output_codec}", result)
@@ -261,7 +293,9 @@ def main(argv: list[str] | None = None) -> int:
                 after = hardware_stats(bridge(cli, port, "perf.stats", {}))
                 checkpoint("hardware_counters", {"before": before, "after": after})
                 if after[0] <= before[0]:
-                    raise RuntimeError("native CFA4 GPU decode produced zero NVDEC frames (FFmpeg CLI counters do not count)")
+                    raise RuntimeError(
+                        "native CFA4 GPU decode produced zero NVDEC frames (FFmpeg CLI counters do not count)"
+                    )
                 if after[1] <= before[1] or after[2] <= before[2]:
                     raise RuntimeError("native CFA4 export did not exercise its NVENC hardware encoder")
                 # Native NVDEC only implements H264 and HEVC today. AV1 import
@@ -278,6 +312,7 @@ def main(argv: list[str] | None = None) -> int:
                     proc.kill()
                     proc.wait(timeout=5)
     except subprocess.TimeoutExpired as exc:
+
         def captured(value: str | bytes | None) -> str:
             if value is None:
                 return ""
@@ -285,11 +320,14 @@ def main(argv: list[str] | None = None) -> int:
                 return value.decode("utf-8", errors="replace")
             return value
 
-        checkpoint("error", {
-            "message": str(exc),
-            "stdout": captured(exc.stdout)[-4000:],
-            "stderr": captured(exc.stderr)[-4000:],
-        })
+        checkpoint(
+            "error",
+            {
+                "message": str(exc),
+                "stdout": captured(exc.stdout)[-4000:],
+                "stderr": captured(exc.stderr)[-4000:],
+            },
+        )
         print(f"CFA4 native media E2E FAIL: {exc}", file=sys.stderr)
         return 1
     except (OSError, RuntimeError, ValueError, KeyError) as exc:

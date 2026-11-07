@@ -3,6 +3,7 @@
 This does NOT measure acoustic/visual lip sync, CUDA codec use, decoded frame
 content, or Qt6 NLE behavior. It never runs a GUI or modifies media.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -52,8 +53,7 @@ def packets_for_stream(packets: list[dict[str, Any]], index: int) -> list[dict[s
     return selected
 
 
-def timing_evidence(payload: dict[str, Any], *, max_start_ms: int = 250,
-                    max_end_ms: int = 500) -> dict[str, Any]:
+def timing_evidence(payload: dict[str, Any], *, max_start_ms: int = 250, max_end_ms: int = 500) -> dict[str, Any]:
     """Interpret packet timestamps. Threshold PASS covers only container timing."""
     streams = payload.get("streams")
     packets = payload.get("packets")
@@ -83,10 +83,15 @@ def timing_evidence(payload: dict[str, Any], *, max_start_ms: int = 250,
         end = max(p["pts"] + p["duration"] for p in rows)
         if end <= start:
             raise MediaTimingError(f"{kind}: invalid packet presentation span")
-        spans[kind] = {"index": stream["index"], "codec": stream.get("codec_name"),
-                       "packets": len(rows), "start": start, "end": end,
-                       "time_base": stream.get("time_base"),
-                       "duration": stream.get("duration")}
+        spans[kind] = {
+            "index": stream["index"],
+            "codec": stream.get("codec_name"),
+            "packets": len(rows),
+            "start": start,
+            "end": end,
+            "time_base": stream.get("time_base"),
+            "duration": stream.get("duration"),
+        }
     start_ms = abs(spans["audio"]["start"] - spans["video"]["start"]) * 1000
     end_ms = abs(spans["audio"]["end"] - spans["video"]["end"]) * 1000
     if start_ms > max_start_ms or end_ms > max_end_ms:
@@ -102,8 +107,7 @@ def timing_evidence(payload: dict[str, Any], *, max_start_ms: int = 250,
         "max_start_skew_ms": max_start_ms,
         "max_end_skew_ms": max_end_ms,
         "streams": {
-            kind: {k: (str(v) if isinstance(v, Decimal) else v)
-                   for k, v in values.items()}
+            kind: {k: (str(v) if isinstance(v, Decimal) else v) for k, v in values.items()}
             for kind, values in spans.items()
         },
         "not_proven": [
@@ -121,15 +125,22 @@ def ffprobe_payload(path: Path, ffprobe: str, seconds_window: int) -> dict[str, 
     if not path.is_file():
         raise MediaTimingError(f"media file unavailable: {path}")
     command = [
-        ffprobe, "-v", "error", "-show_streams", "-show_packets",
+        ffprobe,
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_packets",
         "-show_entries",
         (
             "stream=index,codec_type,codec_name,time_base,start_time,duration,"
             "sample_rate,channels,color_primaries,color_transfer,color_space:"
             "packet=stream_index,pts_time,dts_time,duration_time"
         ),
-        "-read_intervals", f"0%+{seconds_window}",
-        "-of", "json", str(path),
+        "-read_intervals",
+        f"0%+{seconds_window}",
+        "-of",
+        "json",
+        str(path),
     ]
     try:
         result = subprocess.run(command, capture_output=True, timeout=45, check=False)
@@ -159,8 +170,7 @@ def main() -> int:
     args = parser.parse_args()
     try:
         payload = ffprobe_payload(args.media, args.ffprobe, args.seconds)
-        result = timing_evidence(payload, max_start_ms=args.start_limit_ms,
-                                 max_end_ms=args.end_limit_ms)
+        result = timing_evidence(payload, max_start_ms=args.start_limit_ms, max_end_ms=args.end_limit_ms)
     except MediaTimingError as exc:
         print(f"FAIL CFA4 F7: {exc}", file=sys.stderr)
         return 1

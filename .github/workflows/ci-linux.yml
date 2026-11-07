@@ -26,6 +26,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Enforce platform and check shell/static configuration
         run: bash scripts/ci/check-linux-amd64.sh
 
@@ -38,6 +40,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Native Linux dependencies
         run: |
           sudo apt-get update
@@ -60,6 +64,12 @@ jobs:
         env:
           CFA4_REQUIRE_ORACLES: "1"
         run: cargo xtask ci
+      - name: Clippy with every optional feature (whisper, download, kokoro, gstreamer)
+        # `cargo xtask ci` lints default features only, so feature-gated code such as the
+        # Whisper tokenizer and the Kokoro voice reader was never linted against AGENTS.md §0.
+        run: |
+          sudo apt-get install -y --no-install-recommends libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+          cargo clippy --locked --workspace --exclude cfa4-ui --all-targets --all-features -- -D warnings
       - name: HEIF/HEIC native import and export oracles
         run: |
           cargo test --locked -p cfa4-media --test heif_oracle
@@ -74,6 +84,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Install native build dependencies
         run: |
           sudo apt-get update
@@ -98,6 +110,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Install GStreamer development packages
         run: |
           sudo apt-get update
@@ -121,6 +135,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Verify isolated vendor crate without network sources
         run: |
           # Test a detached copy so a nested [workspace] does not conflict with CFA4.
@@ -140,6 +156,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Native UI test dependencies
         run: |
           sudo apt-get update
@@ -160,6 +178,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Rust formatting
         run: cargo xtask fmt-check
       - name: Architecture dependency layering
@@ -176,6 +196,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Native Linux dependencies and test oracles
         run: |
           sudo apt-get update
@@ -253,6 +275,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Headless Qt runtime libraries
         run: |
           sudo apt-get update
