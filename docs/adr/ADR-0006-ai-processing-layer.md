@@ -4,7 +4,7 @@
 **Állapot:** ELFOGADVA (tulajdonosi jóváhagyás, 2026-10-30); KÓD MÉG NINCS  
 **Kiadás:** HOLD
 
-> **Utolsó átnézés:** 2026-10-30 · **Változás:** major (CFA4-AI-PLAN-001 és a CFA3/FA3 elődtervek
+> **Utolsó átnézés:** 2026-11-07 (2. pont: a súly és a tanítóadat licence a felhasználó felelőssége; 2026-11-02: F3: angol felirat-időzítés; 2026-11-01: a 6. pont, az ONNX nem kötelező; 2026-10-31: a 2. pont kivétele a zárt workerekre) · **Változás:** major (CFA4-AI-PLAN-001 és a CFA3/FA3 elődtervek
 > beépítése: F0–F6 kapuk, ONNX-es első kör, modellkezelő, erőforrás-kezelési szabályok, tartós
 > jobtár, bővített jobállapotok, szétbontott licencmezők) · **Részletes terv:**
 > [CFA4 AI tervdokumentum](https://claude.ai/artifact/MLd6UfHG1uPBdJ16B2JZBh) ·
@@ -123,8 +123,17 @@ K18), jóváhagyással. A modellkezelő szabályai:
 - **Modellrekord mezői:** azonosító, család, revízió, változat (például kvantálás), formátum,
   SHA-256, forrás, a négy licencmező (6. pont), a modellt használó képességek.
 - **Rögzített revízió:** a manifest pontos revíziót és hash-t ad meg. „Latest” nem fogadható el.
-- **Ismeretlen licenc vagy eredet blokkol:** az ilyen modellt a jegyzék nem kínálja fel, a job
-  `blocked` állapotba kerül, és a felület megmondja, mi hiányzik.
+- **A súly és a tanítóadat licence a felhasználó felelőssége** (tulajdonosi döntés, 2026-11-07,
+  a 2026-10-31-i, csak zárt workerekre szóló kivétel helyett): **a CFA4 modellt nem terjeszt, csak
+  a modelleket használó alkalmazást.** Az alkalmazás felhasználójának felelőssége, hogy az adott
+  modell felhasználási feltételeit megismerje, és a modellt első használatkor maga töltse le (a
+  közös letöltő az ő kérésére, közvetlenül a forrásból, például Hugging Face-ről). Ezért a `weights` és a `dataset` rész `NOASSERTION`, `unknown` vagy `no` értéke egyik workerben
+  sem blokkol, a CFA4-gyel szállított GPL-es workerekben sem. A felület a letöltés előtt megmutatja
+  a négy licencrészt, és a felhasználónak implementációnként és súlyhash-enként egyszer el kell
+  fogadnia a figyelmeztetést; addig a job `blocked` állapotban vár (`license` ok). Kereskedelmi
+  projektben erősebb figyelmeztetést ad, de nem tilt. A `code` és a `dependencies` rész
+  ismeretlen értéke továbbra is blokkol, mert azokat a worker kiadója szállítja. Részletek:
+  [#91 modellválasztás](../ai/modellvalasztas-091.md) 1.1 pont, CFA4-sdk `docs/protocol.md` 5. pont.
 - **Biztonságos formátum:** az első körben csak `.onnx` és `.safetensors`. Pickle-alapú formátum
   (`.pt`, `.bin`, `.ckpt`) csak a PyTorch-kapuban, külön szabállyal jöhet.
 - **Frissítés:** az új verzió mellé kerül, ellenőrzés után lesz aktív. Sikertelen frissítés nem
@@ -205,6 +214,12 @@ Előnézet és Alkalmazás, Undo) úgy, hogy egyszerre csak egy futtató romolha
 lépcső, nem a végleges kör: a 200 típusból 25 fut tisztán ONNX-szel, 104-hez PyTorch, 28-hoz
 helyi LLM kell. A többi futtató a későbbi kapukban jön, ugyanarra a protokollra.
 
+**Tulajdonosi pontosítás (István, 2026-11-01): az ONNX nem kötelező.** Amihez nincs megfelelő
+ONNX-modell, ahhoz más megoldást keresünk (candle, a közös PyTorch-környezet vagy más futtató); a
+futtatót képességenként választjuk. Az első kör sorrendje a csővezeték igazolására megmarad, de
+egy képesség nem esik ki azért, mert nincs ONNX-változata. A tiszta licencű tanítóadat
+követelménye ettől független: a futtató cseréje nem oldja meg.
+
 1. **ONNX Runtime** (F2–F4): futtatókörnyezetek (EP) közül az első körben a CUDA és a CPU. Ez az út
    a gyártófüggetlen funkcióké, például a SAM2-é (Kdenlive-paritás K4). Mivel natív könyvtár,
    előfeltétele az ADR 0004 (FFI-kivétel elve).
@@ -245,7 +260,7 @@ fogyasztja a sémát. A jobállapotok és a manifest v3 licencmezői az SDK-ban 
 - **A licenc négy külön mező** a manifestben (v3), mindegyik SPDX-azonosítóval és a kereskedelmi
   használat jelzésével: `code` (a worker kódja), `dependencies` (a futtató és a könyvtárak),
   `weights` (a modell súlyai), `dataset` (a tanítóadat, ha ismert). Egyetlen „kereskedelmi” igen/nem
-  nem elég, mert a kód és a súly licence gyakran eltér. Ismeretlen mező blokkol (2. pont).
+  nem elég, mert a kód és a súly licence gyakran eltér. Ismeretlen `code` vagy `dependencies` mező blokkol; a `weights` és a `dataset` rész a felhasználó felelőssége, egyszeri elfogadással (2. pont).
 - Fizetős extra csak külön folyamatként futó worker lehet. Használati korlát (például feldolgozott
   időtartam vagy 720p-s kimeneti felbontás) csak a zárt workerekben élhet, a GPL-es magban soha.
   Az alapprogram képességeit nem csonkítjuk. A freemium az első körben nem szerepel.
@@ -328,10 +343,16 @@ nem), és a felület ezt mutatja; minden hibás bemenetre hibát ad, pánik nél
 `run-minspec.sh` alatt a job végigmegy az összes állapoton; a worker összeomlása, a megszakítás,
 az OOM és a CFA4 újraindítása tesztelten kezelt.
 
-**F3 – Első képesség.** #91 Video Super-Resolution ONNX-en, a teljes Elemzés → Javaslat →
-Előnézet → Alkalmazás lánccal, projektverzió-ellenőrzéssel, Undo/Redo-val és Qt 6 panellel.
-*Kilépés:* egy 2K-s (2048×1080) klip a referenciakártyán, a minimumkorlátok alatt, új assetként kerül az
-idővonalra, az eredeti klip változatlan.
+**F3 – Első képesség: angol felirat-időzítés.** Szöveg–hang illesztés (CTC-alapú kényszerített
+illesztés) a `facebook/wav2vec2-base-960h` modellel ONNX-en, a teljes Elemzés → Javaslat →
+Előnézet → Alkalmazás lánccal, projektverzió-ellenőrzéssel, Undo/Redo-val és Qt 6 panellel. A
+tulajdonos választotta (István, 2026-11-02), mert mind a négy licencrésze tiszta (Apache-2.0 súly,
+LibriSpeech CC BY 4.0), tanítás nélkül; részletek: [modellválasztás](../ai/modellvalasztas-091.md)
+3. pont. *Kilépés:* egy angol beszédes klip és a hozzá adott szöveg (sima szöveg vagy SRT)
+alapján időzített feliratsáv kerül az idővonalra a referenciakártyán, a minimumkorlátok alatt; a
+klip változatlan, az Undo a sávot visszaveszi, és a mérés teljesíti a modellválasztás
+4. pontjának küszöbeit. A #91 videó-felskálázás későbbi kapuban jön,
+saját tanítású súllyal.
 
 **F4 – Többi ONNX-képesség.** Zajszűrés, képkocka-interpoláció és a többi tisztán ONNX-es
 képjavító (a 25-ből), valamint a SAM2-alapú maszkolás és háttéreltávolítás (K4).
@@ -357,4 +378,4 @@ a kaput a futtató határozza meg: ONNX → F3/F4, candle → F5, PyTorch és he
 - A fizetős workerekben 2K fölött vízjel jár kulcs nélkül; kell-e mellé időtartam-korlát is?
 - Milyen hozzájárulási és vízjelezési szabály vonatkozzon az arccserére (38. típus)?
 - Mi helyettesítse a SeamlessM4T v2 fordítót, amelynek a licence nem kereskedelmi?
-- Melyik ONNX-modell legyen a #91 alapja (licenc és 2K-s sebesség alapján)?
+- Melyik saját tanítású modell legyen a #91 alapja (licenc és 2K-s sebesség alapján)?

@@ -595,13 +595,19 @@ fn eyedropper_picks_a_key_color_on_a_selected_clip() {
     let color = |d: &mut Driver| d.sequence()["video"][0]["items"][0]["effects"][0]["params"]["color"]["value"].clone();
     let before = color(&mut d);
     d.ok("ui.click", json!({"id": "effectControls.color_key.color.eyedropper"}));
-    d.frames(2);
+    // Let the background frame workers deliver the Program picture before sampling it: on a busy
+    // CI runner 200 bare frames ran out before the picture (and so the pick) arrived.
+    for _ in 0..30 {
+        std::thread::sleep(std::time::Duration::from_millis(40));
+        d.frames(1);
+    }
     d.ok("ui.click", json!({"id": "program.picture"}));
-    for _ in 0..200 {
+    for _ in 0..2000 {
         if color(&mut d) != before {
             break;
         }
         d.frames(1);
+        std::thread::sleep(std::time::Duration::from_millis(5));
     }
     assert_ne!(color(&mut d), before, "the eyedropper filled Key Color from the Program picture");
 }

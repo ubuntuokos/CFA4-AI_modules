@@ -1,4 +1,5 @@
 """F8 local bridge contract; no Qt process, Rust compilation or network."""
+
 import json
 import subprocess
 import unittest
@@ -12,6 +13,7 @@ from cfa4_devtools.qt_control_bridge import LocalBridgeError, bridge_read
 class LocalQtBridgeContract(unittest.TestCase):
     def setUp(self):
         from tempfile import TemporaryDirectory
+
         self.directory = TemporaryDirectory(prefix="cfa4-f8-")
         self.addCleanup(self.directory.cleanup)
         self.cli = Path(self.directory.name) / "cfa4-cli"
@@ -30,8 +32,7 @@ class LocalQtBridgeContract(unittest.TestCase):
             result = bridge_read(self.cli, 8132, "perf.stats", {"flag": True})
         self.assertEqual(result, {"decode": {}})
         args, kwargs = p.call_args
-        self.assertEqual(args[0][:5], [str(self.cli), "--bridge", "127.0.0.1:8132",
-                                       "exec", "perf.stats"])
+        self.assertEqual(args[0][:5], [str(self.cli), "--bridge", "127.0.0.1:8132", "exec", "perf.stats"])
         self.assertEqual(json.loads(args[0][5]), {"flag": True})
         self.assertNotIn("shell", kwargs)
         self.assertLessEqual(kwargs["timeout"], 30)
@@ -82,6 +83,7 @@ class LocalQtBridgeContract(unittest.TestCase):
     def test_local_engine_locator_prefers_cfa4_executable(self):
         def where(name):
             return "/usr/bin/cfa4-cli" if name == "cfa4-cli" else None
+
         with patch("cfa4_devtools.qt_app.shutil.which", side_effect=where):
             self.assertEqual(locate_engine(), Path("/usr/bin/cfa4-cli"))
 

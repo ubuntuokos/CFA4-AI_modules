@@ -54,8 +54,29 @@ ignore = true
 multiple-versions = "allow"
 
 [advisories]
-# Licence policy only; security advisories are handled by Dependabot.
-ignore = []
+# RustSec advisories are a CI gate (cfa4-gate.yml). Dependabot still opens the update PRs.
+# Unmaintained crates are reported only when CFA4 depends on them directly; transitive
+# ones (paste via candle/gemm, zbus_names/zvariant via eframe/accesskit) have no
+# CFA4-side fix and are tracked through their parent crates.
+unmaintained = "workspace"
+# Accepted risks. Every entry needs a reason and is reviewed when its parent crate updates.
+# All seven come from rustls-rustcrypto 0.0.2-alpha (pure-Rust TLS provider, unreleased
+# since 2024), used only by cfa4-speech's optional `download` feature to fetch Whisper
+# models. Why the risk is low there (decision 2026-11-04, keep the pure-Rust provider):
+# - certificate chains are verified by rustls-platform-verifier on rustls-webpki 0.103.16
+#   (patched); the old 0.102.8 copy is only rustls-rustcrypto's algorithm table;
+# - the client does no RSA decryption or private-key signing (Marvin, crypto-bigint timing);
+# - every downloaded file is checked against a pinned SHA-256 before use (crates/speech/src/models.rs).
+# Remove these once rustls-rustcrypto ships with rustls-webpki >= 0.103.16, or switch providers.
+ignore = [
+    { id = "RUSTSEC-2023-0071", reason = "rsa Marvin attack: client never decrypts or signs with RSA private keys; via rustls-rustcrypto" },
+    { id = "RUSTSEC-2026-0387", reason = "crypto-bigint timing: only public-key verification on the client; via rustls-rustcrypto" },
+    { id = "RUSTSEC-2026-0049", reason = "rustls-webpki 0.102 CRL matching: CRLs not used; chain verification runs on patched webpki 0.103.16" },
+    { id = "RUSTSEC-2026-0098", reason = "rustls-webpki 0.102 name constraints: chain verification runs on patched webpki 0.103.16" },
+    { id = "RUSTSEC-2026-0099", reason = "rustls-webpki 0.102 wildcard name constraints: chain verification runs on patched webpki 0.103.16" },
+    { id = "RUSTSEC-2026-0104", reason = "rustls-webpki 0.102 CRL parsing panic: CRLs not used; chain verification runs on patched webpki 0.103.16" },
+    { id = "RUSTSEC-2026-0382", reason = "rustls-webpki 0.102 distrusted intermediates: chain verification runs on patched webpki 0.103.16" },
+]
 
 [sources]
 unknown-registry = "deny"

@@ -113,8 +113,7 @@ def verify_vendored_files(root: Path) -> list[str]:
         actual_paths = {
             path.relative_to(directory).as_posix()
             for path in directory.rglob("*")
-            if path.is_file()
-            and path.relative_to(directory).as_posix() not in {"Cargo.toml", "SOURCE_MANIFEST.json"}
+            if path.is_file() and path.relative_to(directory).as_posix() not in {"Cargo.toml", "SOURCE_MANIFEST.json"}
         }
         for untracked in sorted(actual_paths - expected_paths):
             errors.append(f"{package}: unmanifested source file {untracked}")
