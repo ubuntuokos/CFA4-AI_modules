@@ -124,9 +124,10 @@ K18), jóváhagyással. A modellkezelő szabályai:
   SHA-256, forrás, a négy licencmező (6. pont), a modellt használó képességek.
 - **Rögzített revízió:** a manifest pontos revíziót és hash-t ad meg. „Latest” nem fogadható el.
 - **A súly és a tanítóadat licence a felhasználó felelőssége** (tulajdonosi döntés, 2026-11-07,
-  a 2026-10-31-i, csak zárt workerekre szóló kivétel helyett): a CFA4 nem terjeszt modellt, a közös
-  letöltő a felhasználó kérésére közvetlenül a forrásból (például Hugging Face, GitHub) tölti le.
-  Ezért a `weights` és a `dataset` rész `NOASSERTION`, `unknown` vagy `no` értéke egyik workerben
+  a 2026-10-31-i, csak zárt workerekre szóló kivétel helyett): **a CFA4 modellt nem terjeszt, csak
+  a modelleket használó alkalmazást.** Az alkalmazás felhasználójának felelőssége, hogy az adott
+  modell felhasználási feltételeit megismerje, és a modellt első használatkor maga töltse le (a
+  közös letöltő az ő kérésére, közvetlenül a forrásból, például Hugging Face-ről). Ezért a `weights` és a `dataset` rész `NOASSERTION`, `unknown` vagy `no` értéke egyik workerben
   sem blokkol, a CFA4-gyel szállított GPL-es workerekben sem. A felület a letöltés előtt megmutatja
   a négy licencrészt, és a felhasználónak implementációnként és súlyhash-enként egyszer el kell
   fogadnia a figyelmeztetést; addig a job `blocked` állapotban vár (`license` ok). Kereskedelmi

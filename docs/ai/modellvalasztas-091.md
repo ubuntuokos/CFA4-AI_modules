@@ -55,8 +55,10 @@ véleményt érdemes kérni, vagy saját tanítású súlyt használni.
 ### 1.1 Negyedik tulajdonosi döntés: a felhasználó felelőssége (2026-11-07)
 
 **István döntése (2026-11-07):** „ha modelt nem terjesztem akkor az a felhasználó felelőssége”.
-A CFA4 nem terjeszt modellt (tárhelye sincs hozzá); a közös letöltő a felhasználó kérésére
-közvetlenül a forrásból tölti le, ahogy a legtöbb alkalmazás a Hugging Face-ről. Ez felváltja a
+Pontosítva (2026-11-07): **a CFA4 a modelleket nem terjeszti, csak az azokat használó
+alkalmazásokat. Az alkalmazás felhasználójának felelőssége, hogy az adott modellre vonatkozó
+felhasználási feltételeket megismerje, és a modellt az első alkalommal maga töltse le** (a közös
+letöltő az ő kérésére, közvetlenül a forrásból, ahogy a legtöbb alkalmazás a Hugging Face-ről). Ez felváltja a
 2026-10-31-i döntést, amely az ilyen modelleket a zárt workerbe szorította:
 
 - A `weights` és a `dataset` rész ismeretlen, csak kutatási vagy nem kereskedelmi licence egyik
