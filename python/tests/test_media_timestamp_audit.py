@@ -1,4 +1,5 @@
 """CFA4 F7 container metadata timing, synthetic-only regression fixtures."""
+
 from __future__ import annotations
 
 import subprocess
@@ -12,13 +13,11 @@ from cfa4_devtools import media_timestamp_audit as audit
 
 def good_payload():
     video = [
-        {"stream_index": 0, "pts_time": f"{n / 25:.3f}",
-         "dts_time": f"{n / 25:.3f}", "duration_time": "0.040"}
+        {"stream_index": 0, "pts_time": f"{n / 25:.3f}", "dts_time": f"{n / 25:.3f}", "duration_time": "0.040"}
         for n in range(50)
     ]
     audio = [
-        {"stream_index": 1, "pts_time": f"{n * 0.020:.3f}",
-         "dts_time": f"{n * 0.020:.3f}", "duration_time": "0.020"}
+        {"stream_index": 1, "pts_time": f"{n * 0.020:.3f}", "dts_time": f"{n * 0.020:.3f}", "duration_time": "0.020"}
         for n in range(100)
     ]
     return {
@@ -84,9 +83,16 @@ class TimestampAuditTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             media = Path(folder) / "in.mp4"
             media.touch()
-            with patch.object(audit.subprocess, "run", return_value=subprocess.CompletedProcess(
-                args=[], returncode=0, stdout=b"{}", stderr=b"",
-            )) as mocked:
+            with patch.object(
+                audit.subprocess,
+                "run",
+                return_value=subprocess.CompletedProcess(
+                    args=[],
+                    returncode=0,
+                    stdout=b"{}",
+                    stderr=b"",
+                ),
+            ) as mocked:
                 self.assertEqual(audit.ffprobe_payload(media, "ffprobe", 10), {})
                 args = mocked.call_args.args[0]
                 self.assertIn("0%+10", args)

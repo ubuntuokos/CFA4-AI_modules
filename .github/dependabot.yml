@@ -1,4 +1,7 @@
 version: 2
+# Supply-chain hygiene: version updates wait 7 days after a release, so a hijacked
+# or yanked release is usually caught before it reaches a PR. Security updates are
+# not delayed by cooldown.
 updates:
   # Maintain Rust / Cargo dependencies
   - package-ecosystem: "cargo"
@@ -14,6 +17,8 @@ updates:
           - "*"
     commit-message:
       prefix: "chore(deps)"
+    cooldown:
+      default-days: 7
 
   # Maintain GitHub Actions workflows
   - package-ecosystem: "github-actions"
@@ -28,6 +33,8 @@ updates:
           - "*"
     commit-message:
       prefix: "ci(deps)"
+    cooldown:
+      default-days: 7
 
   # Python developer tooling (pyproject.toml)
   - package-ecosystem: "pip"
@@ -40,3 +47,6 @@ updates:
           - "*"
     commit-message:
       prefix: "chore(python)"
+    cooldown:
+      default-days: 7
+

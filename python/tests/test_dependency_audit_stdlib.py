@@ -23,9 +23,7 @@ class SourceDetachmentTests(unittest.TestCase):
             root = Path(temporary)
             vendor = root / "vendor" / "cfa4-libs" / "docpath"
             shutil.copytree(ROOT / "vendor" / "cfa4-libs" / "docpath", vendor)
-            (vendor / "src" / "untracked.rs").write_text(
-                "// not in SOURCE_MANIFEST.json\n", encoding="utf-8"
-            )
+            (vendor / "src" / "untracked.rs").write_text("// not in SOURCE_MANIFEST.json\n", encoding="utf-8")
             errors = verify_vendored_files(root)
             self.assertTrue(
                 any("unmanifested source file src/untracked.rs" in error for error in errors),
