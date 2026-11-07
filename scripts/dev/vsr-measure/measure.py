@@ -6,8 +6,8 @@ Lépések (alparancsonként):
   parity   PyTorch és ONNX Runtime egyezése ugyanazon a képkockán (PSNR)
   speed    képkocka/s és csúcs-VRAM egy klipen, csempemérettel (256, 512)
 
-A súlyt a felhasználó tölti le (a CFA4 nem terjeszti); csak a zárt, fizetős workerhez mérjük, mert
-a tanítóadat licence a GPL-es magban blokkol (modellválasztás 1. pont). A bemenet nyers rgb24
+A súlyt a felhasználó tölti le (a CFA4 nem terjeszti); a tanítóadat licence a felhasználó
+felelőssége (modellválasztás 1.1 pont, 2026-11-07). A bemenet nyers rgb24
 képkockák sora, például:
   ffmpeg -i klip.mov -t 10 -vf scale=1024:540:flags=area -pix_fmt rgb24 -f rawvideo klip.rgb
 A minimumgépen így fut:  scripts/dev/run-minspec.sh uv run --project scripts/dev/vsr-measure \

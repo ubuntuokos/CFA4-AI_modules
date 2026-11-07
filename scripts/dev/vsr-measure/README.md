@@ -1,14 +1,14 @@
 # #91 mérés: videó-felskálázás (Real-ESRGAN)
 
 > **Állapot:** mérőeszköz, nem része a terméknek · **Utolsó átnézés:** 2026-11-02 ·
-> **Döntés:** [modellválasztás](../../../docs/ai/modellvalasztas-091.md) 1., 2. és 4.1 pont
+> **Döntés:** [modellválasztás](../../../docs/ai/modellvalasztas-091.md) 1.1, 2. és 4.1 pont
 
-A #91 (videó-felskálázás) a GPL-es magban nem futhat: a Real-ESRGAN kódja és súlya BSD-3-Clause,
-de a tanítóadata nem tiszta (DIV2K: csak kutatási célra, Flickr2K és OST: nincs megadott licenc).
-István döntése szerint (2026-10-31) ilyen modell csak a **zárt, fizetős workerben** lehet, és ott
-is **csak nem kereskedelmi kérésre**. Ez a mappa ennek az útnak a mérését végzi: elfér-e és milyen
-gyors a minimumgépen 2K-s kimenettel. Ugyanez a szkript méri majd a saját, tiszta adaton tanított
-súlyt is, ha az ugyanilyen RRDBNet-architektúrájú.
+A #91 (videó-felskálázás) elsődleges jelöltje a Real-ESRGAN. Kódja és súlya BSD-3-Clause, de a
+tanítóadata nem tiszta (DIV2K: csak kutatásra, Flickr2K és OST: nincs megadott licenc). István
+döntése szerint (2026-11-07) ez a felhasználó felelőssége, mert a CFA4 nem terjeszt modellt: a
+modell egyszeri licencelfogadás után az ingyenes, GPL-es workerben is futhat (modellválasztás
+1.1 pont). Ez a mappa azt méri, elfér-e és milyen gyors a minimumgépen 2K-s kimenettel. Ugyanez a
+szkript méri majd a saját, tiszta adaton tanított súlyt is, ha az ugyanilyen RRDBNet-architektúrájú.
 
 | Fájl | Tartalom |
 |---|---|
@@ -74,8 +74,8 @@ ki a megadott súlyhoz tartozó ONNX-fájlt.
 
 ## Mit mér, és hová kerül
 
-- `export`: a súly SHA-256-ja és a két ONNX-fájl (fp32 CPU-n, fp16 CUDA-n) hash-e és mérete. A zárt
-  worker manifestjének `[[weights]]` részébe kerül. A licencrészek ott: kód és súly BSD-3-Clause,
+- `export`: a súly SHA-256-ja és a két ONNX-fájl (fp32 CPU-n, fp16 CUDA-n) hash-e és mérete. A worker
+  manifestjének `[[weights]]` részébe kerül. A licencrészek ott: kód és súly BSD-3-Clause,
   tanítóadat DIV2K `no`, Flickr2K és OST `NOASSERTION`.
 - `parity`: legfeljebb 8 képkockán ugyanazzal a csempézéssel fut a PyTorch (tiszta fp32, TF32
   nélkül) és az ONNX Runtime. A `parity_ok` akkor igaz, ha a legrosszabb képkocka PSNR-je is
