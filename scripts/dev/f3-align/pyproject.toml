@@ -1,0 +1,20 @@
+# CFA4 F3 mérőkörnyezet (felirat-időzítés, wav2vec2). Egy CUDA 12.x, rögzített csomagok.
+[project]
+name = "cfa4-f3-align-measure"
+version = "0.1.0"
+description = "CFA4 F3: wav2vec2 felirat-időzítő mérése (nem része a terméknek)"
+license = "GPL-3.0-or-later"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+  "numpy==2.1.3",
+  "scipy==1.14.1",
+  "soundfile==0.12.1",
+  "safetensors==0.4.5",
+  "torch==2.5.1",
+  "transformers==4.46.3",
+  "onnx==1.17.0",
+  "onnxruntime-gpu==1.20.2",
+]
+
+[tool.uv]
+package = false

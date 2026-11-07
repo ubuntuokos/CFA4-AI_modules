@@ -1,0 +1,24 @@
+[
+  {
+    "audio": "klip01.wav",
+    "lines": [
+      {
+        "text": "Where were you last night?",
+        "start": 1.24,
+        "end": 2.86,
+        "words": [
+          {"text": "Where", "start": 1.24, "end": 1.52},
+          {"text": "were", "start": 1.52, "end": 1.70},
+          {"text": "you", "start": 1.70, "end": 1.88},
+          {"text": "last", "start": 1.92, "end": 2.30},
+          {"text": "night", "start": 2.30, "end": 2.86}
+        ]
+      },
+      {
+        "text": "At home, until twenty past ten.",
+        "start": 3.40,
+        "end": 5.75
+      }
+    ]
+  }
+]

@@ -37,6 +37,7 @@ bash scripts/ci/test-run-minspec.sh
 python3 -m py_compile python/cfa4_devtools/native_media_e2e.py python/tests/test_native_media_e2e.py
 PYTHONPATH=python python3 -m unittest discover -s python/tests -p 'test_native_media_e2e.py' -v
 python3 -m unittest discover -s scripts/ci -p 'test_cfa4_xdg.py' -v
+python3 -m unittest discover -s scripts/ci -p 'test_f3_ctc_align.py' -v
 python3 - <<'PY'
 from pathlib import Path
 import ast
