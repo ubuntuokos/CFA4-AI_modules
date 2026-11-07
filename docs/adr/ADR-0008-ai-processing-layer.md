@@ -389,6 +389,14 @@ többi) a VRAM-szintek szerint, a helyi LLM-es funkciók. A helyi LLM méretét 
 kérésenként egy kis ONNX-es szövegbeágyazó és pontozó választja, nem LLM-prompt; ez a meglévő
 ONNX-workeren fut (ötlet: [weave-os/router](https://github.com/weave-os/router), Apache-2.0, csak a módszer).
 
+**Saját tanítású modellek** csak a CFA4 alkalmazásban lesznek, külön tervben:
+[CFA4-AI-MODEL-TRAINING-001](https://github.com/ubuntuokos/CinemaFundArchitecture4/blob/main/docs/plans/CFA4-AI-MODEL-TRAINING-001.md)
+(tervezet, implementáció nincs engedélyezve; tulajdonosi döntések 2026-11-07). Ez a réteg csak
+alapot ad hozzá: a tanított modell és adapter a `cfa4-ai-models` nyilvántartásába kerül, a
+tanítási feladat a közös feladatsorban fut (`tasks` séma, új `train` séma), a Python tanító worker
+az F6 közös PyTorch-környezetét bővíti, és az alsó határ (12 GB VRAM, 16 GB RAM) a tanításra is
+érvényes. A tanítás kapui (TR-F0…TR-F10) az F1, F2 és F6 kapura épülnek.
+
 **Az első körön kívül** (saját döntéssel, későbbi kapuban): freemium és fizetős workerek,
 ComfyUI-kompatibilitás, több GPU, AMD és Intel, TensorRT, CUDA IPC, osztott memória
 bekapcsolása, felhős futtatás.
