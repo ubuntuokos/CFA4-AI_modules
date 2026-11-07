@@ -1,17 +1,20 @@
 # #91 Videó-felskálázás: saját tanítás terve
 
-> **Állapot:** javaslat, tulajdonosi döntésre vár (9. pont) · **Utolsó átnézés:** 2026-11-07 ·
+> **Állapot:** javaslat, későbbre (a #91 a Real-ESRGAN-nal indul, lásd lent); tulajdonosi kérdések a 9. pontban · **Utolsó átnézés:** 2026-11-07 ·
 > **Változás:** major (első változat) · **Döntés:** [modellválasztás](modellvalasztas-091.md)
 > 1–3. pont, [ADR 0006](../adr/ADR-0006-ai-processing-layer.md)
 
 A nyilvános felskálázó-súlyok egyike sem teljesíti a manifest v3 négy tiszta licencrészét (kód,
-függőségek, súly, tanítóadat), ezért a GPL-es magban és a CFA4-gyel szállított workerekben nem
-futhatnak (modellválasztás 1. pont). A Real-ESRGAN a zárt, fizetős workerbe kerülhet, ott is csak
-nem kereskedelmi kérésre; ennek mérőeszköze a `scripts/dev/vsr-measure` (PR #15).
+függőségek, súly, tanítóadat): a tanítóadatuk csak kutatásra engedett vagy ismeretlen licencű
+(modellválasztás 1. pont). István 2026-11-07-i döntése szerint ez a felhasználó felelőssége, mert
+a CFA4 nem terjeszt modellt (modellválasztás 1.1 pont), ezért a **#91 a Real-ESRGAN-nal, tanítás
+nélkül is megvalósul**, az ingyenes GPL-es workerben; a mérőeszköze a `scripts/dev/vsr-measure`
+(PR #15).
 
-Ez a terv a másik út: **saját tanítású felskálázó, tiszta adaton, nulláról**, előtanított súly
-nélkül. Ha elkészül, a #91 ingyenes, kereskedelmi projektben is használható funkció lehet, és
-mind a négy licencrésze tiszta.
+Ez a terv ezért **nem feltétele a #91-nek**, hanem egy későbbi, tiszta licencű alternatíva:
+saját tanítású felskálázó, tiszta adaton, nulláról, előtanított súly nélkül. Akkor érdemes
+elkészíteni, ha a felhasználónak ne kelljen licencfigyelmeztetést elfogadnia, vagy ha a
+Real-ESRGAN minősége vagy sebessége nem elég.
 
 A számok ebben a dokumentumban **becslések**, mérés még nincs.
 
@@ -36,7 +39,7 @@ A licenceket 2026-11-07-én a forrásoldalakon ellenőriztem:
 
 | Forrás | Tartalom | Licenc (idézet) | Kereskedelmi | Javaslat |
 |---|---|---|---|---|
-| **Saját felvétel** (István, CFA4 tulajdon) | a valódi célanyag, kameránként | a CFA4-é | igen | **elsődleges**, és ebből lesz a tesztkészlet is |
+| Saját felvétel (István, CFA4 tulajdon) | a valódi célanyag, kameránként | a CFA4-é | igen | most nincs (2026-11-07); később bővítheti a tesztkészletet |
 | **REDS** (NTIRE 2019) | 300 videó, 720p, utcai és mozgó jelenetek; a VSR-kutatás alapkészlete | CC BY 4.0: „REDS dataset is released under CC BY 4.0 license” ([szerzői oldal](https://seungjunnah.github.io/Datasets/reds.html), a [Hugging Face-kártya](https://huggingface.co/datasets/snah/REDS) ugyanígy) | igen, forrásmegjelöléssel | **elsődleges** |
 | **Netflix Open Content** (Meridian, Sol Levante, Sparks, Chimera…) | 4K, részben HDR, profi filmanyag, élőszereplős és animált | CC BY 4.0: „Our open source content is available under the Creative Commons Attribution 4.0 International Public License” ([opencontent.netflix.com](https://opencontent.netflix.com/)); címenként külön licencfájl is van, azt letöltéskor fájlonként rögzítjük | igen, forrásmegjelöléssel | **elsődleges** (ez a legközelebb a CFA4 anyagához) |
 | Tears of Steel (Blender, Mango) | 4K élőszereplős nyersanyag | CC BY 3.0: „you can freely reuse and distribute this content, also commercially, for as long you provide a proper attribution” ([mango.blender.org/sharing](https://mango.blender.org/sharing/)) | igen, de a szereplők képmáshoz fűződő joga megmarad („not to use the actor for making a commercial”) | tartalék: tanításra valószínűleg rendben van, mert a súly nem adja vissza a szereplőt, de ezt jogi szempontból érdemes megerősíteni |
@@ -52,10 +55,10 @@ amelynek licence ismeretlen vagy csak kutatásra enged (modellválasztás 1. és
 saját licencei (Pexels, Unsplash, Pixabay) sem: ezek nem szabad licencek, és a gépi tanulásra
 vonatkozó feltételük nem egyértelmű.
 
-**Validáló és tesztkészlet:** a tanítóadattól elkülönített klipek, lehetőleg saját felvétel. A
+**Validáló és tesztkészlet:** a tanítóadattól elkülönített klipek. A
 mérés ezekből az alacsony felbontású bemenetet ugyanúgy állítja elő, mint tanításkor, és van egy
-valódi, nem leskálázott alacsony felbontású készlet is (régi felvétel, telefonvideó), amelyen csak
-szemrevételezés lehetséges.
+valódi, nem leskálázott alacsony felbontású készlet is (a REDS és a Netflix-anyag félretett
+klipjei, illetve CC BY licencű régi felvételek), amelyen csak szemrevételezés lehetséges.
 
 ## 3. Architektúra
 
@@ -148,8 +151,8 @@ Sorrend az ADR 0006 szerint: a tanítóeszköz és a tanítás a terméken kív�
 
 ## 9. Tulajdonosi kérdések
 
-1. **Saját felvétel.** Adsz-e saját, jó minőségű felvételt (például RED-anyagot vagy más 4K-s
-   forrást) tanító- és tesztanyagnak? Ez a legtisztább adat.
+1. **Saját felvétel.** Most nincs (István, 2026-11-07), ezért a tanító- és a tesztkészlet is a
+   REDS-ből és a Netflix Open Contentből készül, elkülönített klipekkel.
 2. **Perceptuális veszteség.** Kimaradjon-e az ImageNeten előtanított VGG a tanításból (tiszta
    út, javaslatom), vagy elfogadható, mert maga a VGG nem kerül bele a súlyba?
 3. **A súly licence.** GPL-3.0-or-later (mint a CFA4), CC BY 4.0 vagy Apache-2.0? Javaslatom a
