@@ -167,8 +167,8 @@ keverhet.
 ## 9. Rust-oldal
 
 - Új, felületfüggetlen crate: `cfa4-store`. Ez adja a kapcsolatkészletet, a migrációkat és a
-  típusos lekérdezéseket. A feladatsor és a `cfa4-ai-jobs` ezen át éri el az adatbázist, más crate
-  közvetlenül nem.
+  típusos lekérdezéseket. A feladatsor (`cfa4-tasks`, nem AI-s közös crate; tulajdonosi döntés,
+  2026-11-07) és a `cfa4-ai-jobs` ezen át éri el az adatbázist, más crate közvetlenül nem.
 - Meghajtó: tiszta Rust (`tokio-postgres` vagy `sqlx`), MIT/Apache-licenccel, `cargo deny`
   ellenőrzéssel; a végleges választás a BacklotHub G2 kapujával közös, hogy egy meghajtó legyen.
 - A `cfa4-store` L2-es crate, felület nélkül; a rétegtáblába (`cargo xtask layers`) a létrehozásakor

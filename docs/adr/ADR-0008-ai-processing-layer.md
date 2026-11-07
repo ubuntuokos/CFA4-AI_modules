@@ -60,8 +60,8 @@ felelőse van, és egyik sem végzi a másik munkáját.
 | 1 | Képességjegyzék és útválasztó | `cfa4-ai-registry` | L2 | A manifestek beolvasása; a képesség, a nyelv, a modell és a futtató kiválasztása a gép VRAM-ja, gyártója és a telepített modellek szerint; „mi futna és miért” lekérdezés futtatás nélkül | Modellfájlok, hardverfoglalás | Model Router |
 | 2 | Modellkezelő | `cfa4-ai-models` | L2 | Közös modelltár, SHA-256 ellenőrzés és deduplikáció, verziók, licenc, frissítés, törlés csak a felhasználó döntésével | Melyik modell fusson, melyik GPU-n | Model Manager |
 | 3 | Feladattervező (az orchesztrátor egyik fele) | `cfa4-ai-jobs` | L2 | Elemzés → Javaslat → Előnézet → Alkalmazás lánc, szakaszolás (chunking), függőségek, jobállapotok | Modellválasztás, hardver | workflow-réteg |
-| 4 | Erőforrás-kezelő (az orchesztrátor másik fele) | `cfa4-ai-jobs` | L2 | Befogadás és atomi foglalás, P0/P1/P2/R osztályok, GPU-nkénti VRAM-nyilvántartás (NVML), LRU modellmegtartás, OOM-visszalépési létra | Modellfájlok, a feladat tartalma | Host Resource Broker |
-| 5 | Tartós jobtár | `cfa4-ai-jobs` a `cfa4-store`-on át (PostgreSQL) | L2 | A jobok állapota és naplója, amely a CFA4 újraindítása után is megmarad; licencelfogadások, modellrekordok, gyorsítótár-index | Futtatás | Temporal |
+| 4 | Erőforrás-kezelő (az orchesztrátor másik fele) | `cfa4-tasks` (nem AI-s, közös CFA4-crate; az AI a kliense) | L2 | Befogadás és atomi foglalás, P0/P1/P2/R osztályok, GPU-nkénti VRAM-nyilvántartás (NVML), LRU modellmegtartás, OOM-visszalépési létra | Modellfájlok, a feladat tartalma | Host Resource Broker |
+| 5 | Tartós jobtár | `cfa4-tasks` a `cfa4-store`-on át (PostgreSQL) | L2 | A jobok állapota és naplója, amely a CFA4 újraindítása után is megmarad; licencelfogadások, modellrekordok, gyorsítótár-index | Futtatás | Temporal |
 | 6 | Worker-felügyelő | `cfa4-ai-workers` | L3 | Worker-folyamatok indítása, felügyelete, újraindítása, az IPC kliensoldala | Ütemezés, modellválasztás | Package Management izolációja |
 | 7 | Médiahíd és eredménytár | `cfa4-ai-workers` + `media` | L3 | Bemenetek átadása fájl- és asset-hivatkozással, eredmények `MediaSource`-ként, tartalomcímzett gyorsítótár | A projekt módosítása | Shared Asset Management |
 | 8 | Naplózás és diagnosztika | `cfa4-ai-jobs` | L2 | Worker-hibák, VRAM-csúcsok, a minimumtesztek mérései, a CFA4 meglévő naplójába | Döntések | Evidence (egyszerűsítve) |
@@ -149,9 +149,16 @@ K18), jóváhagyással. A modellkezelő szabályai:
 
 - A feladat deklarálja az igényeit (például `vram_gib >= 6`, futtató: ONNX Runtime CUDA EP), és
   **mindnek teljesülnie kell**. Hiányzó mérés vagy ismeretlen feltétel elutasítást jelent.
-- **Nincs néma visszalépés.** GPU-ról CPU-ra vagy egyik futtatóról a másikra csak akkor vált a
-  rendszer, ha a felhasználó vagy a manifest kifejezetten engedi. Ami nem fér el, az nem
-  elérhető (a 7. pont szerint).
+- **Elérhetőség** (tulajdonosi döntés, 2026-11-07; az ACS elve): egy funkció akkor elérhető, ha
+  van legalább egy **igazolt végrehajtási útja** (eszköz, pontosság, offload, csempézés) a
+  működési minimum (12 GB VRAM, 16 GB RAM; 9. pont) fölött. Ha csak lassabb út van, a felület
+  megmutatja a becsült időt, és a felhasználó dönt. GPU nélküli, csak CPU-s AI-út nincs. Ami
+  egyetlen igazolt úton sem fér el, az nem elérhető.
+- **Nincs néma visszalépés.** Az OOM-létra két részből áll. **Automatikus** az a lépés, amely az
+  eredményt nem változtatja, vagy a manifestben rögzített tűrésen belül marad: kisebb köteg,
+  csempézés átfedéssel, szakaszolás, a modell részleges kiürítése RAM-ba. **Jóváhagyás kell**
+  ahhoz, ami az eredményt változtatja: kisebb pontosság, kisebb felbontás, másik futtató vagy
+  modell. Minden lépés a jobnaplóba kerül.
 - **Stabil GPU-azonosítás:** UUID vagy PCI-cím szerint, nem a CUDA sorszáma szerint.
 - **A kijelzőt hajtó GPU** alapból nem kap AI-feladatot, ha van másik alkalmas kártya. Egykártyás
   gépen a felhasználó engedélyezheti.
@@ -171,11 +178,13 @@ számolni vagy a felhasználónak jóvá kell hagynia. Az Alkalmazás egyetlen v
 
 | Állapot | Jelentés |
 |---|---|
+| `scheduled` | Későbbi időpontra ütemezve (az ACS ütemezési módjai) |
 | `queued` | Sorban áll |
 | `preparing_model` | A modellkezelő ellenőrzi vagy előkészíti a modellt |
 | `waiting_for_resources` | Az erőforrás-kezelő még nem tudja befogadni |
 | `loading` | A worker tölti a modellt |
 | `running` | Fut, `progress` üzenetekkel |
+| `paused` | Felfüggesztve: az ellenőrzőpont mentve, az erőforrások felszabadítva; folytatható |
 | `cancelling` | Megszakítás kérve, a worker még nem állt le |
 | `succeeded` | Kész, az eredmény az eredménytárban |
 | `failed` | Hiba (kóddal: `oom`, `invalid_input`, `model_error`, `crash`) |
@@ -205,7 +214,8 @@ A tervezett rétegbesorolás a crate-ek létrehozásakor az `xtask layers` szab�
 | `cfa4-ai-models` | L2 | Modelltár, modellrekordok, SHA-256 ellenőrzés, deduplikáció, verziók |
 | `cfa4-ai-registry` | L2 | Manifestolvasás, sémaellenőrzés, hardver szerinti szűrés, útválasztás |
 | `cfa4-store` | L2 | PostgreSQL-kapcsolatkészlet, migrációk, típusos lekérdezések (a `cargo xtask wasm` nem kapu, a WASM nem CFA4-cél) |
-| `cfa4-ai-jobs` | L2 | Feladatgráf, erőforrás-kezelő, VRAM-nyilvántartás, gyorsítótár-kulcs, tartós jobtár (a `cfa4-store`-on át) |
+| `cfa4-tasks` | L2 | Nem AI-s, közös CFA4-crate (tulajdonosi döntés, 2026-11-07): erőforrás-kezelő (az ACS hardverfelmérése az `accel` crate-re építve, foglalás, futásidejű figyelés), feladatsor, ütemező, tartós jobtár (a `cfa4-store`-on át); felület nélkül |
+| `cfa4-ai-jobs` | L2 | AI-feladatgráf, VRAM-igény, gyorsítótár-kulcs; a `cfa4-tasks` kliense |
 | `cfa4-ai-workers` | L3 | Worker-folyamatok indítása, felügyelete és újraindítása, az IPC kliensoldala |
 | `ai.*` parancsok | L4 | A `crates/engine` parancsregiszterében, nem a `ui-egui`-ban |
 
@@ -271,8 +281,8 @@ fogyasztja a sémát. A jobállapotok és a manifest v3 licencmezői az SDK-ban 
   használat jelzésével: `code` (a worker kódja), `dependencies` (a futtató és a könyvtárak),
   `weights` (a modell súlyai), `dataset` (a tanítóadat, ha ismert). Egyetlen „kereskedelmi” igen/nem
   nem elég, mert a kód és a súly licence gyakran eltér. Ismeretlen `code` vagy `dependencies` mező blokkol; a `weights` és a `dataset` rész a felhasználó felelőssége, egyszeri elfogadással (2. pont).
-- Fizetős extra csak külön folyamatként futó worker lehet. Használati korlát (például feldolgozott
-  időtartam vagy 720p-s kimeneti felbontás) csak a zárt workerekben élhet, a GPL-es magban soha.
+- Fizetős extra csak külön folyamatként futó worker lehet. Használati korlát csak a zárt workerekben élhet, a GPL-es magban soha; időtartam-korlát nincs,
+  a zárt workerek egyetlen korlátja a 2K fölötti vízjel (tulajdonosi döntés, 2026-11-07).
   Az alapprogram képességeit nem csonkítjuk. A freemium az első körben nem szerepel.
 - **Az ingyenes képminőség 2K** (DCI 2K, 2048×1080; tulajdonosi döntés, 2026-10-30). A zárt
   fizetős workerek kulcs nélkül 2K-ig vízjel nélkül dolgoznak. 2K fölött (például 4K) kulcs
@@ -334,6 +344,11 @@ fogyasztja a sémát. A jobállapotok és a manifest v3 licencmezői az SDK-ban 
 A hónapok helyett kapuk vannak: a következő kapu csak akkor nyílik, ha az előző kilépési
 feltételei teljesültek. Minden kapu végén legyen valami, ami ellenőrizhetően működik.
 
+**Elnevezés** (tulajdonosi döntés, 2026-11-07): más dokumentumban és commitban ezek a kapuk
+**AI-F0…AI-F6** néven szerepelnek; az adaptív erőforrás-kezelés fázisai **ACS-0…ACS-7**, a saját
+modellképzésé **TR-F0…TR-F10**, a PostgreSQL-adatrétegé **PG-0…PG-4**. A sémabeli állapotnevek
+nem változnak (a séma szerződés); a felület mutathatja a magyar elnevezéseket.
+
 **F0 – Előfeltétel.** A teljes Qt 6 átállás kész és az egui kikerült
 ([ADR F8](ADR-F8-QT6-RUST-ENGINE-2026-10-23.md)); az átállás 2026-10-25-én kb. 65%-on állt.
 Addig ebben a repóban **nem indul AI-crate**, és nem kerül `ai.*` parancs a motorba. Az átállás
@@ -346,7 +361,12 @@ alatt is folytatható, mert nem érinti a felületet:
   [CFA4-sdk](https://github.com/ubuntuokos/CFA4-sdk) repóban (MIT OR Apache-2.0);
 - a K2 (Whisper bekapcsolása), mert kész kód, és a [Kdenlive-terv](../kdenlive-parity.md)
   szerint független;
-- a nyelvalkotó mag (`crates/conlang`), mert nem AI, nem GPU és nem felület.
+- a nyelvalkotó mag (`crates/conlang`), mert nem AI, nem GPU és nem felület;
+- az ACS felület nélküli része (ACS-1…ACS-4: hardverfelmérés, futásidejű figyelés, végrehajtási
+  terv, feladatsor és ütemező a `cfa4-tasks` crate-ben), mert nem AI és nem felület (tulajdonosi
+  döntés, 2026-11-07). A Kimi K3 (kimi-k3-in-c, Apache-2.0, C99) fogalmait Rustban írjuk meg ebbe
+  a közös infrastruktúrába; C-kód a CFA4 folyamatába nem kerül. Külön workerként, helyi LLM-hez
+  csak későbbi, külön döntéssel jöhet.
 
 *Kilépés:* az egui nincs a buildben, a Qt 6 shell a valódi motorral dolgozik.
 
@@ -404,9 +424,14 @@ bekapcsolása, felhős futtatás.
 A [besorolási táblák](../ai/README.md) „Fázis” oszlopa még a régi havi sorszámokat tartalmazza;
 a kaput a futtató határozza meg: ONNX → F3/F4, candle → F5, PyTorch és helyi LLM → F6.
 
-## Nyitott kérdések
+## Lezárt kérdések (tulajdonosi döntések, 2026-11-07)
 
-- Melyik funkció legyen ingyenes, és melyik fizetős?
-- A fizetős workerekben 2K fölött vízjel jár kulcs nélkül; kell-e mellé időtartam-korlát is?
-- Milyen hozzájárulási és vízjelezési szabály vonatkozzon az arccserére (38. típus)?
-- Mi helyettesítse a SeamlessM4T v2 fordítót, amelynek a licence nem kereskedelmi?
+- **Ingyenes és fizetős:** minden GPL-es funkció ingyenes, használati korlát nélkül, 2K-ig
+  vízjel nélkül. Fizetős csak külön folyamatként futó, zárt worker lehet: 2K fölötti kimenet
+  vízjel nélkül, prémium modellek, később távoli GPU (8. pont).
+- **Időtartam-korlát nincs.** 2K-ig nincs vízjel; 2K fölött kulcs nélkül vízjel van (8. pont).
+- **Arccsere (38. típus):** projektenként kötelező nyilatkozat arról, hogy az ábrázolt személy
+  hozzájárult. Az exportban mindig ott van a nem kikapcsolható „AI által módosított” jelölés és a
+  hozzá tartozó metaadat (EU AI-rendelet, 50. cikk: mélyhamisítás jelölése).
+- **SeamlessM4T v2:** a licencszabály szerint (2. pont) nem blokkol; választható modell marad,
+  amelyet a felhasználó tölt le. Az alapértelmezett szövegfordító a MADLAD-400 (Apache-2.0).

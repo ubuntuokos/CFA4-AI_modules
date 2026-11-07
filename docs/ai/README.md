@@ -153,8 +153,9 @@ Hat funkció (hangosság, de-esser, térhang, tempó, nyelvfelismerés, zenei re
   IPA-t és hangsúlyt mondja. Hiányzik még: leírásból (szövegből) választott hangzás, esetek,
   névutók és személyragok, fordítás helyi LLM-mel (5.), írásrendszer (6.) és a Qt6-os
   szerkesztőfelület.
-- **Kizárt modellek.** Nem kereskedelmi a súlyuk, ezért a fizetős oldalon nem használhatók:
-  MusicGen, AudioGen, MERT, F5-TTS, Fish Speech, XTTS v2, Audio Flamingo, MMS, SeamlessM4T.
+- **Nem kereskedelmi súlyú modellek.** MusicGen, AudioGen, MERT, F5-TTS, Fish Speech, XTTS v2, Audio
+  Flamingo, MMS, SeamlessM4T: a CFA4 nem szállítja őket; a felhasználó tölti le, és egyszer elfogadja
+  a feltételeiket (licencszabály, 2026-11-07, ADR 0008 2. pont). Funkciót nem tiltanak.
 - **Tiltott függőség.** Az Essentia AGPL-3.0, és a CFA4 licencpolitikája ezt tiltja.
 - **Kerülendő könyvtárak.** A `whisper-rs` és a `sherpa-onnx` C/C++ kötés, a `sherpa-onnx`
   ráadásul saját ONNX Runtime-ot hoz. A CFA4 csak a modelljeiket használja, a közös ONNX
