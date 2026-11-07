@@ -1,7 +1,7 @@
 # CFA4 PostgreSQL-adatréteg a feladatsorhoz és az AI-jobtárhoz (CFA4-TASKSTORE-PG-001)
 
 > **Állapot:** ELFOGADVA (István, 2026-11-07); KÓD MÉG NINCS · **Utolsó átnézés:** 2026-11-07 ·
-> **Változás:** major (első változat; a tartós jobtár redb helyett PostgreSQL) · **Beépítve:**
+> **Változás:** major (első változat; a tartós jobtár redb helyett PostgreSQL; a Media Intelligence és a pgvector a tervben, István, 2026-11-07) · **Beépítve:**
 > [ADR 0006](../adr/ADR-0006-ai-processing-layer.md) F1 és F2 kapu · **Kapcsolódik:** CFA4
 > `docs/adr/ADR-0006-backlothub-postgresql.md` (BacklotHub: PostgreSQL, 2026-11-02),
 > CFA4 `docs/plans/CFA4-EVENT-FABRIC-001-1.0.md` és illesztési melléklete,
@@ -32,17 +32,22 @@
    `mi`, `backlot`). Nincs második adatbázismotor.
 2. **Ami PostgreSQL-be kerül:** a közös feladatsor és ütemezés, a feladatok állapotnaplója,
    ellenőrzőpontjai, becslései és futási előzményei; az AI-jobok, a licencelfogadások és a
-   modellkezelő rekordjai; a tartalomcímzett gyorsítótár indexe; az Event Fabric kimenőtára.
+   modellkezelő rekordjai; a tartalomcímzett gyorsítótár indexe; az Event Fabric kimenőtára; a
+   Media Intelligence indexe (átiratok, címkék, vektorok).
 3. **Ami nem kerül bele:** képkockák, maszkok, média és modellsúlyok (ezek a lemezen maradnak,
    tartalomcímzett fájlként); az eseménytörténet (JetStream); az átmeneti állapot (Valkey); a
    projektfájl (a CFA4 saját formátuma marad).
-4. **A K17 nyilvántartás és a Media Intelligence** (pgvectorral) külön döntéssel jön ugyanebbe a
-   klaszterbe (PG-4).
-5. **Futó PostgreSQL kell az AI-funkciókhoz és a feladatsorhoz** akkor is, ha a felhasználó nem
+4. **A Media Intelligence** (médiaindex, átirat- és vektoros keresés) ugyanebbe a klaszterbe kerül,
+   saját `mi` sémával és a pgvector bővítménnyel (4. pont, PG-4). A tulajdonos 2026-11-07-én úgy
+   döntött, hogy ez most kerüljön a tervbe, ne később. A K17 nyilvántartás külön döntéssel
+   csatlakozhat.
+5. **Közös klaszter a BacklotHubbal**, külön sémákkal és szerepekkel (tulajdonosi döntés,
+   2026-11-07).
+6. **Futó PostgreSQL kell az AI-funkciókhoz és a feladatsorhoz** akkor is, ha a felhasználó nem
    használja a BacklotHubot. A `.deb` függőségként hozza; az AppImage, a Flatpak és a `tar.gz` a
    rendszerre telepítettet használja. Ha hiányzik, a vágás, a lejátszás és a projektmentés
    változatlanul működik, a feladatsor és az AI pedig kezelhető hibaüzenetet ad a telepítés
-   módjával (`AGENTS.md` §0).
+   módjával (`AGENTS.md` §0). (Tulajdonosi döntés, 2026-11-07.)
 
 A tiszta Rust követelmény nem sérül: a PostgreSQL külön folyamat (licence PostgreSQL License,
 GPL-3.0-kompatibilis), a CFA4 csak kliensként kapcsolódik hozzá, tiszta Rust meghajtóval.
@@ -71,7 +76,53 @@ Minden azonosító UUIDv7, kliensoldalon generálva. Minden idő `timestamptz`, 
 `paused`), amint az SDK gazdajelentése új változatban felveszi őket. A felület a magyar
 elnevezéseket mutatja.
 
-## 4. Kétszeri indítás elleni védelem és idempotencia
+## 4. Media Intelligence: `mi` séma és pgvector
+
+**Mire való:** a projekt médiájának helyi, kereshető indexe. A felhasználó szöveggel vagy képpel
+kereshet jelenetet, felvételt, elhangzott mondatot, címkét („kutya a parton”, „ahol X azt mondja,
+hogy…”), és a találat egy klip adott szakaszára mutat. Az index a CFA4 AI-képességeinek kimenetéből
+épül (átirat, jelenet- és csendfelismerés, címkézés, kép- és szövegbeágyazás), a feladatsoron át,
+háttérfeladatként.
+
+**Bővítmény:** pgvector, az Ubuntu `postgresql-<verzió>-pgvector` rendszercsomagjából (licence
+PostgreSQL License, GPL-3.0-kompatibilis), ugyanúgy, ahogy maga a PostgreSQL. Ha hiányzik, a
+vektoros keresés kezelhető hibát ad, az átiratkeresés és a többi funkció működik.
+
+| Tábla | Tartalom |
+|---|---|
+| `mi.asset` | indexelt médiafájl: tartalomhash (nem az elérési út azonosít), utolsó ismert elérési út, időtartam, a projektkapcsolatok, az indexelés állapota |
+| `mi.segment` | szakasz egy assetben: kezdet és vég `cfa4_time::Tick`-ben (egész szám, nem lebegőpontos másodperc), fajta (felvétel, jelenet, beszéd, csend, zene) |
+| `mi.transcript` | átiratszakasz: szöveg, BCP 47 nyelvcímke, beszélő, a keresőindexhez `tsvector` |
+| `mi.tag` | címke egy szakaszon: címke, megbízhatóság, a címkéző implementáció és modellje |
+| `mi.embedding_model` | beágyazó modell: implementáció, a súly SHA-256-ja (`ai.model`), dimenzió, távolságmérték, modalitás (kép, szöveg, hang) |
+| `mi.embedding` | vektor egy szakaszhoz: szakasz, beágyazó modell, a vektor (`vector`, félpontosságnál `halfvec`) |
+
+**Indexek:** modellenként külön részleges HNSW-index (`WHERE model = …`, a dimenzióra kasztolva),
+mert a modellek dimenziója eltér, és egy index csak egy dimenziót kezel. Teljes szöveges keresés
+`tsvector` + GIN indexszel, nyelvfüggetlen (`simple`) konfigurációval, mert egy film több nyelvet is
+keverhet.
+
+**Szabályok:**
+
+- **Modellcsere:** a vektor mindig a beágyazó modell súlyhash-éhez tartozik. Új modellnél az
+  újraindexelés új sorokat ír, a régi modell vektorai a régi indexszel kereshetők maradnak, amíg a
+  felhasználó nem törli őket. Különböző modellek vektorai sosem keverednek egy keresésben.
+- **Indexelés feladatként:** az indexelés a `tasks` sorban fut, P2 (spekulatív, üresjáratban) vagy
+  a felhasználó kérésére P1 osztályban; szakaszokra bontva, ellenőrzőponttal, így megszakítás és
+  újraindítás után ott folytatódik, ahol abbamaradt, és kétszer nem indexel.
+- **Erőforrás:** a HNSW-index építése és a nagy beszúrási kötegek memóriáját
+  (`maintenance_work_mem`, kötegméret) az erőforrás-kezelő kerete szabja meg, a 16 GB-os
+  minimumgépen is; az indexépítés a többi feladattal együtt ütemeződik, nem mellettük.
+- **Helyi adat:** az index soha nem hagyja el a gépet (VISION 2.3). Ha egy asset kikerül minden
+  projektből, a felhasználó törölheti a hozzá tartozó indexet; a törlés minden szakaszra, átiratra,
+  címkére és vektorra kiterjed.
+- **Arcok és személyek:** arcbeágyazás biometrikus adat. Csak kifejezett, projektenkénti
+  bekapcsolással indexelhető, alapból ki van kapcsolva, és egy lépésben törölhető; a részletes
+  hozzájárulási szabály az arccserére (38. típus) vonatkozó nyitott kérdéssel együtt dől el.
+- **Beágyazó modellek** ugyanúgy a felhasználó letöltésével és egyszeri licencelfogadással
+  kerülnek a gépre, mint minden más modell; a CFA4 nem terjeszt modellt.
+
+## 5. Kétszeri indítás elleni védelem és idempotencia
 
 - **Indítás egyetlen tranzakcióban:** az ütemező `FOR UPDATE SKIP LOCKED`-del veszi ki a következő
   indítható feladatot, és ugyanabban a tranzakcióban állítja futóra, írja a bérletet, a naplósort
@@ -84,7 +135,7 @@ elnevezéseket mutatja.
 - **Idempotens szakaszok:** a szakaszeredmény tartalomcímzett fájl. Ha egy szakasz kétszer fut,
   ugyanaz a fájl lesz belőle, és a második futás a gyorsítótárból válaszol.
 
-## 5. Ütemezés az adatbázisban
+## 6. Ütemezés az adatbázisban
 
 - A tervezett indítás UTC-ben és az IANA-időzóna nevével együtt tárolódik. A falióra szerint
   megadott időpontot időzóna- vagy nyári idő váltásakor az ütemező újraszámolja.
@@ -93,7 +144,7 @@ elnevezéseket mutatja.
 - Induláskor az ütemező megkeresi az elmaradt indításokat, és a feladat saját szabálya szerint jár
   el. A gépet nem ébreszti fel.
 
-## 6. Ha az adatbázis nem érhető el
+## 7. Ha az adatbázis nem érhető el
 
 - **Új feladat nem indul**, mert az indítás tranzakcióhoz kötött; ez véd a kétszeri indítás ellen.
 - **A futó feladat továbbfut** a következő szakaszhatárig, az eredmény a lemezre, a gyorsítótárba
@@ -103,7 +154,7 @@ elnevezéseket mutatja.
 - A felület kezelhető hibát mutat; a CFA4 nem omlik össze, és nem próbálkozik végtelenül
   ugyanazzal.
 
-## 7. Erőforrások a minimumgépen
+## 8. Erőforrások a minimumgépen
 
 - A PostgreSQL saját RAM-ja a CFA4 erőforrás-keretébe számít, az erőforrás-kezelő a tartalék
   számításánál levonja.
@@ -113,7 +164,7 @@ elnevezéseket mutatja.
 - A telepítés és az indítás módja (felhasználói vagy rendszerszolgáltatás) a BacklotHub G2 kapuján
   dől el; ez a terv ugyanazt használja.
 
-## 8. Rust-oldal
+## 9. Rust-oldal
 
 - Új, felületfüggetlen crate: `cfa4-store`. Ez adja a kapcsolatkészletet, a migrációkat és a
   típusos lekérdezéseket. A feladatsor és a `cfa4-ai-jobs` ezen át éri el az adatbázist, más crate
@@ -124,7 +175,7 @@ elnevezéseket mutatja.
   wasm-ellenőrzésen kívüli rétegbe kerül, vagy jellemző mögé; ez a rétegtábla módosításakor dől el.
 - Migráció: egy út minden módban, egy verzió visszafelé, valós méretű adaton tesztelve.
 
-## 9. Tesztek
+## 10. Tesztek
 
 - Kétszeri indítás: a folyamat leölése az indítási tranzakció minden pontján, utána újraindítás;
   a feladat legfeljebb egyszer fut.
@@ -133,30 +184,33 @@ elnevezéseket mutatja.
 - Kimenőtár: összeomlási ablak az állapotváltás és a közzététel között (Event Fabric Q9),
   átrendezett kézbesítés (Q10).
 - Migráció oda-vissza; RAM-mérés a 16 és a 32 GB-os profilon.
+- Media Intelligence: keresés helyessége ismert mintakészleten (az elvárt szakasz a legjobb találatok között), modellcsere utáni elkülönülés, megszakított és folytatott indexelés, asset törlése mindenhonnan, hiányzó pgvectorra kezelhető hiba.
 - Ellenséges bemenet: hibás `jsonb`-paraméter, túlméretes mező, érvénytelen időzóna; hiba, pánik
   nélkül (`AGENTS.md` §0).
 - A tesztek helyi, eldobható PostgreSQL-példánnyal futnak (`pg_ctl` ideiglenes könyvtárban); ha a
   gépen nincs PostgreSQL, a tesztek ezt jelzik és kimaradnak, a gyors CI-kapu ettől zöld marad.
 
-## 10. Fázisok és beépítés az AI-rétegbe
+## 11. Fázisok és beépítés az AI-rétegbe
 
 | Fázis | Tartalom | Kilépés | AI-kapu |
 |---|---|---|---|
 | PG-0 | Ez a terv | Tulajdonosi jóváhagyás (megvan, 2026-11-07) | F0 (dokumentáció) |
 | PG-1 | `cfa4-store`: kapcsolat, migráció, hibakezelés; közös a BacklotHub G2 kapujával | Migráció oda-vissza; hiányzó vagy leállt PostgreSQL-re kezelhető hiba, pánik nélkül | F1 |
-| PG-2 | `tasks` séma: indítás, bérlet, ütemezés, kimenőtár | A 9. pont kétszeri indítási és ütemezési tesztjei zöldek | F2 |
+| PG-2 | `tasks` séma: indítás, bérlet, ütemezés, kimenőtár | A 10. pont kétszeri indítási és ütemezési tesztjei zöldek | F2 |
 | PG-3 | `ai` és `cache` séma: AI-jobok, licencelfogadás, modellrekordok, gyorsítótár-index | A job összes állapota és a licencelfogadás az adatbázisban; CFA4-újraindítás után nincs elveszett vagy kétszer indult job | F2 |
-| PG-4 | `mi` séma és pgvector, K17 | Külön döntéssel | későbbi |
+| PG-4 | `mi` séma és pgvector (4. pont): médiaindex, átirat- és vektoros keresés | Az első beágyazó és átiratképesség kimenete indexelődik és kereshető; a 10. pont Media Intelligence-tesztjei zöldek | F4–F5 (az első kép- és szövegbeágyazó, illetve a candle-es átirat mellett) |
 
-## 11. Hatás más tervekre
+## 12. Hatás más tervekre
 
 - **AI ADR 0006:** a tartós jobtár redb helyett PostgreSQL, a gyorsítótár-index SQLite helyett
   PostgreSQL; az F1 és az F2 kapu a PG-1…PG-3 fázist tartalmazza (ebben a változtatásban
   átvezetve).
 - **CFA4 Event Fabric illesztés:** az E1 (erőforrás-hatóság) és az E3 (Execution Fabric) erre a
   tervre és az adaptív erőforrás-kezelési specifikációra hivatkozhat.
-- **CFA4 BacklotHub ADR 0006:** egy mondattal kiegészülhet, hogy a klasztert a feladatsor és az AI
-  is használja, saját sémával. Ez a CFA4 fő repójának változtatása, ott külön PR-ral.
+- **CFA4 BacklotHub ADR 0006:** kiegészül azzal, hogy a klasztert a feladatsor, az AI és a Media
+  Intelligence is használja, saját sémával; ez a terv a CFA4 fő repójába is bekerül
+  (`docs/plans/CFA4-TASKSTORE-PG-001.md`). A két példány azonos tartalmú; eltérés esetén a fő repóé
+  az irányadó, és ezt a példányt hozzá kell igazítani.
 - **ADR-számozás:** az AI-repó ADR 0006-ja és a CFA4 fő repójának ADR 0006-ja (BacklotHub) azonos
   számot visel, és az AI-ADR „0004 FFI-kivétel, 0005 `cfa4-route`” hivatkozása sem egyezik a fő repó
   mai állapotával (0004 a `cfa4-route`, 0005 a médiahátterek, 0007 a Media Services). Az
