@@ -1,6 +1,6 @@
 # #91 Videó-felskálázás (Video Super-Resolution): modellválasztás az F3 kapuhoz
 
-> **Állapot:** elfogadva; tulajdonosi döntések 2026-10-31-én (1. és 3. pont), 2026-11-02-án (F3: angol felirat-időzítés, 3.3 pont) és 2026-11-07-én (a felhasználó felelőssége, 1.1 pont) · **Utolsó átnézés:** 2026-11-07 (a lezárt kérdésekkel) ·
+> **Állapot:** elfogadva; tulajdonosi döntések 2026-10-31-én (1. és 3. pont), 2026-11-02-án (F3: angol felirat-időzítés, 3.3 pont) és 2026-11-07-én (a felhasználó felelőssége, 1.1 pont; magyar felirat-időzítés Parakeet v3-mal, 5. pont) · **Utolsó átnézés:** 2026-11-07 (a lezárt kérdésekkel) ·
 > **Változás:** major (első változat) · **Döntés:** [ADR 0008](../adr/ADR-0008-ai-processing-layer.md)
 > F3 kapu, manifest v3 licencszabály ([CFA4-sdk `docs/protocol.md`](https://github.com/ubuntuokos/CFA4-sdk/blob/main/docs/protocol.md) 5. pont)
 
@@ -269,5 +269,13 @@ felelőssége, ezért:
 - Jogi vélemény a kutatási tanítóadatú modellek felkínálása előtt nem kell, mert a CFA4 modellt
   nem terjeszt.
 
-Nyitott még: legyen-e a felirat-időzítésnek magyar változata kész modellel (például a Parakeet v3
-alapján; saját tanítás nincs)? Ez a tulajdonos döntése.
+- **Magyar felirat-időzítés (tulajdonosi döntés, 2026-11-07):** lesz, kész modellel, saját tanítás
+  nélkül: az NVIDIA Parakeet TDT 0.6B v3 (CC BY 4.0 súly, a felhasználó tölti le, egyszeri
+  elfogadással). ONNX-exportból fut, ezért az AI-F4 kapuba kerül; az F3 kilépése (angol,
+  wav2vec2) nem változik. A bemenet, a forrásidő-visszaszámolás, a Javaslat–Előnézet–Alkalmazás
+  lánc és a feliratsáv az F3 kódja; csak az illesztés módja más: a Parakeet TDT-dekódere nem
+  karakterenkénti CTC-valószínűséget ad, ezért a modell szóidős átiratát illesztjük a megadott
+  szöveghez (szószintű szövegillesztés, saját GPL-es Rust-kód), és ahol a kettő eltér, ott a hely
+  alacsony biztonságúként jelenik meg a Javaslatban. A pontos módszert (például a TDT-időbélyegek
+  vagy egy CTC-fej használata) és a küszöböket az AI-F4 mérése rögzíti, a 4. pont mintájára,
+  magyar beszédes klippel.

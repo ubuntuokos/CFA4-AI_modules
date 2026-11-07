@@ -398,7 +398,9 @@ klip változatlan, az Undo a sávot visszaveszi, és a mérés teljesíti a mode
 kapuban jön; hozzá nem tanítunk saját modellt (tulajdonosi döntés, 2026-11-07).
 
 **F4 – Többi ONNX-képesség.** Zajszűrés, képkocka-interpoláció és a többi tisztán ONNX-es
-képjavító (a 25-ből), valamint a SAM2-alapú maszkolás és háttéreltávolítás (K4), és a Media Intelligence
+képjavító (a 25-ből), a magyar felirat-időzítés az NVIDIA Parakeet TDT 0.6B v3 modellel (ONNX-export,
+a felhasználó tölti le; az F3 illesztő- és feliratsáv-kódjára épül, tulajdonosi döntés, 2026-11-07;
+[modellválasztás](../ai/modellvalasztas-091.md) 5. pont), valamint a SAM2-alapú maszkolás és háttéreltávolítás (K4), és a Media Intelligence
 médiaindexe (PostgreSQL-adatréteg PG-4: `mi` séma, pgvector) az első kép- és szövegbeágyazó képességgel.
 
 **F5 – candle.** Átirat és szövegalapú vágás a meglévő `transcript.generate` funkcióval
