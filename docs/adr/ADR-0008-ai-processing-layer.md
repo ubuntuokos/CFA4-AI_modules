@@ -1,18 +1,20 @@
-# CFA4 ADR 0006 – AI-feldolgozó réteg
+# CFA4 ADR 0008 – AI-feldolgozó réteg (korábban ADR 0006)
 
 **Dátum:** 2026-10-25, átdolgozva 2026-10-30  
 **Állapot:** ELFOGADVA (tulajdonosi jóváhagyás, 2026-10-30); KÓD MÉG NINCS  
 **Kiadás:** HOLD
 
-> **Utolsó átnézés:** 2026-11-07 (tartós jobtár: PostgreSQL, [PostgreSQL-adatréteg](../ai/postgresql-adatreteg.md); 2. pont: a súly és a tanítóadat licence a felhasználó felelőssége; 2026-11-02: F3: angol felirat-időzítés; 2026-11-01: a 6. pont, az ONNX nem kötelező; 2026-10-31: a 2. pont kivétele a zárt workerekre) · **Változás:** major (CFA4-AI-PLAN-001 és a CFA3/FA3 elődtervek
+> **Utolsó átnézés:** 2026-11-07 (9. pont: RAM-minimum 16 GB, ajánlott 32 GB; tartós jobtár: PostgreSQL, [PostgreSQL-adatréteg](../ai/postgresql-adatreteg.md); 2. pont: a súly és a tanítóadat licence a felhasználó felelőssége; 2026-11-02: F3: angol felirat-időzítés; 2026-11-01: a 6. pont, az ONNX nem kötelező; 2026-10-31: a 2. pont kivétele a zárt workerekre) · **Változás:** major (CFA4-AI-PLAN-001 és a CFA3/FA3 elődtervek
 > beépítése: F0–F6 kapuk, ONNX-es első kör, modellkezelő, erőforrás-kezelési szabályok, tartós
 > jobtár, bővített jobállapotok, szétbontott licencmezők) · **Részletes terv:**
 > [CFA4 AI tervdokumentum](https://claude.ai/artifact/MLd6UfHG1uPBdJ16B2JZBh) ·
 > **Összevetés és döntések:** [CFA4-AI-PLAN-001 összevetése](https://claude.ai/artifact/Yavio9epPDgKA6SmxQ8BGJ)
 
-A számozás azért 0006, mert a 0004 (FFI-kivétel elve) és a 0005 (`cfa4-route`) már foglalt
-az [ADR 0003](ADR-0003-aswf-and-conversion-sources.md) és a
-[Kdenlive-paritás](../kdenlive-parity.md) tervében.
+**Számozás** (2026-11-07): ez az ADR korábban a 0006-os számot viselte. A CFA4 fő repójában
+(CinemaFundArchitecture4) a 0004 a feladatonkénti útvonalválasztó (`cfa4-route`), a 0005 a
+médiahátterek, a 0006 a BacklotHub PostgreSQL-döntése, a 0007 a Media Services, ezért az AI-réteg
+ADR-je a következő szabad számot, a 0008-at kapta. Az [ADR 0003](ADR-0003-aswf-and-conversion-sources.md)
+A2 pontjában tervezett „FFI-kivétel elve” ADR-nek még nincs száma.
 
 ## Háttér
 
@@ -229,7 +231,8 @@ követelménye ettől független: a futtató cseréje nem oldja meg.
 
 1. **ONNX Runtime** (F2–F4): futtatókörnyezetek (EP) közül az első körben a CUDA és a CPU. Ez az út
    a gyártófüggetlen funkcióké, például a SAM2-é (Kdenlive-paritás K4). Mivel natív könyvtár,
-   előfeltétele az ADR 0004 (FFI-kivétel elve).
+   előfeltétele az FFI-kivétel elvét rögzítő ADR (az [ADR 0003](ADR-0003-aswf-and-conversion-sources.md)
+   A2 pontja szerint, még nincs száma).
 2. **candle** (F5): a CFA4 folyamatán belül. Ezt használja már a `speech` (Whisper) és a `tts`
    (Kokoro).
 3. **Egyetlen közös PyTorch-környezet** (F6), uv-vel rögzítve, egy CUDA 12.x-szel. Nincs
@@ -293,15 +296,20 @@ fogyasztja a sémát. A jobállapotok és a manifest v3 licencmezői az SDK-ban 
 
 ### 9. Hardverminimum és tesztelés
 
-- **Működési minimum** (alsó határ, nem felső; a tulajdonos 2026-10-30-án megerősítette): Linux,
-  NVIDIA Ampere 12 GB (RTX 3060 12 GB), CUDA 12.x-es illesztő, 32 GB RAM, 8 mag AVX2-vel,
-  150 GB NVMe. Minden ingyenes funkciónak 2K-ban (DCI 2K, 2048×1080) működnie kell a
-  minimumgépen (tulajdonosi döntés, 2026-10-30). 8 GB-os profil nincs.
+- **Működési minimum** (alsó határ, nem felső; a tulajdonos 2026-10-30-án megerősítette, a RAM-ot
+  2026-11-07-én módosította): Linux, NVIDIA Ampere 12 GB (RTX 3060 12 GB), CUDA 12.x-es illesztő,
+  **legalább 16 GB RAM, ajánlott 32 GB**, 8 mag AVX2-vel, 150 GB NVMe. 12 GB-nál kisebb GPU-val és
+  16 GB RAM alatt helyi AI-val nem lehet rendesen dolgozni (a tulajdonos tapasztalata), ezért ez az
+  alsó határ: alatta az AI-funkciók nem támogatottak, a CFA4 többi része fut. 8 GB-os profil nincs.
+- **Teljesítményígéret:** minden ingyenes funkciónak 2K-ban (DCI 2K, 2048×1080) működnie kell az
+  ajánlott (32 GB-os) gépen (tulajdonosi döntés, 2026-10-30). A 16 GB-os minimumgépen minden
+  funkciónak le kell futnia, lassabban is, összeomlás és a rendszer lefagyása nélkül.
 - **Nagyobb gépek:** a nagyobb VRAM nagyobb modelleket és több funkciót nyit meg, a több GPU
   pedig lehetőség, nem követelmény.
 - **Gyártók:** első körben NVIDIA, utána 12 GB-os AMD és Intel kártyák az ONNX úton.
 - **Minimumtesztek:** a [`scripts/dev/run-minspec.sh`](../../scripts/dev/run-minspec.sh)
-  alatt futnak (32 GB RAM swap nélkül, 8 CPU, egyetlen referencia-GPU), mert a fejlesztőgép
+  alatt futnak, két profillal: `CFA4_PROFILE=ajanlott` (alap, 32 GB RAM) és `CFA4_PROFILE=minimum`
+  (16 GB RAM); mindkettő swap nélkül, 8 CPU-val és egyetlen referencia-GPU-val, mert a fejlesztőgép
   512 GB-os RAM-ja elfedné a memórianyomásból eredő hibákat. A burkoló szabályait a
   `scripts/ci/test-run-minspec.sh` ellenőrzi GPU nélkül, a gyors CI-kapuban.
 
@@ -366,8 +374,8 @@ LibriSpeech CC BY 4.0), tanítás nélkül; részletek: [modellválasztás](../a
 3. pont. *Kilépés:* egy angol beszédes klip és a hozzá adott szöveg (sima szöveg vagy SRT)
 alapján időzített feliratsáv kerül az idővonalra a referenciakártyán, a minimumkorlátok alatt; a
 klip változatlan, az Undo a sávot visszaveszi, és a mérés teljesíti a modellválasztás
-4. pontjának küszöbeit. A #91 videó-felskálázás későbbi kapuban jön,
-saját tanítású súllyal.
+4. pontjának küszöbeit. A #91 videó-felskálázás (Real-ESRGAN, a felhasználó tölti le) későbbi
+kapuban jön; saját tanítású modell nincs (tulajdonosi döntés, 2026-11-07).
 
 **F4 – Többi ONNX-képesség.** Zajszűrés, képkocka-interpoláció és a többi tisztán ONNX-es
 képjavító (a 25-ből), valamint a SAM2-alapú maszkolás és háttéreltávolítás (K4), és a Media Intelligence
@@ -394,4 +402,3 @@ a kaput a futtató határozza meg: ONNX → F3/F4, candle → F5, PyTorch és he
 - A fizetős workerekben 2K fölött vízjel jár kulcs nélkül; kell-e mellé időtartam-korlát is?
 - Milyen hozzájárulási és vízjelezési szabály vonatkozzon az arccserére (38. típus)?
 - Mi helyettesítse a SeamlessM4T v2 fordítót, amelynek a licence nem kereskedelmi?
-- Melyik saját tanítású modell legyen a #91 alapja (licenc és 2K-s sebesség alapján)?

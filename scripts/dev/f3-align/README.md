@@ -1,7 +1,7 @@
 # F3 mérés: angol felirat-időzítés (wav2vec2)
 
 > **Állapot:** mérőeszköz, nem része a terméknek · **Utolsó átnézés:** 2026-11-02 ·
-> **Döntés:** [ADR 0006](../../../docs/adr/ADR-0006-ai-processing-layer.md) F3,
+> **Döntés:** [ADR 0008](../../../docs/adr/ADR-0008-ai-processing-layer.md) F3,
 > [modellválasztás](../../../docs/ai/modellvalasztas-091.md) 3.3 és 4. pont
 
 Az F3 képessége a `facebook/wav2vec2-base-960h` modellel végzett CTC-alapú kényszerített

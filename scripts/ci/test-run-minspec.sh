@@ -53,6 +53,15 @@ grep -qx 'CUDA_DEVICE_ORDER=PCI_BUS_ID' "$WORK/log.env" || fail "PCI_BUS_ID orde
 grep -qx 'MESA_VK_DEVICE_SELECT=10de:2503' "$WORK/log.env" || fail "Vulkan not pinned to the 3060"
 grep -qx 'MESA_VK_DEVICE_SELECT_FORCE_DEFAULT_DEVICE=1' "$WORK/log.env" || fail "Vulkan selection not forced"
 
+# Minimum profile: 16G RAM; an explicit CFA4_MIN_RAM still wins; unknown profiles are refused.
+run env CFA4_PROFILE=minimum
+grep -qx 'MemoryMax=16G' "$WORK/log.systemd" || fail "minimum profile is not 16G"
+run env CFA4_PROFILE=minimum CFA4_MIN_RAM=20G
+grep -qx 'MemoryMax=20G' "$WORK/log.systemd" || fail "CFA4_MIN_RAM must override the profile"
+if CFA4_PROFILE=bogus PATH="$BIN:$PATH" bash scripts/dev/run-minspec.sh env >/dev/null 2>&1; then
+  fail "unknown CFA4_PROFILE accepted"
+fi
+
 # Overrides: RAM, CPUs and an explicit card.
 run env CFA4_MIN_RAM=16G CFA4_MIN_CPUS=4 CFA4_REF_GPU=0
 grep -qx 'MemoryMax=16G' "$WORK/log.systemd" || fail "CFA4_MIN_RAM ignored"
