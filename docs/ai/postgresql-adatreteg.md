@@ -29,7 +29,7 @@
 
 1. **Egyetlen CFA4 PostgreSQL-klaszter** a gépen: ugyanaz, amelyet a BacklotHub ADR bevezet.
    Minden modul saját sémát és saját adatbázis-szerepet kap benne (`tasks`, `ai`, `cache`, később
-   `mi`, `backlot`). Nincs második adatbázismotor.
+   `mi`, `backlot`, `train`). Nincs második adatbázismotor.
 2. **Ami PostgreSQL-be kerül:** a közös feladatsor és ütemezés, a feladatok állapotnaplója,
    ellenőrzőpontjai, becslései és futási előzményei; az AI-jobok, a licencelfogadások és a
    modellkezelő rekordjai; a tartalomcímzett gyorsítótár indexe; az Event Fabric kimenőtára; a
@@ -212,5 +212,8 @@ keverhet.
   Intelligence is használja, saját sémával; ez a terv a CFA4 fő repójába is bekerül
   (`docs/plans/CFA4-TASKSTORE-PG-001.md`). A két példány azonos tartalmú; eltérés esetén a fő repóé
   az irányadó, és ezt a példányt hozzá kell igazítani.
+- **Saját modellképzés** ([CFA4-AI-MODEL-TRAINING-001](https://github.com/ubuntuokos/CinemaFundArchitecture4/blob/main/docs/plans/CFA4-AI-MODEL-TRAINING-001.md), tervezet, 2026-11-07): a `train` sémát
+  kapja ugyanebben a klaszterben; a képzési feladat egy `tasks.task` sor, a súly és a checkpoint
+  fájlrendszeren marad, a DB-ben csak hivatkozás és SHA-256.
 - **ADR-számozás:** az AI-réteg ADR-je 2026-11-07-én 0006-ról 0008-ra változott, mert a CFA4 fő repójában
   a 0006 a BacklotHub PostgreSQL-döntése, a 0007 a Media Services.
