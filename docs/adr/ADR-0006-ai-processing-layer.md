@@ -4,7 +4,7 @@
 **Állapot:** ELFOGADVA (tulajdonosi jóváhagyás, 2026-10-30); KÓD MÉG NINCS  
 **Kiadás:** HOLD
 
-> **Utolsó átnézés:** 2026-11-02 (F3: angol felirat-időzítés; 2026-11-01: a 6. pont, az ONNX nem kötelező; 2026-10-31: a 2. pont kivétele a zárt workerekre) · **Változás:** major (CFA4-AI-PLAN-001 és a CFA3/FA3 elődtervek
+> **Utolsó átnézés:** 2026-11-07 (2. pont: a súly és a tanítóadat licence a felhasználó felelőssége; 2026-11-02: F3: angol felirat-időzítés; 2026-11-01: a 6. pont, az ONNX nem kötelező; 2026-10-31: a 2. pont kivétele a zárt workerekre) · **Változás:** major (CFA4-AI-PLAN-001 és a CFA3/FA3 elődtervek
 > beépítése: F0–F6 kapuk, ONNX-es első kör, modellkezelő, erőforrás-kezelési szabályok, tartós
 > jobtár, bővített jobállapotok, szétbontott licencmezők) · **Részletes terv:**
 > [CFA4 AI tervdokumentum](https://claude.ai/artifact/MLd6UfHG1uPBdJ16B2JZBh) ·
@@ -123,14 +123,16 @@ K18), jóváhagyással. A modellkezelő szabályai:
 - **Modellrekord mezői:** azonosító, család, revízió, változat (például kvantálás), formátum,
   SHA-256, forrás, a négy licencmező (6. pont), a modellt használó képességek.
 - **Rögzített revízió:** a manifest pontos revíziót és hash-t ad meg. „Latest” nem fogadható el.
-- **Ismeretlen licenc vagy eredet blokkol:** az ilyen modellt a jegyzék nem kínálja fel, a job
-  `blocked` állapotba kerül, és a felület megmondja, mi hiányzik. **Kivétel a zárt workerekre**
-  (tulajdonosi döntés, 2026-10-31): a CFA4-gyel nem szállított, külön telepített zárt worker
-  implementációjánál a `weights` és a `dataset` rész `NOASSERTION`/`unknown` értéke nem blokkol,
-  hanem figyelmeztetést ad (a felület kiírja, melyik rész ismeretlen); a felelősség a worker
-  kiadójáé. A `code` és a `dependencies` ismeretlen értéke ott is blokkol, és kereskedelmi kérésre
-  a `no` vagy `unknown` rész mindenhol elutasítást ad. A CFA4-gyel szállított workerekre nincs
-  kivétel. Részletek: [#91 modellválasztás](../ai/modellvalasztas-091.md).
+- **A súly és a tanítóadat licence a felhasználó felelőssége** (tulajdonosi döntés, 2026-11-07,
+  a 2026-10-31-i, csak zárt workerekre szóló kivétel helyett): a CFA4 nem terjeszt modellt, a közös
+  letöltő a felhasználó kérésére közvetlenül a forrásból (például Hugging Face, GitHub) tölti le.
+  Ezért a `weights` és a `dataset` rész `NOASSERTION`, `unknown` vagy `no` értéke egyik workerben
+  sem blokkol, a CFA4-gyel szállított GPL-es workerekben sem. A felület a letöltés előtt megmutatja
+  a négy licencrészt, és a felhasználónak implementációnként és súlyhash-enként egyszer el kell
+  fogadnia a figyelmeztetést; addig a job `blocked` állapotban vár (`license` ok). Kereskedelmi
+  projektben erősebb figyelmeztetést ad, de nem tilt. A `code` és a `dependencies` rész
+  ismeretlen értéke továbbra is blokkol, mert azokat a worker kiadója szállítja. Részletek:
+  [#91 modellválasztás](../ai/modellvalasztas-091.md) 1.1 pont, CFA4-sdk `docs/protocol.md` 5. pont.
 - **Biztonságos formátum:** az első körben csak `.onnx` és `.safetensors`. Pickle-alapú formátum
   (`.pt`, `.bin`, `.ckpt`) csak a PyTorch-kapuban, külön szabállyal jöhet.
 - **Frissítés:** az új verzió mellé kerül, ellenőrzés után lesz aktív. Sikertelen frissítés nem
@@ -257,7 +259,7 @@ fogyasztja a sémát. A jobállapotok és a manifest v3 licencmezői az SDK-ban 
 - **A licenc négy külön mező** a manifestben (v3), mindegyik SPDX-azonosítóval és a kereskedelmi
   használat jelzésével: `code` (a worker kódja), `dependencies` (a futtató és a könyvtárak),
   `weights` (a modell súlyai), `dataset` (a tanítóadat, ha ismert). Egyetlen „kereskedelmi” igen/nem
-  nem elég, mert a kód és a súly licence gyakran eltér. Ismeretlen mező blokkol, a zárt workerek súly- és tanítóadat-részére vonatkozó kivétellel (2. pont).
+  nem elég, mert a kód és a súly licence gyakran eltér. Ismeretlen `code` vagy `dependencies` mező blokkol; a `weights` és a `dataset` rész a felhasználó felelőssége, egyszeri elfogadással (2. pont).
 - Fizetős extra csak külön folyamatként futó worker lehet. Használati korlát (például feldolgozott
   időtartam vagy 720p-s kimeneti felbontás) csak a zárt workerekben élhet, a GPL-es magban soha.
   Az alapprogram képességeit nem csonkítjuk. A freemium az első körben nem szerepel.

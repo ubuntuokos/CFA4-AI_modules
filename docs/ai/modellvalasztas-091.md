@@ -1,6 +1,6 @@
 # #91 Videó-felskálázás (Video Super-Resolution): modellválasztás az F3 kapuhoz
 
-> **Állapot:** elfogadva; tulajdonosi döntések 2026-10-31-én (1. és 3. pont) és 2026-11-02-án (F3: angol felirat-időzítés, 3.3 pont) · **Utolsó átnézés:** 2026-11-02 ·
+> **Állapot:** elfogadva; tulajdonosi döntések 2026-10-31-én (1. és 3. pont), 2026-11-02-án (F3: angol felirat-időzítés, 3.3 pont) és 2026-11-07-én (a felhasználó felelőssége, 1.1 pont) · **Utolsó átnézés:** 2026-11-07 ·
 > **Változás:** major (első változat) · **Döntés:** [ADR 0006](../adr/ADR-0006-ai-processing-layer.md)
 > F3 kapu, manifest v3 licencszabály ([CFA4-sdk `docs/protocol.md`](https://github.com/ubuntuokos/CFA4-sdk/blob/main/docs/protocol.md) 5. pont)
 
@@ -52,11 +52,30 @@ Kockázat: a fizetős worker maga kereskedelmi terjesztés, ezért a kutatási c
 (DIV2K, FlyingChairs) ott a legnagyobb jogi kockázat. A zárt worker kiadása előtt jogi
 véleményt érdemes kérni, vagy saját tanítású súlyt használni.
 
+### 1.1 Negyedik tulajdonosi döntés: a felhasználó felelőssége (2026-11-07)
+
+**István döntése (2026-11-07):** „ha modelt nem terjesztem akkor az a felhasználó felelőssége”.
+A CFA4 nem terjeszt modellt (tárhelye sincs hozzá); a közös letöltő a felhasználó kérésére
+közvetlenül a forrásból tölti le, ahogy a legtöbb alkalmazás a Hugging Face-ről. Ez felváltja a
+2026-10-31-i döntést, amely az ilyen modelleket a zárt workerbe szorította:
+
+- A `weights` és a `dataset` rész ismeretlen, csak kutatási vagy nem kereskedelmi licence egyik
+  workerben sem blokkol, a CFA4-gyel szállított GPL-es workerekben sem.
+- A letöltés előtt a felület megmutatja a négy licencrészt, és a felhasználó implementációnként
+  (és súlyhash-enként) egyszer elfogadja a figyelmeztetést. Kereskedelmi projektben erősebb a
+  figyelmeztetés, de nincs tiltás.
+- A `code` és a `dependencies` ismeretlen licence továbbra is blokkol.
+
+**Következmény a #91-re:** a Real-ESRGAN `RealESRGAN_x2plus` az ingyenes, GPL-es workerben is
+futhat, saját tanítás nélkül; a mérése a `scripts/dev/vsr-measure` (CFA4-AI_modules #15). A
+saját tanítás ([terv](felskalazo-sajat-tanitas.md)) nem feltétele a #91-nek, csak egy tiszta
+licencű alternatíva lehetősége. A lenti szövegek a 2026-10-31-i állapotot rögzítik.
+
 ## 2. Jelöltek
 
 | Jelölt | Kód | Súly | Tanítóadat | ONNX | Időbeli? | Javaslat |
 |---|---|---|---|---|---|---|
-| **Real-ESRGAN `RealESRGAN_x4plus` / `x2plus`** (RRDBNet) | BSD-3-Clause | BSD-3-Clause (a repó GitHub-kiadásában) | DIV2K: `no`; Flickr2K, OST: `NOASSERTION` → a GPL-es magban blokkol, zárt workerben figyelmeztet | hivatalos `scripts/pytorch2onnx.py` (az x4-hez; az x2-höz `scale=2` kell), csak konvolúció | nem, képkockánként | zárt workeres út, a fizetős workerek kapujában |
+| **Real-ESRGAN `RealESRGAN_x4plus` / `x2plus`** (RRDBNet) | BSD-3-Clause | BSD-3-Clause (a repó GitHub-kiadásában) | DIV2K: `no`; Flickr2K, OST: `NOASSERTION` → 2026-11-07 óta egyszeri elfogadással futhat (1.1 pont) | hivatalos `scripts/pytorch2onnx.py` (az x4-hez; az x2-höz `scale=2` kell), csak konvolúció | nem, képkockánként | **a #91 elsődleges jelöltje** (1.1 pont), mérés: `scripts/dev/vsr-measure` |
 | Real-ESRGAN `realesr-general-x4v3` (SRVGGNetCompact) | BSD-3-Clause | BSD-3-Clause | nem dokumentált: `unknown` | csak konvolúció és PixelShuffle | nem | tartalék a zárt workerben |
 | **RealBasicVSR** | Apache-2.0 | a README Dropboxra mutat, külön licenc nélkül: `NOASSERTION` → blokkol | REDS + FlyingChairs: `no` | `grid_sample` (opset 16), kétirányú rekurzió: ablakos export kell | igen | a fizetős workerek kapujában, ha a súlylicenc tisztázódik; GPL-es változathoz az architektúra újratanítása kell FlyingChairs nélkül |
 | BasicVSR++ | Apache-2.0 | OpenMMLab modelltár, külön licenc nélkül: `NOASSERTION` → blokkol | REDS + FlyingChairs: `no` | modulált deformálható konvolúció: ORT CUDA-támogatása ellenőrizendő | igen | tartalék |
@@ -238,5 +257,5 @@ Saját tanítású felskálázóhoz, amikor a #91 sorra kerül:
 - Elfogadható-e a Parakeet v3 (magyar beszédfelismerés) a GPL-es workerben a Fisher- és a belső
   adat ellenére, vagy csak a zárt workerben?
 - Mi legyen a már használt Whisperrel és Kokoróval (ismeretlen tanítóadat)?
-- Kell-e jogi vélemény a zárt worker kiadása előtt (DIV2K, FlyingChairs)?
+- Kell-e jogi vélemény a kutatási tanítóadatú modellek felkínálása előtt (DIV2K, FlyingChairs)? (Az 1.1 pont óta a felelősség a felhasználóé.)
 - Írjunk-e a RealBasicVSR és a BasicVSR++ szerzőjének a súlylicenc tisztázásáért?
