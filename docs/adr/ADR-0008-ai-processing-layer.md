@@ -375,7 +375,7 @@ LibriSpeech CC BY 4.0), tanítás nélkül; részletek: [modellválasztás](../a
 alapján időzített feliratsáv kerül az idővonalra a referenciakártyán, a minimumkorlátok alatt; a
 klip változatlan, az Undo a sávot visszaveszi, és a mérés teljesíti a modellválasztás
 4. pontjának küszöbeit. A #91 videó-felskálázás (Real-ESRGAN, a felhasználó tölti le) későbbi
-kapuban jön; saját tanítású modell nincs (tulajdonosi döntés, 2026-11-07).
+kapuban jön; hozzá nem tanítunk saját modellt (tulajdonosi döntés, 2026-11-07).
 
 **F4 – Többi ONNX-képesség.** Zajszűrés, képkocka-interpoláció és a többi tisztán ONNX-es
 képjavító (a 25-ből), valamint a SAM2-alapú maszkolás és háttéreltávolítás (K4), és a Media Intelligence
