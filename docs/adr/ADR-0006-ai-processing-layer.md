@@ -4,7 +4,7 @@
 **Állapot:** ELFOGADVA (tulajdonosi jóváhagyás, 2026-10-30); KÓD MÉG NINCS  
 **Kiadás:** HOLD
 
-> **Utolsó átnézés:** 2026-11-07 (2. pont: a súly és a tanítóadat licence a felhasználó felelőssége; 2026-11-02: F3: angol felirat-időzítés; 2026-11-01: a 6. pont, az ONNX nem kötelező; 2026-10-31: a 2. pont kivétele a zárt workerekre) · **Változás:** major (CFA4-AI-PLAN-001 és a CFA3/FA3 elődtervek
+> **Utolsó átnézés:** 2026-11-07 (tartós jobtár: PostgreSQL, [PostgreSQL-adatréteg](../ai/postgresql-adatreteg.md); 2. pont: a súly és a tanítóadat licence a felhasználó felelőssége; 2026-11-02: F3: angol felirat-időzítés; 2026-11-01: a 6. pont, az ONNX nem kötelező; 2026-10-31: a 2. pont kivétele a zárt workerekre) · **Változás:** major (CFA4-AI-PLAN-001 és a CFA3/FA3 elődtervek
 > beépítése: F0–F6 kapuk, ONNX-es első kör, modellkezelő, erőforrás-kezelési szabályok, tartós
 > jobtár, bővített jobállapotok, szétbontott licencmezők) · **Részletes terv:**
 > [CFA4 AI tervdokumentum](https://claude.ai/artifact/MLd6UfHG1uPBdJ16B2JZBh) ·
@@ -59,7 +59,7 @@ felelőse van, és egyik sem végzi a másik munkáját.
 | 2 | Modellkezelő | `cfa4-ai-models` | L2 | Közös modelltár, SHA-256 ellenőrzés és deduplikáció, verziók, licenc, frissítés, törlés csak a felhasználó döntésével | Melyik modell fusson, melyik GPU-n | Model Manager |
 | 3 | Feladattervező (az orchesztrátor egyik fele) | `cfa4-ai-jobs` | L2 | Elemzés → Javaslat → Előnézet → Alkalmazás lánc, szakaszolás (chunking), függőségek, jobállapotok | Modellválasztás, hardver | workflow-réteg |
 | 4 | Erőforrás-kezelő (az orchesztrátor másik fele) | `cfa4-ai-jobs` | L2 | Befogadás és atomi foglalás, P0/P1/P2/R osztályok, GPU-nkénti VRAM-nyilvántartás (NVML), LRU modellmegtartás, OOM-visszalépési létra | Modellfájlok, a feladat tartalma | Host Resource Broker |
-| 5 | Tartós jobtár | `cfa4-ai-jobs` (redb) | L2 | A jobok állapota és naplója, amely a CFA4 újraindítása után is megmarad | Futtatás | Temporal |
+| 5 | Tartós jobtár | `cfa4-ai-jobs` a `cfa4-store`-on át (PostgreSQL) | L2 | A jobok állapota és naplója, amely a CFA4 újraindítása után is megmarad; licencelfogadások, modellrekordok, gyorsítótár-index | Futtatás | Temporal |
 | 6 | Worker-felügyelő | `cfa4-ai-workers` | L3 | Worker-folyamatok indítása, felügyelete, újraindítása, az IPC kliensoldala | Ütemezés, modellválasztás | Package Management izolációja |
 | 7 | Médiahíd és eredménytár | `cfa4-ai-workers` + `media` | L3 | Bemenetek átadása fájl- és asset-hivatkozással, eredmények `MediaSource`-ként, tartalomcímzett gyorsítótár | A projekt módosítása | Shared Asset Management |
 | 8 | Naplózás és diagnosztika | `cfa4-ai-jobs` | L2 | Worker-hibák, VRAM-csúcsok, a minimumtesztek mérései, a CFA4 meglévő naplójába | Döntések | Evidence (egyszerűsítve) |
@@ -183,9 +183,15 @@ számolni vagy a felhasználónak jóvá kell hagynia. Az Alkalmazás egyetlen v
 A worker a kézfogásban deklarálja, hogy támogatja-e a megszakítást, az előrehaladás jelzését, az
 előnézetet és a folytatást. A felület csak azt kínálja fel, amit a worker ténylegesen tud.
 
-**Tartós jobtár:** a `cfa4-ai-jobs` tiszta Rust kulcs–érték tárban (redb) őrzi a jobokat. A
-CFA4 újraindítása után a kész eredmények megmaradnak, a félbemaradt jobok `failed` vagy (ha a
-worker támogatja) folytatható állapotba kerülnek. Külső workflow-szerver (Temporal) nincs.
+**Tartós jobtár** (tulajdonosi döntés, 2026-11-07): a jobokat, az állapotnaplót, a
+licencelfogadásokat, a modellrekordokat és a gyorsítótár indexét a közös CFA4 PostgreSQL-klaszter
+őrzi (ugyanaz, amelyet a CFA4 BacklotHub-ADR-je bevezet), saját `tasks`, `ai` és `cache` sémában, a
+`cfa4-store` crate-en át. Új adatbázismotor (redb, SQLite) nincs. Egy job egyetlen tranzakcióban
+indul, futási bérlettel, így újraindítás vagy adatbázishiba után sem indulhat el kétszer. A CFA4
+újraindítása után a kész eredmények megmaradnak, a félbemaradt jobok az utolsó ellenőrzőponttól
+folytatódnak (ha a worker támogatja) vagy `failed` állapotba kerülnek. Ha a PostgreSQL nem fut, új
+job nem indul, a vágás pedig változatlanul működik. Külső workflow-szerver (Temporal) nincs.
+Részletek: [PostgreSQL-adatréteg](../ai/postgresql-adatreteg.md).
 
 ### 5. Crate-ek és rétegek
 
@@ -196,7 +202,8 @@ A tervezett rétegbesorolás a crate-ek létrehozásakor az `xtask layers` szab�
 | `cfa4-ai-types` | L1 | Közös típusok: képességazonosító, alak (frame/window/clip/generative), jobállapotok, hibakódok |
 | `cfa4-ai-models` | L2 | Modelltár, modellrekordok, SHA-256 ellenőrzés, deduplikáció, verziók |
 | `cfa4-ai-registry` | L2 | Manifestolvasás, sémaellenőrzés, hardver szerinti szűrés, útválasztás |
-| `cfa4-ai-jobs` | L2 | Feladatgráf, erőforrás-kezelő, VRAM-nyilvántartás, gyorsítótár-kulcs, tartós jobtár |
+| `cfa4-store` | L2 | PostgreSQL-kapcsolatkészlet, migrációk, típusos lekérdezések (a `cargo xtask wasm` nem kapu, a WASM nem CFA4-cél) |
+| `cfa4-ai-jobs` | L2 | Feladatgráf, erőforrás-kezelő, VRAM-nyilvántartás, gyorsítótár-kulcs, tartós jobtár (a `cfa4-store`-on át) |
 | `cfa4-ai-workers` | L3 | Worker-folyamatok indítása, felügyelete és újraindítása, az IPC kliensoldala |
 | `ai.*` parancsok | L4 | A `crates/engine` parancsregiszterében, nem a `ui-egui`-ban |
 
@@ -308,6 +315,8 @@ fogyasztja a sémát. A jobállapotok és a manifest v3 licencmezői az SDK-ban 
   jöhet, saját ADR-rel.
 - **Python a CFA4 folyamatán belül:** egy modellhiba a szerkesztőt is magával vinné.
 - **Temporal mint workflow-motor** (CFA3): külön szerver, egy helyi szerkesztőhöz túl nehéz.
+- **redb vagy SQLite mint jobtár** (az ADR korábbi változata, 2026-11-07-ig): a CFA4-ben már elfogadott
+  PostgreSQL mellett második adatbázismotor lenne; a feladatsor, az AI és a BacklotHub egy klaszteren osztozik.
 - **Az FA3 bizonyíték- és kapurendszere** (receipt-ek, kanonikus JSON-szabályok): a CFA4-ben a
   tesztek és a minimumtesztek a bizonyíték.
 - **8 GB-os alapprofil** (PLAN-001): a tulajdonos a 12 GB-os minimum mellett döntött.
@@ -322,7 +331,8 @@ feltételei teljesültek. Minden kapu végén legyen valami, ami ellenőrizhető
 Addig ebben a repóban **nem indul AI-crate**, és nem kerül `ai.*` parancs a motorba. Az átállás
 alatt is folytatható, mert nem érinti a felületet:
 
-- dokumentáció: ez az ADR, a [besorolási táblák](../ai/README.md), a Kdenlive-terv 11.3 pontja;
+- dokumentáció: ez az ADR, a [besorolási táblák](../ai/README.md), a Kdenlive-terv 11.3 pontja, a
+  [PostgreSQL-adatréteg](../ai/postgresql-adatreteg.md) terve (PG-0);
 - a minimumteszt-burkoló (`scripts/dev/run-minspec.sh`) és a tesztje;
 - a worker-protokoll, a sémák (jobállapotok, manifest v3) és a `cfa4-ai-protocol` crate a külön
   [CFA4-sdk](https://github.com/ubuntuokos/CFA4-sdk) repóban (MIT OR Apache-2.0);
@@ -332,16 +342,21 @@ alatt is folytatható, mert nem érinti a felületet:
 
 *Kilépés:* az egui nincs a buildben, a Qt 6 shell a valódi motorral dolgozik.
 
-**F1 – Alaptípusok és modellkezelő.** `cfa4-ai-types`, `cfa4-ai-models`, `cfa4-ai-registry`, a
-`cfa4-ai-protocol` bekötése. *Kilépés:* a jegyzék beolvassa a manifesteket és a referenciagépen
+**F1 – Alaptípusok, modellkezelő és adattár.** `cfa4-ai-types`, `cfa4-ai-models`, `cfa4-ai-registry`, a
+`cfa4-ai-protocol` bekötése, és a `cfa4-store` (PostgreSQL-adatréteg PG-1: kapcsolat, migráció,
+hibakezelés). *Kilépés:* a migráció oda-vissza fut; hiányzó vagy leállt PostgreSQL-re kezelhető
+hibát ad, pánik nélkül; a jegyzék beolvassa a manifesteket és a referenciagépen
 helyesen szűr; a modellkezelő hash-t ellenőriz, deduplikál, és a hiányzó vagy ismeretlen licencű
 modellt `blocked`-ként jelzi; a jegyzék futtatás nélkül is megmondja, mi futna és miért (vagy miért
 nem), és a felület ezt mutatja; minden hibás bemenetre hibát ad, pánik nélkül.
 
 **F2 – Jobok, erőforrás-kezelő, ONNX worker.** `cfa4-ai-jobs` (erőforrás-kezelő, tartós jobtár),
-`cfa4-ai-workers`, az ONNX Runtime worker egy egyszerű tesztmodellel. *Kilépés:* a
-`run-minspec.sh` alatt a job végigmegy az összes állapoton; a worker összeomlása, a megszakítás,
-az OOM és a CFA4 újraindítása tesztelten kezelt.
+a PostgreSQL-adatréteg PG-2 (`tasks` séma: indítás, bérlet, ütemezés, kimenőtár) és PG-3 (`ai` és
+`cache` séma) fázisa, `cfa4-ai-workers`, az ONNX Runtime worker egy egyszerű tesztmodellel.
+*Kilépés:* a `run-minspec.sh` alatt a job végigmegy az összes állapoton, és minden állapotváltás
+az adatbázisba kerül; a worker összeomlása, a megszakítás, az OOM, a CFA4 újraindítása és az
+adatbázis kiesése tesztelten kezelt; a folyamat leölése az indítási tranzakció bármely pontján
+után a job legfeljebb egyszer fut.
 
 **F3 – Első képesség: angol felirat-időzítés.** Szöveg–hang illesztés (CTC-alapú kényszerített
 illesztés) a `facebook/wav2vec2-base-960h` modellel ONNX-en, a teljes Elemzés → Javaslat →
@@ -355,10 +370,11 @@ klip változatlan, az Undo a sávot visszaveszi, és a mérés teljesíti a mode
 saját tanítású súllyal.
 
 **F4 – Többi ONNX-képesség.** Zajszűrés, képkocka-interpoláció és a többi tisztán ONNX-es
-képjavító (a 25-ből), valamint a SAM2-alapú maszkolás és háttéreltávolítás (K4).
+képjavító (a 25-ből), valamint a SAM2-alapú maszkolás és háttéreltávolítás (K4), és a Media Intelligence
+médiaindexe (PostgreSQL-adatréteg PG-4: `mi` séma, pgvector) az első kép- és szövegbeágyazó képességgel.
 
 **F5 – candle.** Átirat és szövegalapú vágás a meglévő `transcript.generate` funkcióval
-(K2, G19), beszédszintézis (`cfa4-tts`), hangfunkciók.
+(K2, G19), az átiratok kereshetővé tétele a Media Intelligence indexében, beszédszintézis (`cfa4-tts`), hangfunkciók.
 
 **F6 – PyTorch és LLM.** A közös PyTorch-worker és a generatív családok (M1 videódiffúzió és a
 többi) a VRAM-szintek szerint, a helyi LLM-es funkciók. A helyi LLM méretét (kis vagy nagy modell)
