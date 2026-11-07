@@ -6,7 +6,7 @@ LAT,https://github.com/bytedance/LatentSync,Python,nem igazolt,M2,Elsődleges,"L
 SONIC,https://github.com/jixiaozhong/Sonic,Python,nem igazolt,M2,Elsődleges,hangvezérelt portré-animáció; licenc ellenőrizendő
 MIMIC,https://github.com/TencentARC/MimicMotion,Python,nem igazolt,M3,Elsődleges,pózvezérelt emberi videó
 DENO,https://github.com/swz30/Restormer,Python,nem igazolt,M4,Elsődleges,"Restormer (zaj, elmosódás, eső)"
-REALER,https://github.com/xinntao/Real-ESRGAN,Python,nem igazolt,M4,Elsődleges,"Real-ESRGAN, ONNX-exporttal; BSD-3"
+REALER,https://github.com/xinntao/Real-ESRGAN,Python,nem igazolt,M4,Elsődleges,"Real-ESRGAN, ONNX-exporttal; kód és súly BSD-3-Clause, tanítóadat DF2K+OST (DIV2K csak kutatásra); az előtanított súly csak a fizetős workerek kapujában; a #91 GPL-es változatához saját, REDS-en tanított SRVGGNetCompact kell; az F3 az angol felirat-időzítés (modellvalasztas-091.md)"
 PRRIFE,https://github.com/hankhank10/Practical-RIFE,Python,nem igazolt,M5,Elsődleges,"Practical-RIFE, ONNX-képes"
 DIFFUER,https://github.com/lixiaowen-xw/DiffuEraser,Python,nem igazolt,M6,Elsődleges,diffúziós objektumeltávolítás
 MANIM,https://github.com/ManimCommunity/manim,Python,nem igazolt,M7,Elsődleges,matematikai/infografikus animáció; MIT
@@ -32,9 +32,9 @@ INFINITE,https://github.com/MeiGen-AI/InfiniteTalk,Python,nem igazolt,M2,Tartal�
 LIVE,https://github.com/KwaiVGI/LivePortrait,Python,nem igazolt,M2,Tartalék,"LivePortrait, gyors reenactment; a használt arcdetektor-modellek licence ellenőrizendő"
 POSE,https://github.com/TMElyralab/MusePose,Python,nem igazolt,M3,Tartalék,MusePose; függőségei ellenőrizendők
 DEOLD,https://github.com/jantic/DeOldify,Python,nem igazolt,M4,Tartalék,DeOldify színezés
-FASTDVD,https://github.com/m-tassano/fastdvdnet,Python,nem igazolt,M4,Tartalék,"gyors videózajszűrés, ONNX-képes"
-REALVSR,https://github.com/ckkelvinchan/RealBasicVSR,Python,nem igazolt,M4,Tartalék,RealBasicVSR
-VSR,https://github.com/ckkelvinchan/BasicVSR_PlusPlus,Python,nem igazolt,M4,Tartalék,BasicVSR++; ONNX-export ellenőrizendő
+FASTDVD,https://github.com/m-tassano/fastdvdnet,Python,nem igazolt,M4,Tartalék,"gyors videózajszűrés, ONNX-képes; kód MIT, súly és tanítóadat (DAVIS) ellenőrizendő; #93 tartalék"
+REALVSR,https://github.com/ckkelvinchan/RealBasicVSR,Python,nem igazolt,M4,Tartalék,"RealBasicVSR; kód Apache-2.0, súlylicenc nincs megadva, tanítóadat REDS (CC BY 4.0) + FlyingChairs (csak kutatásra); #91 csak a fizetős workerek kapujában, GPL-hez újratanítás kell"
+VSR,https://github.com/ckkelvinchan/BasicVSR_PlusPlus,Python,nem igazolt,M4,Tartalék,"BasicVSR++; kód Apache-2.0, súlylicenc nincs megadva; DCN miatt ONNX-export ellenőrizendő"
 AMT,https://github.com/MCG-NKU/AMT,Python,nem igazolt,M5,Tartalék,interpoláció
 FILM,https://github.com/google-research/frame-interpolation,Python,nem igazolt,M5,Tartalék,"nagy mozgásokra; TensorFlow, ezért külön környezetet kérne"
 IFR,https://github.com/ltkong218/IFRNet,Python,nem igazolt,M5,Tartalék,könnyű interpoláció
@@ -74,9 +74,9 @@ DVD,https://github.com/m-tassano/denoising-flash,Python,nem igazolt,M4,Referenci
 EDVR,https://github.com/xinntao/EDVR,Python,nem igazolt,M4,Referencia,2019-es
 ENH,https://github.com/TNTwise/REAL-Video-Enhancer,Python,nem igazolt,M4,Referencia,"kész alkalmazás, nem könyvtár; mintának jó"
 ESTRNN,https://github.com/sbunn3/ESTRNN,Python,nem igazolt,M4,Referencia,kutatási kód
-RVRT,https://github.com/JingyunLiang/RVRT,Python,nem igazolt,M4,Referencia,"nehéz, lassú"
+RVRT,https://github.com/JingyunLiang/RVRT,Python,nem igazolt,M4,Referencia,"nehéz, lassú; kód CC BY-NC 4.0, kizárva"
 TCVC,https://github.com/zhangmozhe/Deep-Exemplar-based-Video-Colorization,Python,nem igazolt,M4,Referencia,"példaalapú színezés, régi"
-VRT,https://github.com/JingyunLiang/VRT,Python,nem igazolt,M4,Referencia,"nehéz, lassú"
+VRT,https://github.com/JingyunLiang/VRT,Python,nem igazolt,M4,Referencia,"nehéz, lassú; kód CC BY-NC 4.0, kizárva"
 RIFE,https://github.com/hzwer/ECCV2022-RIFE,Python,nem igazolt,M5,Referencia,az eredeti RIFE; a Practical-RIFE kiváltja
 E2FGVI,https://github.com/MCG-NKU/E2FGVI,Python,nem igazolt,M6,Referencia,régebbi inpainting
 FUSE,https://github.com/ruiliu-ai/FuseFormer,Python,nem igazolt,M6,Referencia,régebbi inpainting
