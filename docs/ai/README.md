@@ -1,14 +1,14 @@
 # CFA4 AI – besorolási táblák
 
 > **Állapot:** javaslat, egyetlen projekt–típus pár sincs még tesztelve · **Utolsó átnézés:**
-> 2026-10-30 · **Változás:** minor (a „Fázis” oszlop és az ADR 0008 F0–F6 kapuinak megfeleltetése) · **Döntés:**
+> 2026-11-07 · **Változás:** minor (a „Fázis” oszlopból „Kapu” lett: AI-F0…AI-F6; a nem kereskedelmi súlyú modellek választhatók) · **Döntés:**
 > [ADR 0008](../adr/ADR-0008-ai-processing-layer.md)
 
 | Fájl | Tartalom |
 |---|---|
-| [`200-tipus-besorolas.csv`](200-tipus-besorolas.csv) | A 200 funkciótípus: csoport, motorcsalád (M1–M12), besorolás (képesség, változat, sablon, kísérleti), futtató, 12 GB-os futtathatóság, fázis. A „Jelölt repók” oszlop a `projektjeloltek.csv` azonosítóira hivatkozik (típusonként legfeljebb 5 hely). A „P-kódok” az eredeti 200-as lista projektkódjai, ezek feloldása még hiányzik |
+| [`200-tipus-besorolas.csv`](200-tipus-besorolas.csv) | A 200 funkciótípus: csoport, motorcsalád (M1–M12), besorolás (képesség, változat, sablon, kísérleti), futtató, 12 GB-os futtathatóság, AI-kapu. A „Jelölt repók” oszlop a `projektjeloltek.csv` azonosítóira hivatkozik (típusonként legfeljebb 5 hely). A „P-kódok” az eredeti 200-as lista projektkódjai, ezek feloldása még hiányzik |
 | [`projektjeloltek.csv`](projektjeloltek.csv) | A 107 jelölt repó: motorcsalád és javaslat (elsődleges, értékelendő Rust, tartalék, referencia, kihagyás) |
-| [`hang-besorolas.csv`](hang-besorolas.csv) | 60 hang-, zene- és beszédfunkció: motorcsalád, besorolás, ami a CFA4-ben már megvan, elsődleges és tartalék jelölt, futtató, kód- és súlylicenc külön, kereskedelmi használat, 12 GB-os futtathatóság, fázis |
+| [`hang-besorolas.csv`](hang-besorolas.csv) | 60 hang-, zene- és beszédfunkció: motorcsalád, besorolás, ami a CFA4-ben már megvan, elsődleges és tartalék jelölt, futtató, kód- és súlylicenc külön, kereskedelmi használat, 12 GB-os futtathatóság, AI-kapu |
 | [`modellvalasztas-091.md`](modellvalasztas-091.md) | Az F3 kapu modellválasztása: a #91 videó-felskálázás jelöltjei négyrészes licenccel (kód, függőség, súly, tanítóadat), a tiszta licencű alternatívák keresése, a döntés (F3 = angol felirat-időzítés wav2vec2-vel) és a mérési terv |
 | [`postgresql-adatreteg.md`](postgresql-adatreteg.md) | A feladatsor, az ütemezés, az AI-jobok, a licencelfogadások, a modellrekordok és a gyorsítótár-index PostgreSQL-adatrétege (CFA4-TASKSTORE-PG-001, elfogadva 2026-11-07): séma, kétszeri indítás elleni védelem, adatbázis-kiesés, PG-0…PG-4 fázisok az F1–F2 kapukban |
 
@@ -32,9 +32,16 @@ A hanglista miatt három új motorcsalád kell; az M10 és az M12 a 200-as list�
 A manifestben a hangfunkció azonosítója `AU-nnn`, ahol `nnn` a tábla sorszáma (például `AU-010` a
 beszédgenerálás), a 200-as lista `AI-nnn` azonosítója mellett.
 
-A „Fázis” oszlop a régi havi sorszámot tartalmazza. 2026-10-30 óta az
-[ADR 0008](../adr/ADR-0008-ai-processing-layer.md) F0–F6 kapukat használ, és a kaput a futtató
-határozza meg: ONNX → F3/F4, candle → F5, PyTorch és helyi LLM → F6. A „kész” azt jelenti, hogy a funkció AI nélkül, a meglévő
+A „Kapu” oszlop (2026-11-07 előtt „Fázis”, a régi havi sorszámmal) az
+[ADR 0008](../adr/ADR-0008-ai-processing-layer.md) kapuját adja, amelyet a futtató határoz meg:
+ONNX → AI-F4 (a felirat-időzítő AI-F3), candle és tract → AI-F5, PyTorch, helyi LLM és az M1/M7
+motorcsaládra épülő funkciók → AI-F6. Több futtatónál a legkésőbbi kapu számít. A „nem AI” sor
+a meglévő Rust-kóddal, modell nélkül készül.
+
+A „12 GB-on” oszlopban a generatív videófunkciók (M1) a 12 GB-os gépen 480–720p-ben generálnak, és
+a 2K-s kimenetet (az ADR 0008 9. pontjának teljesítményígérete) a #91 felskálázó adja; ez az
+igazolt végrehajtási útjuk a minimumgépen. A „nagy VRAM” sorok a minimumgépen nem érhetők el, a
+nagyobb kártya nyitja meg őket (ADR 0008, 3. és 9. pont). A „kész” azt jelenti, hogy a funkció AI nélkül, a meglévő
 crate-ekkel már működik. A „K…” a [Kdenlive-terv](../kdenlive-parity.md) teendőjére utal.
 
 **Ami már megvan, ezért nem kell rá modell:**
@@ -162,12 +169,15 @@ Hat funkció (hangosság, de-esser, térhang, tempó, nyelvfelismerés, zenei re
   workerben.
 - **Rust-jelöltek.** A DeepFilterNet és a Basic Pitch tract-tal tiszta Rustban fut. A
   `cargo deny` és a pánikmentesség ellenőrzése után folyamaton belül is futhatnak.
-- **Szabályzat kell.** A hangklónozáshoz, a beszéd- és énekhang-konverzióhoz és a beszéd
-  átírásához hozzájárulás és vízjel kell, mint az arccseréhez (38. típus). A beszélőazonosítás
-  biometrikus adatot kezel, ezért GDPR-szabály is kell hozzá.
+- **Hozzájárulás és jelölés.** A hangklónozásra, a beszéd- és énekhang-konverzióra és a beszéd
+  átírására ugyanaz a szabály vonatkozik, mint az arccserére (ADR 0008, lezárt kérdések,
+  2026-11-07): projektenként kötelező nyilatkozat az érintett hozzájárulásáról, és az exportban
+  nem kikapcsolható „AI által módosított” jelölés és metaadat. A beszélőazonosítás biometrikus
+  adat, ezért az arcindexeléshez hasonlóan csak projektenkénti bekapcsolással fut, és egy lépésben
+  törölhető (PostgreSQL-adatréteg, 4. pont).
 - **Python 3.14.** Az AI-workerek nem a rendszer Pythonját használják, hanem a `uv` által
   rögzített interpretert a közös PyTorch-környezetben (ADR 0008, 6. pont). Ezért például az
-  AudioCraft régi Python-igénye nem akadály, de a kizárt modellek így sem jönnek szóba.
+  AudioCraft régi Python-igénye nem akadály.
 - **Modellkatalógus.** A worker-manifest ([CFA4-sdk](https://github.com/ubuntuokos/CFA4-sdk))
   már tárolja a kód és a súly licencét külön, a letöltési címet, a méretet, a VRAM-ot és a
   RAM-ot. A támogatott nyelvek mezője (`capability.languages`, BCP 47) a CFA4-sdk-ba kerül.

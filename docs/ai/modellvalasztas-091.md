@@ -1,6 +1,6 @@
 # #91 Videó-felskálázás (Video Super-Resolution): modellválasztás az F3 kapuhoz
 
-> **Állapot:** elfogadva; tulajdonosi döntések 2026-10-31-én (1. és 3. pont), 2026-11-02-án (F3: angol felirat-időzítés, 3.3 pont) és 2026-11-07-én (a felhasználó felelőssége, 1.1 pont) · **Utolsó átnézés:** 2026-11-07 ·
+> **Állapot:** elfogadva; tulajdonosi döntések 2026-10-31-én (1. és 3. pont), 2026-11-02-án (F3: angol felirat-időzítés, 3.3 pont) és 2026-11-07-én (a felhasználó felelőssége, 1.1 pont) · **Utolsó átnézés:** 2026-11-07 (a lezárt kérdésekkel) ·
 > **Változás:** major (első változat) · **Döntés:** [ADR 0008](../adr/ADR-0008-ai-processing-layer.md)
 > F3 kapu, manifest v3 licencszabály ([CFA4-sdk `docs/protocol.md`](https://github.com/ubuntuokos/CFA4-sdk/blob/main/docs/protocol.md) 5. pont)
 
@@ -210,7 +210,7 @@ forrásmegjelölés kell (Apache-2.0 NOTICE, CC BY 4.0).
 
 ## 4. Mérési terv (F3: felirat-időzítés)
 
-A `scripts/dev/run-minspec.sh` alatt (32 GB RAM, 8 mag, csak a 3060):
+A `scripts/dev/run-minspec.sh` alatt, mindkét profillal (`CFA4_PROFILE=ajanlott`: 32 GB RAM, `CFA4_PROFILE=minimum`: 16 GB RAM; 8 mag, csak a 3060):
 
 - 44,1 és 48 kHz-es forrásklipek is: az átmintavételezés után az időbélyegek ugyanazok, mint
   16 kHz-es forrásnál.
@@ -224,7 +224,8 @@ A `scripts/dev/run-minspec.sh` alatt (32 GB RAM, 8 mag, csak a 3060):
   lehet. (LDC-s korpuszt, például
   TIMIT-et, nem használunk.)
 - Sebesség: 60 perces hang valós idejű tényezője (RTF) és csúcs-VRAM a 3060-on, valamint a CPU-s
-  visszalépés ideje ugyanarra.
+  út ideje ugyanarra (a minimumgépen a GPU melletti másik igazolt út, nem GPU nélküli AI-út;
+  ADR 0008, 3. pont).
 - Az eredmény a manifest `resources.vram_mb` mezőjébe és a képesség sebességjelzőjébe kerül.
 
 **Átmeneti küszöbök az F3 kilépéséhez** (az első mérés után a tulajdonos véglegesíti):
@@ -245,7 +246,7 @@ nem zárul le.
 
 ## 4.1 Mérési terv (#91: Real-ESRGAN)
 
-A `scripts/dev/run-minspec.sh` alatt (32 GB RAM, 8 mag, csak a 3060):
+A `scripts/dev/run-minspec.sh` alatt, mindkét profillal (`CFA4_PROFILE=ajanlott`: 32 GB RAM, `CFA4_PROFILE=minimum`: 16 GB RAM; 8 mag, csak a 3060):
 
 A felhasználó által letöltött Real-ESRGAN `RealESRGAN_x2plus`-hoz, a `scripts/dev/vsr-measure`
 eszközzel:
@@ -253,14 +254,20 @@ eszközzel:
 - ONNX-export fp32 és fp16, `onnxruntime` 1.2x CUDA EP-vel; az eredmény egyezése a PyTorch-csal
   (PSNR ≥ 45 dB ugyanazon a bemeneten).
 - 2048×1080-as kimenet, 10 s-os klip: csúcs-VRAM, képkocka/s, csempemérettel (256, 512).
-- CPU-s visszalépés ideje ugyanarra a klipre.
+- A CPU-s út ideje ugyanarra a klipre (a GPU melletti másik igazolt út; ADR 0008, 3. pont).
 - Az eredmény a manifest `resources.vram_mb` és `fps_hint` mezőjébe kerül.
 
-## 5. Nyitott kérdések
+## 5. Lezárt kérdések (2026-11-07)
 
-- Legyen-e a felirat-időzítésnek magyar változata (kész modellel, például a Parakeet v3 alapján; saját tanítás nincs)?
-- Elfogadható-e a Parakeet v3 (magyar beszédfelismerés) a GPL-es workerben a Fisher- és a belső
-  adat ellenére, vagy csak a zárt workerben?
-- Mi legyen a már használt Whisperrel és Kokoróval (ismeretlen tanítóadat)?
-- Kell-e jogi vélemény a kutatási tanítóadatú modellek felkínálása előtt (DIV2K, FlyingChairs)? (Az 1.1 pont óta a felelősség a felhasználóé.)
-- Írjunk-e a RealBasicVSR és a BasicVSR++ szerzőjének a súlylicenc tisztázásáért?
+A licencszabály (1.1 pont, ADR 0008 2. pont) szerint a súly és a tanítóadat licence a felhasználó
+felelőssége, ezért:
+
+- A Parakeet v3 (magyar beszédfelismerés) a GPL-es workerben is futhat, a Fisher- és a belső
+  tanítóadat ellenére, a négy licencrész megjelenítésével és egyszeri elfogadással.
+- A már használt Whisper és Kokoro marad; a tanítóadatuk ismeretlen része ugyanígy a felhasználó
+  elfogadásával kezelendő.
+- Jogi vélemény a kutatási tanítóadatú modellek felkínálása előtt nem kell, mert a CFA4 modellt
+  nem terjeszt.
+
+Nyitott még: legyen-e a felirat-időzítésnek magyar változata kész modellel (például a Parakeet v3
+alapján; saját tanítás nincs)? Ez a tulajdonos döntése.

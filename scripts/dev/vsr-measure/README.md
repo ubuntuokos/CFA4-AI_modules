@@ -52,8 +52,8 @@ Valódi filmanyag legyen (arcok, szöveg, zaj, mozgás), ne szintetikus kép.
 
 ## Futtatás a minimumgépen
 
-Minden mérés a `run-minspec.sh` alatt fut (32 GB RAM, 8 mag, egyetlen referencia-GPU; a végleges a
-3060). Az RTX A4000-en ugyanaz érvényes, mint az F3-nál (`scripts/dev/f3-align/README.md`): a
+Minden mérés a `run-minspec.sh` alatt fut, mindkét profillal (`CFA4_PROFILE=ajanlott`: 32 GB RAM, alap; `CFA4_PROFILE=minimum`: 16 GB RAM, ott csak az számít, hogy összeomlás nélkül lefut), 8 maggal, egyetlen referencia-GPU-val (a végleges
+a 3060). Az RTX A4000-en ugyanaz érvényes, mint az F3-nál (`scripts/dev/f3-align/README.md`): a
 `CFA4_REF_GPU=<az A4000 indexe>` kell, a parity végleges, a VRAM ideiglenes, a sebesség csak
 tájékoztató.
 

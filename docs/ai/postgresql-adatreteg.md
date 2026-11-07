@@ -117,8 +117,9 @@ keverhet.
   projektből, a felhasználó törölheti a hozzá tartozó indexet; a törlés minden szakaszra, átiratra,
   címkére és vektorra kiterjed.
 - **Arcok és személyek:** arcbeágyazás biometrikus adat. Csak kifejezett, projektenkénti
-  bekapcsolással indexelhető, alapból ki van kapcsolva, és egy lépésben törölhető; a részletes
-  hozzájárulási szabály az arccserére (38. típus) vonatkozó nyitott kérdéssel együtt dől el.
+  bekapcsolással indexelhető, alapból ki van kapcsolva, és egy lépésben törölhető. Az arccserére
+  (38. típus) a hozzájárulási nyilatkozat és a nem kikapcsolható jelölés vonatkozik (ADR 0008,
+  lezárt kérdések, 2026-11-07).
 - **Beágyazó modellek** ugyanúgy a felhasználó letöltésével és egyszeri licencelfogadással
   kerülnek a gépre, mint minden más modell; a CFA4 nem terjeszt modellt.
 
