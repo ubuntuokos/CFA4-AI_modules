@@ -27,7 +27,7 @@ git clone https://huggingface.co/facebook/wav2vec2-base-960h ~/models/wav2vec2-b
 git -C ~/models/wav2vec2-base-960h checkout 22aad52d435eb6dbaf354bdad9b0da84ce7d6156
 ```
 
-Minden mérés a `run-minspec.sh` alatt fut (32 GB RAM, 8 mag, egyetlen referencia-GPU; a végleges a 3060):
+Minden mérés a `run-minspec.sh` alatt fut, mindkét profillal (`CFA4_PROFILE=ajanlott`: 32 GB RAM, alap; `CFA4_PROFILE=minimum`: 16 GB RAM, ott csak az számít, hogy összeomlás nélkül lefut), 8 maggal, egyetlen referencia-GPU-val (a végleges a 3060):
 
 ```sh
 M=~/models/wav2vec2-base-960h

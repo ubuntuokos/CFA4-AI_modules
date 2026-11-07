@@ -115,7 +115,7 @@ szinte egyik sem érhető el. A Qt6-paritás külön követendő.
 | ASS / SSA feliratok | ❌ | **K9**. Kdenlive- vagy Subtitle Edit-kódból is átvehető, fájlonként ellenőrizve |
 | Beszédfelismerés (Whisper) | 🟡 | Megvan (`transcript.generate`), a kiadott buildekben ki van kapcsolva (G19). **K2** |
 | Szöveg alapú vágás | ✅ | `transcript.*`, `textPanel.*` |
-| Felirat fordítása | ❌ | **K6**. A Kdenlive által használt SeamlessM4T nem kereskedelmi licencű; szállítható modell kell |
+| Felirat fordítása | ❌ | **K6**. Alapértelmezett fordító: MADLAD-400 (Apache-2.0). A Kdenlive által használt SeamlessM4T (CC-BY-NC) választható, a felhasználó tölti le (licencszabály, 2026-11-07) |
 | Címszerkesztő | ✅ | `graphics.*` |
 | Címszerkesztő-illesztés, lekerekített téglalap | 🟡 | `view.snapInProgramMonitor`; a többi ❓ |
 | Görgetett stáblista | ✅ | `crates/credits`, táblázatból is (F10, #36) |
@@ -349,8 +349,9 @@ A Kdenlive AI-funkciói nem saját futtatókörnyezettel jönnek át, hanem a CF
 - **K4 (háttéreltávolítás, M6, F4 kapu):** SAM2 ONNX Runtime-workerben, gyártófüggetlen
   futtatókkal (CUDA/TensorRT, MIGraphX, OpenVINO, CPU). A Kdenlive SAM2-szkriptje
   (Apache-2.0 OR GPL-3.0) csak referencia, a CFA4 nem futtatja.
-- **K6 és K28 (fordítás, M10):** csak kereskedelmi használatot engedő modell. A SeamlessM4T és
-  az NLLB (CC-BY-NC) kizárva.
+- **K6 és K28 (fordítás, M10):** alapértelmezett a MADLAD-400 (Apache-2.0). A SeamlessM4T és
+  az NLLB (CC-BY-NC) választható modell, amelyet a felhasználó tölt le; a súly licence a felhasználó
+  felelőssége (ADR 0008 2. pont, tulajdonosi döntés, 2026-11-07).
 - **K26 (hangleválasztás):** Demucs (MIT) a közös PyTorch-workerben, vagy ONNX-exporttal.
   **K27 (kényszerített igazítás):** CTC-modell candle-on vagy ONNX-en, licencellenőrzés után.
 - **Futtatókörnyezet:** a Kdenlive CUDA-verziónkénti venv- és requirements-rendszerét nem
@@ -373,7 +374,7 @@ A Kdenlive AI-funkciói nem saját futtatókörnyezettel jönnek át, hanem a CF
 | FFmpeg | az ADR 0005 (#62) szerint: kiegészítő háttér a `cfa4-route` mögött; a CI FFmpeg 9.0.2-je külön orákulum. **Feltételes:** amíg a #62 (és vele az `AGENTS.md` §2 és az ADR 0003 §10 módosítása) nincs a `main`-ben, az `AGENTS.md` §2 érvényes (FFmpeg csak teszt-orákulum), és az FFmpeg-háttérre épülő K-teendők nem kezdhetők el |
 | `gyroflow-core` (K13) | kell |
 | Hálózati render (K14) | több gép és több GPU engedélyezett; csak renderelő kliens is készül |
-| Fordítómodell (K6) | nyitott, kereskedelmi használatot is engedő modell (jelölt: Opus-MT/Marian magyar–angol, licencellenőrzés után), amelyet a felhasználó a K18 letöltővel tölt le; a CFA4 nem szállít modellt (11.3). A felhasználó cserélheti. SeamlessM4T és NLLB nem (CC-BY-NC) |
+| Fordítómodell (K6) | nyitott, kereskedelmi használatot is engedő modell (alapértelmezett: MADLAD-400, Apache-2.0; könnyű alternatíva: Opus-MT/Marian), amelyet a felhasználó a K18 letöltővel tölt le; a CFA4 nem szállít modellt (11.3). A felhasználó cserélheti. SeamlessM4T és NLLB választható, a felhasználó letöltésével (CC-BY-NC) |
 | Hardveres kódolás (K11) | a gyártói meghajtót a felhasználó telepíti, hiány esetén telepítési link |
 | SQLite-nyilvántartás (K17) | kell |
 | Online források (K18) | fontos |
