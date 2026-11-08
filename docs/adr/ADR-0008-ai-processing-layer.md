@@ -4,7 +4,7 @@
 **Állapot:** ELFOGADVA (tulajdonosi jóváhagyás, 2026-10-30); KÓD MÉG NINCS  
 **Kiadás:** HOLD
 
-> **Utolsó átnézés:** 2026-11-07 (9. pont: RAM-minimum 16 GB, ajánlott 32 GB; tartós jobtár: PostgreSQL, [PostgreSQL-adatréteg](../ai/postgresql-adatreteg.md); 2. pont: a súly és a tanítóadat licence a felhasználó felelőssége; 2026-11-02: F3: angol felirat-időzítés; 2026-11-01: a 6. pont, az ONNX nem kötelező; 2026-10-31: a 2. pont kivétele a zárt workerekre) · **Változás:** major (CFA4-AI-PLAN-001 és a CFA3/FA3 elődtervek
+> **Utolsó átnézés:** 2026-11-08 (8. pont: nincs fizetős rész, a zárt workerek, a licenckulcs és a 2K fölötti vízjel kikerült; 2026-11-07: 9. pont: RAM-minimum 16 GB, ajánlott 32 GB; tartós jobtár: PostgreSQL, [PostgreSQL-adatréteg](../ai/postgresql-adatreteg.md); 2. pont: a súly és a tanítóadat licence a felhasználó felelőssége; 2026-11-02: F3: angol felirat-időzítés; 2026-11-01: a 6. pont, az ONNX nem kötelező; 2026-10-31: a 2. pont kivétele a zárt workerekre) · **Változás:** major (CFA4-AI-PLAN-001 és a CFA3/FA3 elődtervek
 > beépítése: F0–F6 kapuk, ONNX-es első kör, modellkezelő, erőforrás-kezelési szabályok, tartós
 > jobtár, bővített jobállapotok, szétbontott licencmezők) · **Részletes terv:**
 > [CFA4 AI tervdokumentum](https://claude.ai/artifact/MLd6UfHG1uPBdJ16B2JZBh) ·
@@ -270,39 +270,24 @@ AI-réteg motorja.
 
 **A protokoll leírása, a manifest JSON Schemája és a worker SDK külön repóban készül**
 ([CFA4-sdk](https://github.com/ubuntuokos/CFA4-sdk)),
-megengedő licenccel (MIT OR Apache-2.0, frissen írt kóddal). Erre azért van szükség, mert
-a fizetős workerek vegyesek: van köztük GPL-es és zárt is. A CFA4 ebben a repóban csak
+megengedő licenccel (MIT OR Apache-2.0, frissen írt kóddal), hogy bárki, más licenccel is írhasson
+workert. A CFA4 maga nem szállít zárt vagy fizetős workert (8. pont). A CFA4 ebben a repóban csak
 fogyasztja a sémát. A jobállapotok és a manifest v3 licencmezői az SDK-ban kerülnek a sémába.
 
-### 8. Licenc és ingyenes/fizetős határ
+### 8. Licenc; nincs fizetős rész
 
 - Az alapprogram és minden itteni crate GPL-3.0-or-later. AGPL és GPL-2.0-only kód nem kerülhet be.
 - **A licenc négy külön mező** a manifestben (v3), mindegyik SPDX-azonosítóval és a kereskedelmi
   használat jelzésével: `code` (a worker kódja), `dependencies` (a futtató és a könyvtárak),
   `weights` (a modell súlyai), `dataset` (a tanítóadat, ha ismert). Egyetlen „kereskedelmi” igen/nem
   nem elég, mert a kód és a súly licence gyakran eltér. Ismeretlen `code` vagy `dependencies` mező blokkol; a `weights` és a `dataset` rész a felhasználó felelőssége, egyszeri elfogadással (2. pont).
-- Fizetős extra csak külön folyamatként futó worker lehet. Használati korlát csak a zárt workerekben élhet, a GPL-es magban soha; időtartam-korlát nincs,
-  a zárt workerek egyetlen korlátja a 2K fölötti vízjel (tulajdonosi döntés, 2026-11-07).
-  Az alapprogram képességeit nem csonkítjuk. A freemium az első körben nem szerepel.
-- **Az ingyenes képminőség 2K** (DCI 2K, 2048×1080; tulajdonosi döntés, 2026-10-30). A zárt
-  fizetős workerek kulcs nélkül 2K-ig vízjel nélkül dolgoznak. 2K fölött (például 4K) kulcs
-  nélkül is elkészül a kimenet, hogy a felhasználó lássa, mire képes, de **látható vízjellel**;
-  vízjel nélküli 2K fölötti kimenet a fizetős rész. A vízjelet a zárt worker teszi a kimenetre,
-  és a `caps` üzenetben jelzi, így a felület előre megmondja. Visszavonható lépésként sem tűnhet
-  el a projektből: a vízjeles asset vízjeles marad, kulcs után újra kell számolni.
-  **A vízjel** (tulajdonosi döntés, 2026-10-30): a CFA logó a kép jobb felső sarkában, 50%-os
-  átlátszósággal, minden képkockán, a tévécsatornák logójához hasonlóan: kicsi, és a grafikai
-  biztonsági sávon belül marad (EBU R 95: a képszéltől 5%-ra). Magassága a képmagasság 8%-a
-  (2048×1080-nál 86 pixel), a szélessége a logó arányából adódik; a jobb felső sarka a jobb és a
-  felső képszéltől is a megfelelő képméret 5%-ára van.
-  **A vízjel védelme a zárt workerben van, nem a szerkesztőben** (tulajdonosi döntés,
-  2026-10-30). A GPL-es szerkesztő semmit sem tilt. Ha a projektben kulcs nélküli, 2K fölötti
-  zárt-worker-kimenet van, a CFA4 exportja a kész képkockákat egy általános, dokumentált
-  „export utáni lépésen” át visszaküldi annak a workernek, amely a `caps` üzenetben ezt kérte. A
-  worker ellenőrzi, hogy a logó sarka látható-e; ha valami kitakarja, vagy a klip vágása, nagyítása
-  vagy eltolása miatt kiesik a képből, a teljes képre tesz vízjelet. A szerkesztőben csak az
-  általános export utáni lépés van, korlátozó logika nincs. A GPL-es magban és a CFA4-gyel szállított GPL-es workerekben nincs
-  felbontáskorlát: ott a kártya VRAM-ja a határ.
+- **Nincs fizetős rész** (tulajdonosi döntés, 2026-11-08; felváltja a 2026-10-30-i és
+  2026-11-07-i fizetős/zárt workeres döntéseket): a CFA4 nem szállít fizetős vagy zárt workert, és
+  sehol nincs licenckulcs, használati vagy időtartam-korlát, felbontáskorlát vagy vízjel. Minden
+  képesség ingyenes; a határ a kártya VRAM-ja. A fejlesztés önkéntes adománnyal támogatható, ami
+  semmit nem nyit meg. A korábbi 2K-s ingyenes határ, a CFA-logós vízjel és az „export utáni
+  lépés” ezzel megszűnt (a CFA4-sdk protokolljából is kikerül). Az alapprogram képességeit nem
+  csonkítjuk.
 
 ### 9. Hardverminimum és tesztelés
 
@@ -419,8 +404,7 @@ tanítási feladat a közös feladatsorban fut (`tasks` séma, új `train` séma
 az F6 közös PyTorch-környezetét bővíti, és az alsó határ (12 GB VRAM, 16 GB RAM) a tanításra is
 érvényes. A tanítás kapui (TR-F0…TR-F10) az F1, F2 és F6 kapura épülnek.
 
-**Az első körön kívül** (saját döntéssel, későbbi kapuban): freemium és fizetős workerek,
-ComfyUI-kompatibilitás, több GPU, AMD és Intel, TensorRT, CUDA IPC, osztott memória
+**Az első körön kívül** (saját döntéssel, későbbi kapuban): ComfyUI-kompatibilitás, több GPU, AMD és Intel, TensorRT, CUDA IPC, osztott memória
 bekapcsolása, felhős futtatás.
 
 A [besorolási táblák](../ai/README.md) „Fázis” oszlopa még a régi havi sorszámokat tartalmazza;
@@ -428,10 +412,9 @@ a kaput a futtató határozza meg: ONNX → F3/F4, candle → F5, PyTorch és he
 
 ## Lezárt kérdések (tulajdonosi döntések, 2026-11-07)
 
-- **Ingyenes és fizetős:** minden GPL-es funkció ingyenes, használati korlát nélkül, 2K-ig
-  vízjel nélkül. Fizetős csak külön folyamatként futó, zárt worker lehet: 2K fölötti kimenet
-  vízjel nélkül, prémium modellek, később távoli GPU (8. pont).
-- **Időtartam-korlát nincs.** 2K-ig nincs vízjel; 2K fölött kulcs nélkül vízjel van (8. pont).
+- **Ingyenes:** ~~fizetős zárt worker 2K fölötti vízjellel~~ (felváltva 2026-11-08): minden
+  funkció ingyenes, korlát és vízjel nélkül; nincs fizetős rész, a CFA4 önkéntes adománnyal
+  támogatható (8. pont).
 - **Arccsere (38. típus):** projektenként kötelező nyilatkozat arról, hogy az ábrázolt személy
   hozzájárult. Az exportban mindig ott van a nem kikapcsolható „AI által módosított” jelölés és a
   hozzá tartozó metaadat (EU AI-rendelet, 50. cikk: mélyhamisítás jelölése).

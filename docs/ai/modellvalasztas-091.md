@@ -31,6 +31,10 @@ Az elfogadott licencszabály szerint a `NOASSERTION` és az `unknown` minden ré
 Real-ESRGAN tanítóadatában ismeretlen licencű rész van (Flickr2K, OST), a RealBasicVSR és a
 BasicVSR++ súlyának pedig nincs megadott licence.
 
+> **Felváltva.** Ezt a döntést előbb az 1.1 pont (2026-11-07, a felhasználó felelőssége), majd
+> a 2026-11-08-i tulajdonosi döntés váltotta fel: a CFA4-nek nincs fizetős része, zárt vagy
+> fizetős worker nem készül. A lenti szöveg történeti feljegyzés.
+
 **Tulajdonosi döntés (István, 2026-10-31): ilyen modell csak a zárt, fizetős workerben lehet.**
 A GPL-es magban és a CFA4-gyel szállított GPL-es workerekben nincs olyan modell, amelynek
 bármelyik licencrésze ismeretlen vagy csak kutatási célú. A zárt worker kínálhatja, a
@@ -80,7 +84,7 @@ lenti szövegek saját tanításra vonatkozó részei (3. pont, 3.1, 3.2) a kor�
 | Jelölt | Kód | Súly | Tanítóadat | ONNX | Időbeli? | Javaslat |
 |---|---|---|---|---|---|---|
 | **Real-ESRGAN `RealESRGAN_x4plus` / `x2plus`** (RRDBNet) | BSD-3-Clause | BSD-3-Clause (a repó GitHub-kiadásában) | DIV2K: `no`; Flickr2K, OST: `NOASSERTION` → 2026-11-07 óta egyszeri elfogadással futhat (1.1 pont) | hivatalos `scripts/pytorch2onnx.py` (az x4-hez; az x2-höz `scale=2` kell), csak konvolúció | nem, képkockánként | **a #91 elsődleges jelöltje** (1.1 pont), mérés: `scripts/dev/vsr-measure` |
-| Real-ESRGAN `realesr-general-x4v3` (SRVGGNetCompact) | BSD-3-Clause | BSD-3-Clause | nem dokumentált: `unknown` | csak konvolúció és PixelShuffle | nem | tartalék a zárt workerben |
+| Real-ESRGAN `realesr-general-x4v3` (SRVGGNetCompact) | BSD-3-Clause | BSD-3-Clause | nem dokumentált: `unknown` | csak konvolúció és PixelShuffle | nem | tartalék (#91, 1.1 pont szerint) |
 | **RealBasicVSR** | Apache-2.0 | a README Dropboxra mutat, külön licenc nélkül: `NOASSERTION` → blokkol | REDS + FlyingChairs: `no` | `grid_sample` (opset 16), kétirányú rekurzió: ablakos export kell | igen | a fizetős workerek kapujában, ha a súlylicenc tisztázódik; GPL-es változathoz az architektúra újratanítása kell FlyingChairs nélkül |
 | BasicVSR++ | Apache-2.0 | OpenMMLab modelltár, külön licenc nélkül: `NOASSERTION` → blokkol | REDS + FlyingChairs: `no` | modulált deformálható konvolúció: ORT CUDA-támogatása ellenőrizendő | igen | tartalék |
 | RVRT, VRT | CC BY-NC 4.0 | – | – | nehéz | igen | kizárva (a kód nem kereskedelmi) |
@@ -90,8 +94,10 @@ lenti szövegek saját tanításra vonatkozó részei (3. pont, 3.1, 3.2) a kor�
 
 A zárt worker az ADR 0008 szerint az első körön kívül van, ezért az F3 nem épülhet rá. A
 tulajdonos döntése (István, 2026-10-31): **az F3 olyan ONNX-képességgel teljesüljön, amelynek
-mind a négy licencrésze tiszta; a #91 később jön.** A #91 zárt workeres útja (Real-ESRGAN
-`RealESRGAN_x2plus`) a fizetős workerek kapujában marad.
+mind a négy licencrésze tiszta; a #91 később jön.** ~~A #91 zárt workeres útja (Real-ESRGAN
+`RealESRGAN_x2plus`) a fizetős workerek kapujában marad.~~ Fizetős workerkapu már nincs
+(2026-11-08): a #91 útját az 1.1 pont (a súly és a tanítóadat licence a felhasználó felelőssége)
+szerint, GPL-es workerben kell megtervezni.
 
 A többi ONNX-es képesség jelöltjeit ugyanígy megnéztem. Egyiknek sincs tiszta tanítóadata:
 
