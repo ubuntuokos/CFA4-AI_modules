@@ -49,6 +49,7 @@ const LAYERS: &[(&str, u8)] = &[
     ("h264enc", 0),
     ("hevc", 0),
     ("vp8", 0),
+    ("huffyuv", 0),
     ("vp9", 0),
     ("prores", 0),
     ("mjpeg", 0),

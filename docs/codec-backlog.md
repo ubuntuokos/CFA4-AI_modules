@@ -45,7 +45,7 @@ Ott kell őket követni, nem itt.
 | CineForm | videó | |
 | FFV1 | videó | A Matroska-demuxer már ismeri a kodekazonosítót |
 | HAP | videó | |
-| Huffyuv, Ut Video, MagicYUV, Lagarith | videó | Veszteségmentes köztes kodekek |
+| Ut Video, MagicYUV, Lagarith | videó | Veszteségmentes köztes kodekek |
 | DTS, DTS-HD Master Audio | audio | Licenc / szabadalom: tulajdonosi döntés |
 | Dolby TrueHD | audio | Licenc / szabadalom: tulajdonosi döntés |
 | ADPCM (IMA, Microsoft) | audio | |
