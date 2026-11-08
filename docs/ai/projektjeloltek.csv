@@ -74,9 +74,9 @@ DVD,https://github.com/m-tassano/denoising-flash,Python,nem igazolt,M4,Referenci
 EDVR,https://github.com/xinntao/EDVR,Python,nem igazolt,M4,Referencia,2019-es
 ENH,https://github.com/TNTwise/REAL-Video-Enhancer,Python,nem igazolt,M4,Referencia,"kész alkalmazás, nem könyvtár; mintának jó"
 ESTRNN,https://github.com/sbunn3/ESTRNN,Python,nem igazolt,M4,Referencia,kutatási kód
-RVRT,https://github.com/JingyunLiang/RVRT,Python,nem igazolt,M4,Referencia,"nehéz, lassú; kód CC BY-NC 4.0, kizárva"
+RVRT,https://github.com/JingyunLiang/RVRT,Python,nem igazolt,M4,Választható (NC),"nehéz, lassú; kód CC BY-NC 4.0: külön letöltött worker, nem kereskedelmi figyelmeztetéssel, alacsony prioritás (István, 2026-11-08)"
 TCVC,https://github.com/zhangmozhe/Deep-Exemplar-based-Video-Colorization,Python,nem igazolt,M4,Referencia,"példaalapú színezés, régi"
-VRT,https://github.com/JingyunLiang/VRT,Python,nem igazolt,M4,Referencia,"nehéz, lassú; kód CC BY-NC 4.0, kizárva"
+VRT,https://github.com/JingyunLiang/VRT,Python,nem igazolt,M4,Választható (NC),"nehéz, lassú; kód CC BY-NC 4.0: külön letöltött worker, nem kereskedelmi figyelmeztetéssel, alacsony prioritás (István, 2026-11-08)"
 RIFE,https://github.com/hzwer/ECCV2022-RIFE,Python,nem igazolt,M5,Referencia,az eredeti RIFE; a Practical-RIFE kiváltja
 E2FGVI,https://github.com/MCG-NKU/E2FGVI,Python,nem igazolt,M6,Referencia,régebbi inpainting
 FUSE,https://github.com/ruiliu-ai/FuseFormer,Python,nem igazolt,M6,Referencia,régebbi inpainting
@@ -100,9 +100,10 @@ COMFY,https://github.com/comfyanonymous/ComfyUI,Python,nem igazolt,M1,Kihagyás,
 COMFY314,https://github.com/Be-As-One/comfyui-wan2.2,Python,dokumentált,M1,Kihagyás,ComfyUI-csomagolás; ugyanaz az ok
 HUN,https://github.com/Tencent/HunyuanVideo,Python,nem igazolt,M1,Kihagyás,a licenc kizárja az EU-t
 MUSE,https://github.com/TMElyralab/MuseTalk,Python,nem igazolt,M2,Kihagyás,"mmcv/mmpose függőség, külön CUDA-build"
-WAV,https://github.com/Rudrabha/Wav2Lip,Python,nem igazolt,M2,Kihagyás,elavult; a modellek nem kereskedelmi licencűek
-VIDEOINP,https://github.com/sczhou/ProPainter,Python,nem igazolt,M6,Kihagyás,ProPainter: nem kereskedelmi licenc
-GS,https://github.com/graphdeco-inria/gaussian-splatting,Python,nem igazolt,M9,Kihagyás,az Inria-licenc nem kereskedelmi
-INSTANT,https://github.com/NVlabs/instant-ngp,C++/Python,nem igazolt,M9,Kihagyás,NVIDIA nem kereskedelmi licenc
+WAV,https://github.com/Rudrabha/Wav2Lip,Python,nem igazolt,M2,Kihagyás,"elavult; csak kutatási és személyes használat; visszaélési kockázat (István, 2026-11-08: marad kihagyva)"
+VIDEOINP,https://github.com/sczhou/ProPainter,Python,nem igazolt,M6,Választható (NC),"ProPainter, S-Lab License 1.0 (nem kereskedelmi): külön letöltött worker, nem kereskedelmi figyelmeztetéssel; nyílt alapút a DiffuEraser (István, 2026-11-08)"
+GS,https://github.com/graphdeco-inria/gaussian-splatting,Python,nem igazolt,M9,Kihagyás,"az Inria-licenc nem kereskedelmi; helyette gsplat (GSPLAT, István, 2026-11-08)"
+GSPLAT,https://github.com/nerfstudio-project/gsplat,Python,nem igazolt,M9,Elsődleges,"gsplat, Gaussian Splatting; Apache-2.0 (ellenőrizendő)"
+INSTANT,https://github.com/NVlabs/instant-ngp,C++/Python,nem igazolt,M9,Választható (NC),"NVIDIA nem kereskedelmi licenc, csak CUDA: külön letöltött worker, nem kereskedelmi figyelmeztetéssel, nem kompatibilis gépen rejtve; gyártófüggetlen párja a nerfstudio (István, 2026-11-08)"
 DREAMER,https://github.com/danijar/dreamerv3,Python,nem igazolt,M11,Kihagyás,"megerősítéses tanulás, nem videógenerátor"
 SHADOW,https://github.com/Shaadalam9/traffic-pipeline,Python,más környezetet dokumentál,M11,Kihagyás,"forgalmi pipeline, nem videógenerátor"

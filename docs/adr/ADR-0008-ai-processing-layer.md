@@ -289,6 +289,20 @@ fogyasztja a sémát. A jobállapotok és a manifest v3 licencmezői az SDK-ban 
   lépés” ezzel megszűnt (a CFA4-sdk protokolljából is kikerül). Az alapprogram képességeit nem
   csonkítjuk.
 
+- **Nem kereskedelmi licencű kód választható workerként** (tulajdonosi döntés, 2026-11-08,
+  egyenként): a GPL-es magba és a CFA4-gyel szállított workerekbe nem kerül, de külön letöltött,
+  külön folyamatban futó workerként választható, ha a felhasználó letöltéskor elfogadja a
+  feltételeit; a felület minden használatnál jelzi, hogy kereskedelmi célra nem használható.
+  Engedélyezve: **ProPainter** (S-Lab License 1.0; objektumeltávolítás), **RVRT/VRT** (CC BY-NC
+  4.0; felskálázás, alacsony prioritás), **instant-ngp** (NVIDIA nem kereskedelmi licenc, csak
+  CUDA). Nem engedélyezve: Wav2Lip (elavult, visszaélési kockázat), Inria Gaussian Splatting
+  (helyette a gsplat, Apache-2.0). Új nem kereskedelmi kód csak külön tulajdonosi döntéssel jöhet.
+- **Gyártóspecifikus választható worker** (tulajdonosi döntés, 2026-11-08): egy csak CUDA-n futó
+  választható worker telepíthető; AMD-n ROCm-mel futhat, ahol működik, és ahol a gép nem
+  kompatibilis, a funkció nem jelenik meg. A követelményeket a CFA4 leírása funkciónként
+  felsorolja. A VISION 4. pontja szerinti gyártófüggetlen pár (például a nerfstudio az
+  instant-ngp mellett) továbbra is kell.
+
 ### 9. Hardverminimum és tesztelés
 
 - **Működési minimum** (alsó határ, nem felső; a tulajdonos 2026-10-30-án megerősítette, a RAM-ot
