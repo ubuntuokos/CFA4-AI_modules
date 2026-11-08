@@ -43,7 +43,6 @@ Ott kell őket követni, nem itt.
 | Kodek / formátum | Típus | Megjegyzés |
 |---|---|---|
 | CineForm | videó | |
-| FFV1 | videó | A Matroska-demuxer már ismeri a kodekazonosítót |
 | HAP | videó | |
 | Huffyuv, Ut Video, MagicYUV, Lagarith | videó | Veszteségmentes köztes kodekek |
 | DTS, DTS-HD Master Audio | audio | Licenc / szabadalom: tulajdonosi döntés |

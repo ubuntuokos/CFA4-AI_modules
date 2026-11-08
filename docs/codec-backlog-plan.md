@@ -35,7 +35,7 @@ Sávok: K1 az 1–9. hét, K2 a 10–26. hét, K3 a 26–43. hét, K4 a 44–45.
 
 | Hét | Kezdete | Sáv | 1. tétel | 2. tétel |
 |---|---|---|---|---|
-| 1 | 2026-11-02 | K1 | FFV1 | Huffyuv |
+| 1 | 2026-11-02 | K1 | FFV1 ✅ | Huffyuv |
 | 2 | 2026-11-09 | K1 | Ut Video | MagicYUV |
 | 3 | 2026-11-16 | K1 | Lagarith | HAP |
 | 4 | 2026-11-23 | K1 | CineForm | G.711 / G.722 |

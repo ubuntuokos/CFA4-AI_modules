@@ -30,6 +30,7 @@ cfa4-ogg = { path = "crates/ogg" }
 cfa4-h264 = { path = "crates/h264" }
 cfa4-hevc = { path = "crates/hevc" }
 cfa4-vp8 = { path = "crates/vp8" }
+cfa4-ffv1 = { path = "crates/ffv1" }
 cfa4-vp9 = { path = "crates/vp9" }
 cfa4-prores = { path = "crates/prores" }
 cfa4-dnx = { path = "crates/dnx" }
@@ -109,6 +110,9 @@ opt-level = 3
 opt-level = 3
 
 [profile.dev.package.cfa4-hevc]
+opt-level = 3
+
+[profile.dev.package.cfa4-ffv1]
 opt-level = 3
 
 [profile.dev.package.cfa4-prores]

@@ -34,6 +34,7 @@ contents). Percent is ready-for-real-work for that codec: depth, profiles, speed
 | Camera RAW: R3D (incl. R3D NE), ARRIRAW, Sony RAW / X-OCN, Canon RAW, BRAW (plug-in) | decode (vendor SDKs) | none (#383) | — | — | 0% | 50–90 h for the ones with public specs; vendor-SDK-only formats need an owner decision |
 | GIF (animated) | encode | decode as still | encode | — | 80% | — |
 | Uncompressed / v210 / RGB | decode + encode (AVI, MOV) | partial (MOV PCM-style video not verified) | none | — | 30% | 8–15 h |
+| FFV1 (RFC 9043) | not a Premiere import format | own decoder ([`cfa4-ffv1`](../crates/ffv1/README.md), backlog CB-1.1): versions 0, 1, 3, Golomb Rice and range coding (default and custom state tables), YCbCr 4:2:0 / 4:2:2 / 4:4:4 / 4:1:0 (subsamplings without a frame type are shown upsampled to 4:4:4), gray, alpha, RGB (RCT) with alpha, 8–16 bits, slices, CRCs, non-key frames; in AVI and Matroska. RGB above 8 bits is shown rounded to 8 bits | none | bit-exact vs ffmpeg on 26 codec fixtures and 4 AVI / Matroska files (all frames, also seeking backwards) | ahead | — |
 
 ## Audio
 

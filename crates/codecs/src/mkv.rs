@@ -260,6 +260,11 @@ fn sample_entry(c: &Codec, private: &[u8], v: Option<&cfa4_matroska::VideoInfo>,
         Codec::Other(id) if id == "V_MPEG2" || id == "V_MPEG1" => {
             SampleEntry::video(FourCc(*b"mp2v"), CodecConfig::Unknown { fourcc: FourCc(*b"mp2v"), raw: private.to_vec() }, w, h)
         }
+        // FFV1: ffmpeg writes a VfW BITMAPINFOHEADER whose extra bytes are the configuration record
+        Codec::VfwFourcc { fourcc, bitmap_info_header } if fourcc.eq_ignore_ascii_case(b"FFV1") => {
+            crate::ffv1::sample_entry(bitmap_info_header.get(40..).unwrap_or_default(), w, h)
+        }
+        Codec::Other(id) if id == "V_FFV1" => crate::ffv1::sample_entry(private, w, h),
         _ => return None,
     })
 }
@@ -320,6 +325,8 @@ fn codec_label(c: &Codec) -> String {
         Codec::Mp2 | Codec::Mp1 => "MPEG Audio".into(),
         Codec::Other(id) if id == "V_MPEG2" => "MPEG-2 Video".into(),
         Codec::Other(id) if id == "V_MPEG1" => "MPEG-1 Video".into(),
+        Codec::Other(id) if id == "V_FFV1" => "FFV1".into(),
+        Codec::VfwFourcc { fourcc, .. } if fourcc.eq_ignore_ascii_case(b"FFV1") => "FFV1".into(),
         other => other.name().to_string(),
     }
 }
