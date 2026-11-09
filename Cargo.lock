@@ -1398,6 +1398,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "cfa4-tasks"
+version = "0.10.0"
+dependencies = [
+ "cfa4-accel",
+ "log",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "cfa4-testkit"
 version = "0.10.0"
 dependencies = [
