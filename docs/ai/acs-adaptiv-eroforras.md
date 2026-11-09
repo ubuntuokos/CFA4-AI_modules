@@ -56,7 +56,8 @@ worker jelentése) ki nem tölti.
 **`cfa4-tasks` crate.**
 
 - `Nominal` (névleges): fizikai RAM, a folyamat és őseinek cgroup-korlátja (`memory.max`,
-  `cpu.max`, a legszigorúbb számít), online CPU-k, GPU-k VRAM-ja és kijelzőhasználata. A
+  `cpu.max`, a legszigorúbb számít; az olvashatatlan `memory.max` „ismeretlen korlát”, nem
+  „nincs korlát”), online és a folyamat számára engedélyezett CPU-k (affinitás, `cpuset`), GPU-k VRAM-ja és kijelzőhasználata. A
   `ram_effective_bytes` a fizikai RAM és a cgroup-korlát közül a kisebbet adja, így a
   `run-minspec.sh` 16 és 32 GB-os profilja helyesen látszik az 512 GB-os fejlesztőgépen is.
 - `Current` (aktuális): `MemAvailable`, a cgroup `memory.current`-je, foglalt swap, PSI-nyomás

@@ -50,9 +50,16 @@ pub struct Nominal {
     pub ram_physical_bytes: Option<u64>,
     /// The tightest cgroup `memory.max` above this process; `None` when unlimited.
     pub ram_cgroup_limit_bytes: Option<u64>,
+    /// Some cgroup `memory.max` above this process exists but cannot be read: the real limit is
+    /// unknown (and may be tighter than [`Nominal::ram_cgroup_limit_bytes`]).
+    #[serde(default)]
+    pub ram_cgroup_limit_unknown: bool,
     pub swap_total_bytes: Option<u64>,
     /// Online logical CPUs.
     pub cpus_online: Option<u32>,
+    /// CPUs this process may run on (affinity, narrowed by the cgroup `cpuset`).
+    #[serde(default)]
+    pub cpus_allowed: Option<u32>,
     /// The tightest cgroup `cpu.max` quota, in thousandths of a CPU; `None` when unlimited.
     pub cpu_quota_milli: Option<u64>,
     pub gpus: Vec<GpuNominal>,
@@ -67,13 +74,12 @@ impl Nominal {
         }
     }
 
-    /// CPUs this process may use, in thousandths: the online CPUs, or the quota when smaller.
+    /// CPUs this process may use, in thousandths: the smallest of the online CPUs, the CPUs it
+    /// may run on (affinity, cpuset) and the `cpu.max` quota.
     pub fn cpus_effective_milli(&self) -> Option<u64> {
         let online = self.cpus_online.map(|c| u64::from(c).saturating_mul(1000));
-        match (online, self.cpu_quota_milli) {
-            (Some(o), Some(q)) => Some(o.min(q)),
-            (o, q) => o.or(q),
-        }
+        let allowed = self.cpus_allowed.map(|c| u64::from(c).saturating_mul(1000));
+        [online, allowed, self.cpu_quota_milli].into_iter().flatten().min()
     }
 
     pub fn gpu(&self, node: &str) -> Option<&GpuNominal> {
@@ -122,6 +128,9 @@ impl Snapshot {
     /// is unreadable, or when a cgroup limit exists but its remaining room cannot be read.
     pub fn ram_free_effective_bytes(&self) -> Option<u64> {
         let available = self.current.ram_available_bytes?;
+        if self.nominal.ram_cgroup_limit_unknown {
+            return None;
+        }
         match (self.nominal.ram_cgroup_limit_bytes, self.current.ram_cgroup_free_bytes) {
             (None, _) => Some(available),
             (Some(_), Some(free)) => Some(available.min(free)),
@@ -173,14 +182,14 @@ fn sample_from(root: &Path, inventory: &Inventory, gpu_memory: &[GpuMemory], gpu
         notes.push("proc/meminfo: no MemTotal".into());
     }
     let cgroup = system::own_cgroup(root);
-    let (ram_limit, cpu_quota, cgroup_used, cgroup_free) = match &cgroup {
+    let ((ram_limit, ram_limit_unknown), cpu_quota, cgroup_used, cgroup_free) = match &cgroup {
         Some(dir) => (
             system::cgroup_memory_max(root, dir),
             system::cgroup_cpu_quota_milli(root, dir),
             system::cgroup_memory_current(dir),
             system::cgroup_memory_free(root, dir),
         ),
-        None => (None, None, None, None),
+        None => ((None, false), None, None, None),
     };
     let mut gpus_nominal = Vec::new();
     let mut gpus_current = Vec::new();
@@ -207,8 +216,10 @@ fn sample_from(root: &Path, inventory: &Inventory, gpu_memory: &[GpuMemory], gpu
         nominal: Nominal {
             ram_physical_bytes: mem.total,
             ram_cgroup_limit_bytes: ram_limit,
+            ram_cgroup_limit_unknown: ram_limit_unknown,
             swap_total_bytes: mem.swap_total,
             cpus_online: system::online_cpus(root),
+            cpus_allowed: system::allowed_cpus(root),
             cpu_quota_milli: cpu_quota,
             gpus: gpus_nominal,
         },
@@ -337,6 +348,29 @@ mod tests {
         fake.write("sys/fs/cgroup/a/cpu.max", "1 0\n").unwrap();
         let snap = sample_root(&fake.root);
         assert_eq!((snap.nominal.ram_cgroup_limit_bytes, snap.nominal.cpu_quota_milli, snap.current.ram_cgroup_used_bytes), (None, None, None));
+        assert!(snap.nominal.ram_cgroup_limit_unknown, "a malformed memory.max is an unknown limit, not none");
+        assert_eq!(snap.ram_free_effective_bytes(), None);
+    }
+
+    #[test]
+    fn an_unreadable_limit_is_unknown_and_cpusets_narrow_the_cpus() {
+        let fake = FakeRoot::new("cpuset").unwrap();
+        fake.minspec().unwrap();
+        // the leaf is limited and readable, but the parent's limit is garbage: it may be tighter
+        fake.write("sys/fs/cgroup/system.slice/memory.max", "garbage\n").unwrap();
+        fake.write("sys/fs/cgroup/system.slice/memory.current", "0\n").unwrap();
+        fake.write("proc/self/status", "Name:\tcfa4\nCpus_allowed:\tf\nCpus_allowed_list:\t0-3\n").unwrap();
+        let snap = sample_root(&fake.root);
+        assert_eq!(snap.nominal.ram_cgroup_limit_bytes, Some(16 * GIB));
+        assert!(snap.nominal.ram_cgroup_limit_unknown);
+        assert_eq!((snap.current.ram_cgroup_free_bytes, snap.ram_free_effective_bytes()), (None, None));
+        assert_eq!(snap.nominal.cpus_allowed, Some(4));
+        assert_eq!(snap.nominal.cpus_effective_milli(), Some(4000), "4 allowed CPUs beat the 8-CPU quota");
+        // "max" is a confirmed absence of a limit
+        fake.write("sys/fs/cgroup/system.slice/memory.max", "max\n").unwrap();
+        let snap = sample_root(&fake.root);
+        assert!(!snap.nominal.ram_cgroup_limit_unknown);
+        assert!(snap.ram_free_effective_bytes().is_some());
     }
 
     #[test]
