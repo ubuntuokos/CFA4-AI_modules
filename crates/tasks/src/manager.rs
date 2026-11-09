@@ -13,6 +13,9 @@
 //! 3. **Current load** ([`Snapshot`]): other programs use memory and VRAM too, so the free amount
 //!    now, minus the reserve, must cover the request → otherwise wait. A free amount that cannot be
 //!    read (a cgroup's usage, a GPU without a VRAM counter) waits as well: unknown is never enough.
+//!    A grant may not show in the load yet (the task is still allocating), so for
+//!    [`DEFAULT_SETTLE_SAMPLES`] samples ([`Manager::observe_sample`]) it is also taken off the
+//!    current free amount; two requests checked against the same snapshot never share its room.
 //! 4. **Pressure** ([`Monitor`] levels): memory pressure or low memory, spike or sustained, makes
 //!    every class but [`Class::Interactive`] wait; sustained CPU or I/O pressure makes
 //!    [`Class::Speculative`] wait. A GPU whose VRAM signal is sustained takes no new work.
@@ -130,7 +133,14 @@ struct Held {
     id: ReservationId,
     request: Request,
     gpu_node: Option<String>,
+    /// Samples still to come before this grant's use is assumed to show in the current load;
+    /// until then it is also taken off the current free amount.
+    #[serde(default)]
+    unsettled_samples: u32,
 }
+
+/// Samples after a grant before its use is assumed to show in [`Snapshot`]'s current load.
+pub const DEFAULT_SETTLE_SAMPLES: u32 = 3;
 
 /// The manager: budget plus the reservations held against it.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -139,11 +149,43 @@ pub struct Manager {
     budget: Budget,
     held: Vec<Held>,
     next_id: u64,
+    #[serde(default = "default_settle_samples")]
+    settle_samples: u32,
+}
+
+fn default_settle_samples() -> u32 {
+    DEFAULT_SETTLE_SAMPLES
 }
 
 impl Manager {
     pub fn new(budget: Budget) -> Self {
-        Manager { budget, held: Vec::new(), next_id: 1 }
+        Manager { budget, held: Vec::new(), next_id: 1, settle_samples: DEFAULT_SETTLE_SAMPLES }
+    }
+
+    /// How many samples a new grant stays deducted from the current free amount (the time a task
+    /// needs to actually allocate what it reserved). At least 1.
+    pub fn set_settle_samples(&mut self, samples: u32) {
+        self.settle_samples = samples.max(1);
+    }
+
+    /// A new snapshot was taken: grants made before it age by one sample. Call it once per sample,
+    /// with the same cadence the [`Monitor`] observes.
+    pub fn observe_sample(&mut self) {
+        for h in &mut self.held {
+            h.unsettled_samples = h.unsettled_samples.saturating_sub(1);
+        }
+    }
+
+    /// RAM granted recently enough that the current load may not show it yet.
+    fn unsettled_ram_bytes(&self) -> u64 {
+        self.held.iter().filter(|h| h.unsettled_samples > 0).fold(0u64, |a, h| a.saturating_add(h.request.ram_bytes))
+    }
+
+    fn unsettled_vram_bytes(&self, node: &str) -> u64 {
+        self.held
+            .iter()
+            .filter(|h| h.unsettled_samples > 0 && h.gpu_node.as_deref() == Some(node))
+            .fold(0u64, |a, h| a.saturating_add(h.request.gpu.as_ref().map_or(0, |g| g.vram_bytes)))
     }
 
     pub fn budget(&self) -> &Budget {
@@ -185,7 +227,7 @@ impl Manager {
                     if request.ram_bytes > free_in_budget {
                         waits.push(WaitReason::Reserved { resource: Resource::Ram, free_in_budget });
                     }
-                    match snap.ram_free_effective_bytes().map(|f| f.saturating_sub(self.budget.ram_reserve_bytes)) {
+                    match snap.ram_free_effective_bytes().map(|f| f.saturating_sub(self.budget.ram_reserve_bytes).saturating_sub(self.unsettled_ram_bytes())) {
                         Some(free_now) if request.ram_bytes > free_now => waits.push(WaitReason::InUse { resource: Resource::Ram, free_now }),
                         Some(_) => {}
                         None => waits.push(WaitReason::Unknown { resource: Resource::Ram }),
@@ -236,7 +278,9 @@ impl Manager {
                     gpu_waits.push(WaitReason::Reserved { resource: Resource::Vram { node: Some(g.node.clone()) }, free_in_budget });
                     continue;
                 }
-                let Some(free_now) = snap.vram_free_bytes(&g.node).map(|f| f.saturating_sub(g.vram_reserve_bytes)) else {
+                let Some(free_now) =
+                    snap.vram_free_bytes(&g.node).map(|f| f.saturating_sub(g.vram_reserve_bytes).saturating_sub(self.unsettled_vram_bytes(&g.node)))
+                else {
                     gpu_waits.push(WaitReason::Unknown { resource: Resource::Vram { node: Some(g.node.clone()) } });
                     continue;
                 };
@@ -288,7 +332,7 @@ impl Manager {
             return Err(Denied::IdsExhausted);
         };
         self.next_id = next;
-        self.held.push(Held { id, request: request.clone(), gpu_node: gpu_node.clone() });
+        self.held.push(Held { id, request: request.clone(), gpu_node: gpu_node.clone(), unsettled_samples: self.settle_samples.max(1) });
         Ok(Grant { id, gpu_node })
     }
 
@@ -456,6 +500,33 @@ mod tests {
         assert_eq!(m.try_reserve(&req(Class::Interactive, 0, 0, None), &snap, &mon), Err(Denied::IdsExhausted));
         assert!(m.release(a.id));
         assert!(m.try_reserve(&req(Class::Interactive, 0, 0, None), &snap, &mon).is_ok());
+    }
+
+    #[test]
+    fn recent_grants_are_taken_off_the_current_free_amount() {
+        // 14 GiB free now minus the 3.2 GiB reserve: one 8 GiB task fits, a second one against the
+        // same snapshot must not (budget alone would allow it); renderD130 alone, 11.5 GiB free
+        let snap = machine(14, 12);
+        let mut m = manager(&snap);
+        let mon = Monitor::default();
+        let a = m.try_reserve(&req(Class::Background, 8, 1, Some(8)), &snap, &mon).unwrap();
+        assert_eq!(a.gpu_node.as_deref(), Some("renderD130"));
+        let r = m.try_reserve(&req(Class::Background, 1, 1, Some(8)), &snap, &mon);
+        assert!(
+            matches!(&r, Err(Denied::Wait { reasons }) if reasons.iter().any(|w| matches!(w, WaitReason::InUse { resource: Resource::Vram { .. }, .. }))),
+            "{r:?}"
+        );
+        let r = m.try_reserve(&req(Class::Background, 8, 1, None), &snap, &mon);
+        assert!(matches!(&r, Err(Denied::Wait { reasons }) if matches!(reasons.as_slice(), [WaitReason::InUse { resource: Resource::Ram, .. }])), "{r:?}");
+        // once the samples show the task's own use, it is no longer counted twice
+        let mut later = machine(6, 12);
+        if let Some(g) = later.current.gpus.iter_mut().find(|g| g.node == "renderD130") {
+            g.vram_used_bytes = Some(8 * GIB);
+        }
+        for _ in 0..DEFAULT_SETTLE_SAMPLES {
+            m.observe_sample();
+        }
+        assert!(m.try_reserve(&req(Class::Background, 2, 1, Some(3)), &later, &mon).is_ok());
     }
 
     #[test]

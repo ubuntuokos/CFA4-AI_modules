@@ -95,6 +95,9 @@ adja meg, vagy semmit** (nincs „tartok és várok”, nincs holtpont). Négy e
 3. A pillanatnyi szabad memória és VRAM (a tartalék nélkül) fedezze az igényt, mert más programok
    is használják. cgroup-korlátnál a korlát és a cgroupok saját `memory.current`-je közti rés is
    számít; ha a pillanatnyi szabad érték nem olvasható, a feladat vár (`unknown`).
+   Egy friss foglalás még nem látszik a terhelésben (a feladat még foglal), ezért három
+   mintavételig (`observe_sample`) a pillanatnyi szabad értékből is levonódik: két kérés ugyanarra
+   a pillanatképre nem osztozhat ugyanazon a helyen.
 4. Nyomás osztályonként:
    - memórianyomásnál vagy kevés memóriánál (kiugrás vagy tartós) csak az `Interactive` (P0)
      indul, mert a felhasználó vár rá;
