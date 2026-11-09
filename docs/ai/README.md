@@ -11,6 +11,7 @@
 | [`hang-besorolas.csv`](hang-besorolas.csv) | 60 hang-, zene- és beszédfunkció: motorcsalád, besorolás, ami a CFA4-ben már megvan, elsődleges és tartalék jelölt, futtató, kód- és súlylicenc külön, kereskedelmi használat, 12 GB-os futtathatóság, AI-kapu |
 | [`modellvalasztas-091.md`](modellvalasztas-091.md) | Az F3 kapu modellválasztása: a #91 videó-felskálázás jelöltjei négyrészes licenccel (kód, függőség, súly, tanítóadat), a tiszta licencű alternatívák keresése, a döntés (F3 = angol felirat-időzítés wav2vec2-vel) és a mérési terv |
 | [`postgresql-adatreteg.md`](postgresql-adatreteg.md) | A feladatsor, az ütemezés, az AI-jobok, a licencelfogadások, a modellrekordok és a gyorsítótár-index PostgreSQL-adatrétege (CFA4-TASKSTORE-PG-001, elfogadva 2026-11-07): séma, kétszeri indítás elleni védelem, adatbázis-kiesés, PG-0…PG-4 fázisok az F1–F2 kapukban |
+| [`acs-adaptiv-eroforras.md`](acs-adaptiv-eroforras.md) | Az adaptív erőforrás-kezelés (ACS, CFA4-ADAPTIVE-CAPABILITY-001) terve a tulajdonosi döntésekkel: ACS-0…ACS-7 fázisok, az ACS-1 (névleges és aktuális erőforrások, figyelő) leírása a `cfa4-tasks` crate-hez |
 
 A licenc- és VRAM-adatok becslések, és egyetlen projekt sincs még kipróbálva. Mielőtt egy projekt
 bekerül, ellenőrizni kell a repójában a licencét, és le kell mérni a

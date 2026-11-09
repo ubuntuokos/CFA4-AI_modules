@@ -23,6 +23,7 @@ for plan in cfa4_accel::plan_all(&inventory, &settings) {
 | `probe` | Inventory from `/sys/class/drm/renderD*` (GPUs) and `/sys/class/accel/accel*` (NPUs): PCI vendor / device ids and the kernel driver. Bounded reads (64 bytes per attribute, 64 nodes per class); unreadable entries become notes, never errors or panics. Empty outside Linux. |
 | `inventory` | `Device` (kind, vendor, ids, driver, node) and `Inventory`, plain data, so planning is testable without hardware. |
 | `catalog` | `CATALOG`: every backend per `Workload` in `Auto` order, with `Maturity` (implemented / planned), its home crate and whether it is locked to one vendor (`Backend::vendor_lock`). Every workload ends with its CPU backend. |
+| `memory` | `gpu_memory()`: per GPU the VRAM total and in use (`mem_info_vram_*`, amdgpu), the engine load (`gpu_busy_percent`) and whether a connected display hangs on it (`cardN-*/status`). NVIDIA and Intel publish no VRAM counters in sysfs: those stay `None` (unknown, not zero) until `GpuMemory::apply_report` fills them from NVML or a worker. Used by `cfa4-tasks` (ACS-1). |
 | `plan` | `plan()` turns inventory + catalogue + `Settings` into a fallback chain that always ends with `Backend::Cpu`, and records why every other backend was skipped (`notImplemented`, `excludedByPreference`, `vendorLockedOff`, `noDevice`). `coverage()` says per workload whether an implemented accelerator exists that is not vendor-locked. |
 
 ## Settings

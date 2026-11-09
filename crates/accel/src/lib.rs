@@ -12,7 +12,9 @@
 //! 3. [`plan`] turns inventory + catalogue + the user's [`Settings`] into an ordered fallback
 //!    chain for one workload, always ending with [`Backend::Cpu`], and says why every other
 //!    backend was skipped.
-//! 4. [`coverage`] reports per workload whether an implemented accelerator exists that is *not*
+//! 4. [`memory`] reads each GPU's VRAM (total and in use), engine load and whether it drives a
+//!    display, where the driver publishes them in sysfs; unknown stays `None`, never zero.
+//! 5. [`coverage`] reports per workload whether an implemented accelerator exists that is *not*
 //!    locked to a vendor: the vendor-neutrality gaps still to close.
 //!
 //! The chain is a list of candidates, not a promise: the backend's own factory (for example the
@@ -23,12 +25,14 @@
 
 pub mod catalog;
 pub mod inventory;
+pub mod memory;
 pub mod plan;
 pub mod probe;
 pub mod vendor;
 
 pub use catalog::{Backend, Maturity, Unit, Workload};
 pub use inventory::{Device, DeviceKind, Inventory};
+pub use memory::{GpuMemory, GpuMemoryReport, gpu_memory};
 pub use plan::{Coverage, Plan, Preference, Settings, Skip, coverage, plan, plan_all};
 pub use probe::probe;
 pub use vendor::Vendor;

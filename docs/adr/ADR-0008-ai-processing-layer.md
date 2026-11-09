@@ -366,7 +366,8 @@ alatt is folytatható, mert nem érinti a felületet:
   terv, feladatsor és ütemező a `cfa4-tasks` crate-ben), mert nem AI és nem felület (tulajdonosi
   döntés, 2026-11-07). A Kimi K3 (kimi-k3-in-c, Apache-2.0, C99) fogalmait Rustban írjuk meg ebbe
   a közös infrastruktúrába; C-kód a CFA4 folyamatába nem kerül. Külön workerként, helyi LLM-hez
-  csak későbbi, külön döntéssel jöhet.
+  csak későbbi, külön döntéssel jöhet. Terv és állapot:
+  [ACS-terv](../ai/acs-adaptiv-eroforras.md); az ACS-1 kész (2026-11-09).
 
 *Kilépés:* az egui nincs a buildben, a Qt 6 shell a valódi motorral dolgozik.
 
