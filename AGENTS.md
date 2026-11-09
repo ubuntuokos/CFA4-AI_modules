@@ -24,8 +24,10 @@ attribution and original copyright/licence requirements remain in force.
   - NEVER reuse GPL-2.0-only (e.g. HandBrake), AGPL, unlicensed or proprietary code (Adobe,
     DaVinci Resolve). Reimplement the capability or call the program as an external process.
   - Dependencies must pass `cargo deny check licenses` (`deny.toml`).
-  - Paid extras run only as separate processes over a documented interface; never add
-    proprietary plug-ins loaded into the CFA4 process (docs/licensing.md §4).
+  - **No paid or commercial part** (owner decision 2026-11-08): never add paid extras, editions or
+    workers, licence keys, trials, usage or resolution limits, watermarks or paid support tiers.
+    CFA4 is supported only by voluntary donations, which unlock nothing. Never add proprietary
+    plug-ins loaded into the CFA4 process (docs/licensing.md §4).
   - Inherited upstream code keeps its MIT/Apache notices (`LICENSE-MIT`, `LICENSE-APACHE`, `NOTICE`).
   - PySide6/Qt6 (LGPLv3) is compatible; bundling Qt/PySide binaries still needs a packaging review.
 - Upstream brand names, marks and icons are removed from CFA4 and must not be reintroduced

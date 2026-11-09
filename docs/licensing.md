@@ -12,13 +12,15 @@
 - **Nem vehető át:** GPL-2.0-only kód (pl. HandBrake), AGPL, nem szabad licencű vagy ismeretlen
   licencű kód, és bármely zárt program (Adobe Premiere, DaVinci Resolve) kódja vagy eszközei.
   Ezeknek a képességét saját kóddal vagy külső programként hívva kell megvalósítani.
-- **Fizetős rész:** a CFA4 alapprogram ingyenes és szabadon terjeszthető. Fizetős lehet a
-  hosszabb támogatás (LTS-ágak, frissítések), a kész csomagok és a szolgáltatások, a nem kód
-  jellegű tartalmak, valamint a **külön folyamatként** futó extra modulok. A CFA4 folyamatába
-  betöltődő zárt bővítmény nem megengedett.
+- **Nincs fizetős rész** (a tulajdonos döntése, 2026-11-08; felváltja a korábbi „ingyenes alap,
+  fizetős kiegészítők” modellt): a CFA4 minden része ingyenes és szabadon terjeszthető. Nincs
+  fizetős kiegészítő vagy worker, fizetős LTS-ág vagy csomag, licenckulcs, vízjel, próbaidő vagy
+  használati korlát, és a CFA4-nek nincs kereskedelmi része. A fejlesztés **önkéntes adománnyal**
+  támogatható; az adomány semmilyen funkciót nem nyit meg. A CFA4 folyamatába betöltődő zárt
+  bővítmény nem megengedett. Részletek: 4. pont.
 
-*Ez a dokumentum projektszabályzat, nem jogi tanácsadás. Kereskedelmi kiadás előtt érdemes
-jogásszal átnézetni.*
+*Ez a dokumentum projektszabályzat, nem jogi tanácsadás. Kiadás előtt érdemes jogásszal
+átnézetni.*
 
 ---
 
@@ -84,29 +86,27 @@ through files, pipes or command-line arguments are not part of CFA4's code and d
 licence. If such a program is bundled in a package, its own licence text and source offer must
 ship with it.
 
-## 4. Free core, paid extras
+## 4. Free of charge, supported by donations
 
-The CFA4 core is free software: anyone may download, use, change and redistribute it under the
-GPL. Revenue comes from things that are compatible with that:
+**Owner decision, 2026-11-08** (replaces the earlier "free core, paid extras" model): CFA4 has no
+paid or commercial part. Everything the project makes is free software under `GPL-3.0-or-later`
+and free of charge:
 
-1. **Extended support:** long-term-support branches, backported fixes and updates for older
-   Ubuntu releases, direct help. The code of any released LTS build is still GPL and its source is
-   provided to its recipients.
-2. **Convenience:** signed, ready-made packages (deb, Snap, Flatpak) with automatic updates.
-3. **Separate-process extras:** proprietary modules may exist only as **independent programs**
-   that run in their own process and talk to CFA4 through a documented, generic interface (the
-   control channel, a local network/IPC protocol, command line, files). Rules:
-   - they do not link to CFA4 crates or Python modules and are not loaded into the CFA4 process;
-   - they contain no CFA4 or other GPL code;
-   - CFA4 works fully without them (no artificially crippled core);
-   - the interface is documented and usable by free alternatives too.
-4. **Content and services:** templates, effect presets, AI models, sample media, cloud or hosted
-   processing. Non-code content can carry its own (also paid) licence.
+- no paid extras, editions, add-ons or paid AI workers; no licence keys, trial periods, usage
+  limits, resolution caps or watermarks anywhere (core, CFA4 AI workers, packages);
+- no paid long-term-support branches, paid packages or paid services; LTS branches, packages and
+  updates, when they exist, are free for everyone;
+- non-code content made by the project (templates, presets, sample media) is openly licensed
+  like every other asset (`AGENTS.md` §1).
+
+**Voluntary support:** anyone who wants to may support development with a donation. A donation
+never unlocks a feature, a build or priority support, and the program never nags for one.
 
 **Not allowed:** proprietary plug-ins loaded into the CFA4 process (dynamic libraries, Rust
 crates, Python modules). Such a plug-in forms a combined work with the GPL core and would have to
-be GPL as well. Paid extras that are GPL themselves are possible, but buyers may redistribute
-them.
+be GPL as well. Third parties may write their own workers against the permissively licensed
+[CFA4-sdk](https://github.com/ubuntuokos/CFA4-sdk) protocol, but the CFA4 project itself ships
+no proprietary or paid worker.
 
 ## 5. Reused code register
 
