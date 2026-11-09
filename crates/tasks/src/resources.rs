@@ -89,6 +89,10 @@ pub struct Current {
     pub ram_available_bytes: Option<u64>,
     /// `memory.current` of this process's cgroup.
     pub ram_cgroup_used_bytes: Option<u64>,
+    /// Memory still free under the cgroup limits: per limited cgroup (this one and its
+    /// ancestors) its limit minus its own usage, which includes sibling cgroups; the smallest.
+    /// `None` when unlimited, or when a limited cgroup's usage is unreadable.
+    pub ram_cgroup_free_bytes: Option<u64>,
     pub swap_used_bytes: Option<u64>,
     pub memory_pressure: Option<Pressure>,
     pub cpu_pressure: Option<Pressure>,
@@ -114,15 +118,14 @@ pub struct Snapshot {
 
 impl Snapshot {
     /// RAM this process can still take now: machine-wide `MemAvailable`, or what is left under
-    /// the cgroup limit when that is less.
+    /// the cgroup limits when that is less. `None` (unknown, never "plenty") when `MemAvailable`
+    /// is unreadable, or when a cgroup limit exists but its remaining room cannot be read.
     pub fn ram_free_effective_bytes(&self) -> Option<u64> {
-        let under_limit = match (self.nominal.ram_cgroup_limit_bytes, self.current.ram_cgroup_used_bytes) {
-            (Some(limit), Some(used)) => Some(limit.saturating_sub(used)),
-            _ => None,
-        };
-        match (self.current.ram_available_bytes, under_limit) {
-            (Some(a), Some(u)) => Some(a.min(u)),
-            (a, u) => a.or(u),
+        let available = self.current.ram_available_bytes?;
+        match (self.nominal.ram_cgroup_limit_bytes, self.current.ram_cgroup_free_bytes) {
+            (None, _) => Some(available),
+            (Some(_), Some(free)) => Some(available.min(free)),
+            (Some(_), None) => None,
         }
     }
 
@@ -170,9 +173,14 @@ fn sample_from(root: &Path, inventory: &Inventory, gpu_memory: &[GpuMemory], gpu
         notes.push("proc/meminfo: no MemTotal".into());
     }
     let cgroup = system::own_cgroup(root);
-    let (ram_limit, cpu_quota, cgroup_used) = match &cgroup {
-        Some(dir) => (system::cgroup_memory_max(root, dir), system::cgroup_cpu_quota_milli(root, dir), system::cgroup_memory_current(dir)),
-        None => (None, None, None),
+    let (ram_limit, cpu_quota, cgroup_used, cgroup_free) = match &cgroup {
+        Some(dir) => (
+            system::cgroup_memory_max(root, dir),
+            system::cgroup_cpu_quota_milli(root, dir),
+            system::cgroup_memory_current(dir),
+            system::cgroup_memory_free(root, dir),
+        ),
+        None => (None, None, None, None),
     };
     let mut gpus_nominal = Vec::new();
     let mut gpus_current = Vec::new();
@@ -207,6 +215,7 @@ fn sample_from(root: &Path, inventory: &Inventory, gpu_memory: &[GpuMemory], gpu
         current: Current {
             ram_available_bytes: mem.available,
             ram_cgroup_used_bytes: cgroup_used,
+            ram_cgroup_free_bytes: cgroup_free,
             swap_used_bytes: swap_used,
             memory_pressure: system::pressure(root, "memory"),
             cpu_pressure: system::pressure(root, "cpu"),

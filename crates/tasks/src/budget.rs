@@ -9,8 +9,9 @@
 //!
 //! GPUs (ADR-0008 §3):
 //! - a GPU whose VRAM is unknown gets no budget (unknown is never enough);
-//! - a GPU that drives a display gets no budget when another usable GPU exists; on a machine
-//!   where it is the only one, only if the user allows it ([`BudgetSettings::allow_display_gpu`]);
+//! - a GPU that drives a display, or whose display use is unknown, gets no budget when a usable
+//!   GPU known to drive no display exists; otherwise only if the user allows it
+//!   ([`BudgetSettings::allow_display_gpu`]);
 //! - the user may restrict heavy work to some GPUs ([`BudgetSettings::gpus`]).
 
 use serde::{Deserialize, Serialize};
@@ -66,10 +67,23 @@ pub struct GpuBudget {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase", tag = "reason")]
 pub enum GpuExcluded {
-    VramUnknown { node: String },
-    DrivesDisplay { node: String },
-    NotSelected { node: String },
-    TooSmall { node: String, vram_bytes: u64 },
+    VramUnknown {
+        node: String,
+    },
+    DrivesDisplay {
+        node: String,
+    },
+    /// Whether it drives a display could not be read; treated as if it did.
+    DisplayUnknown {
+        node: String,
+    },
+    NotSelected {
+        node: String,
+    },
+    TooSmall {
+        node: String,
+        vram_bytes: u64,
+    },
 }
 
 /// What CFA4's heavy work may take at most.
@@ -113,11 +127,12 @@ impl Budget {
             }
             usable.push((gpu, vram));
         }
-        let has_headless = usable.iter().any(|(g, _)| g.drives_display != Some(true));
+        let has_headless = usable.iter().any(|(g, _)| g.drives_display == Some(false));
         let mut gpus = Vec::new();
         for (gpu, vram) in usable {
-            if gpu.drives_display == Some(true) && (has_headless || !settings.allow_display_gpu) {
-                excluded.push(GpuExcluded::DrivesDisplay { node: gpu.node.clone() });
+            if gpu.drives_display != Some(false) && (has_headless || !settings.allow_display_gpu) {
+                let node = gpu.node.clone();
+                excluded.push(if gpu.drives_display.is_none() { GpuExcluded::DisplayUnknown { node } } else { GpuExcluded::DrivesDisplay { node } });
                 continue;
             }
             gpus.push(GpuBudget { node: gpu.node.clone(), vram_bytes: vram, vram_reserve_bytes: settings.vram_reserve_bytes });
@@ -171,13 +186,25 @@ mod tests {
     #[test]
     fn unknown_vram_and_user_selection_exclude_with_reasons() {
         let n = Nominal {
-            gpus: vec![gpu("renderD128", None, None), gpu("renderD129", Some(12), None), gpu("renderD130", Some(24), Some(false))],
+            gpus: vec![gpu("renderD128", None, None), gpu("renderD129", Some(12), Some(false)), gpu("renderD130", Some(24), Some(false))],
             ..Nominal::default()
         };
         let b = Budget::new(&n, &BudgetSettings { gpus: Some(vec!["renderD128".into(), "renderD129".into()]), ..BudgetSettings::default() });
         assert_eq!(b.gpus.iter().map(|g| g.node.as_str()).collect::<Vec<_>>(), vec!["renderD129"]);
         assert_eq!(b.excluded, vec![GpuExcluded::VramUnknown { node: "renderD128".into() }, GpuExcluded::NotSelected { node: "renderD130".into() }]);
         assert_eq!((b.ram_bytes, b.cpu_milli), (None, None), "unknown RAM and CPUs promise nothing");
+    }
+
+    #[test]
+    fn unknown_display_use_counts_as_a_display() {
+        let n = Nominal { gpus: vec![gpu("renderD128", Some(12), None), gpu("renderD129", Some(12), Some(false))], ..Nominal::default() };
+        let b = Budget::new(&n, &BudgetSettings::default());
+        assert_eq!(b.gpus.iter().map(|g| g.node.as_str()).collect::<Vec<_>>(), vec!["renderD129"]);
+        assert_eq!(b.excluded, vec![GpuExcluded::DisplayUnknown { node: "renderD128".into() }]);
+        // alone, it needs the user's permission like a display card
+        let alone = Nominal { gpus: vec![gpu("renderD128", Some(12), None)], ..Nominal::default() };
+        assert!(Budget::new(&alone, &BudgetSettings::default()).gpus.is_empty());
+        assert_eq!(Budget::new(&alone, &BudgetSettings { allow_display_gpu: true, ..BudgetSettings::default() }).gpus.len(), 1);
     }
 
     #[test]

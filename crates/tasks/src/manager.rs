@@ -11,7 +11,8 @@
 //! 2. **Ledger:** what other reservations already hold plus this request must stay within the
 //!    budget → otherwise [`Denied::Wait`].
 //! 3. **Current load** ([`Snapshot`]): other programs use memory and VRAM too, so the free amount
-//!    now, minus the reserve, must cover the request → otherwise wait.
+//!    now, minus the reserve, must cover the request → otherwise wait. A free amount that cannot be
+//!    read (a cgroup's usage, a GPU without a VRAM counter) waits as well: unknown is never enough.
 //! 4. **Pressure** ([`Monitor`] levels): memory pressure or low memory, spike or sustained, makes
 //!    every class but [`Class::Interactive`] wait; sustained CPU or I/O pressure makes
 //!    [`Class::Speculative`] wait. A GPU whose VRAM signal is sustained takes no new work.
@@ -104,6 +105,11 @@ pub enum WaitReason {
         signal: Signal,
         level: Level,
     },
+    /// The current free amount cannot be read (cgroup usage, VRAM counter): unknown is never
+    /// enough, so the request waits until it is known.
+    Unknown {
+        resource: Resource,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -113,6 +119,9 @@ pub enum Denied {
     NeverFits { resource: Resource, needed: u64, budget: Option<u64> },
     /// Fits the budget, not now.
     Wait { reasons: Vec<WaitReason> },
+    /// Every reservation id is used up (only after 2^64 grants or a hostile restored state);
+    /// nothing is granted rather than handing out an id that is already held.
+    IdsExhausted,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -176,10 +185,10 @@ impl Manager {
                     if request.ram_bytes > free_in_budget {
                         waits.push(WaitReason::Reserved { resource: Resource::Ram, free_in_budget });
                     }
-                    if let Some(free_now) = snap.ram_free_effective_bytes().map(|f| f.saturating_sub(self.budget.ram_reserve_bytes))
-                        && request.ram_bytes > free_now
-                    {
-                        waits.push(WaitReason::InUse { resource: Resource::Ram, free_now });
+                    match snap.ram_free_effective_bytes().map(|f| f.saturating_sub(self.budget.ram_reserve_bytes)) {
+                        Some(free_now) if request.ram_bytes > free_now => waits.push(WaitReason::InUse { resource: Resource::Ram, free_now }),
+                        Some(_) => {}
+                        None => waits.push(WaitReason::Unknown { resource: Resource::Ram }),
                     }
                 }
                 _ => return Err(Denied::NeverFits { resource: Resource::Ram, needed: request.ram_bytes, budget }),
@@ -200,7 +209,8 @@ impl Manager {
             }
         }
 
-        // GPU: among the budgeted candidates that can ever hold it, the one with the most room
+        // GPU: among the budgeted candidates that can ever hold it, the one with the most real room
+        // (the smaller of what the budget and the card's current use leave)
         let mut gpu_node = None;
         if let Some(gpu) = &request.gpu {
             let candidates: Vec<_> = self.budget.gpus.iter().filter(|g| gpu.node.as_ref().is_none_or(|n| *n == g.node)).collect();
@@ -226,18 +236,21 @@ impl Manager {
                     gpu_waits.push(WaitReason::Reserved { resource: Resource::Vram { node: Some(g.node.clone()) }, free_in_budget });
                     continue;
                 }
-                if let Some(free_now) = snap.vram_free_bytes(&g.node).map(|f| f.saturating_sub(g.vram_reserve_bytes))
-                    && gpu.vram_bytes > free_now
-                {
+                let Some(free_now) = snap.vram_free_bytes(&g.node).map(|f| f.saturating_sub(g.vram_reserve_bytes)) else {
+                    gpu_waits.push(WaitReason::Unknown { resource: Resource::Vram { node: Some(g.node.clone()) } });
+                    continue;
+                };
+                if gpu.vram_bytes > free_now {
                     gpu_waits.push(WaitReason::InUse { resource: Resource::Vram { node: Some(g.node.clone()) }, free_now });
                     continue;
                 }
+                let room = free_in_budget.min(free_now);
                 let better = match best {
                     None => true,
-                    Some((room, node)) => free_in_budget > room || (free_in_budget == room && g.node.as_str() < node),
+                    Some((best_room, node)) => room > best_room || (room == best_room && g.node.as_str() < node),
                 };
                 if better {
-                    best = Some((free_in_budget, g.node.as_str()));
+                    best = Some((room, g.node.as_str()));
                 }
             }
             match best {
@@ -268,7 +281,13 @@ impl Manager {
             return Err(Denied::Wait { reasons: waits });
         }
         let id = ReservationId(self.next_id);
-        self.next_id = self.next_id.saturating_add(1);
+        if self.held.iter().any(|h| h.id == id) {
+            return Err(Denied::IdsExhausted);
+        }
+        let Some(next) = self.next_id.checked_add(1) else {
+            return Err(Denied::IdsExhausted);
+        };
+        self.next_id = next;
         self.held.push(Held { id, request: request.clone(), gpu_node: gpu_node.clone() });
         Ok(Grant { id, gpu_node })
     }
@@ -427,11 +446,51 @@ mod tests {
         let mon = Monitor::default();
         let huge = Request { class: Class::Background, ram_bytes: u64::MAX, cpu_milli: u64::MAX, gpu: Some(GpuRequest { vram_bytes: u64::MAX, node: None }) };
         assert!(matches!(m.try_reserve(&huge, &snap, &mon), Err(Denied::NeverFits { .. })));
-        let mut m = Manager { next_id: u64::MAX, ..manager(&snap) };
+        let mut m = Manager { next_id: u64::MAX - 1, ..manager(&snap) };
         let a = m.try_reserve(&req(Class::Interactive, 0, 0, None), &snap, &mon).unwrap();
-        let b = m.try_reserve(&req(Class::Interactive, 0, 0, None), &snap, &mon).unwrap();
-        assert_eq!((a.id, b.id), (ReservationId(u64::MAX), ReservationId(u64::MAX)), "saturates, never wraps");
-        assert_eq!(m.held_count(), 2);
+        assert_eq!(a.id, ReservationId(u64::MAX - 1));
+        assert_eq!(m.try_reserve(&req(Class::Interactive, 0, 0, None), &snap, &mon), Err(Denied::IdsExhausted), "never wraps, never repeats");
+        assert_eq!(m.held_count(), 1);
+        // a restored state whose counter points at a held id: refused, not duplicated
+        m.next_id = a.id.0;
+        assert_eq!(m.try_reserve(&req(Class::Interactive, 0, 0, None), &snap, &mon), Err(Denied::IdsExhausted));
+        assert!(m.release(a.id));
+        assert!(m.try_reserve(&req(Class::Interactive, 0, 0, None), &snap, &mon).is_ok());
+    }
+
+    #[test]
+    fn unknown_current_use_waits() {
+        // a cgroup limit whose usage cannot be read: free RAM is unknown, not the limit
+        let mut snap = machine(28, 0);
+        snap.nominal.ram_cgroup_limit_bytes = Some(32 * GIB);
+        let mut m = manager(&snap);
+        let mon = Monitor::default();
+        let r = m.try_reserve(&req(Class::Interactive, 1, 1, None), &snap, &mon);
+        assert_eq!(r, Err(Denied::Wait { reasons: vec![WaitReason::Unknown { resource: Resource::Ram }] }));
+        // a GPU whose VRAM use is unknown gets no work
+        let mut snap = machine(28, 0);
+        for g in &mut snap.current.gpus {
+            g.vram_used_bytes = None;
+        }
+        let r = m.try_reserve(&req(Class::Interactive, 1, 1, Some(1)), &snap, &mon);
+        assert!(
+            matches!(&r, Err(Denied::Wait { reasons }) if reasons.len() == 2 && reasons.iter().all(|w| matches!(w, WaitReason::Unknown { resource: Resource::Vram { .. } }))),
+            "{r:?}"
+        );
+        assert_eq!(m.held_count(), 0);
+    }
+
+    #[test]
+    fn the_gpu_with_the_most_real_room_wins() {
+        // renderD129 has 9 GiB in use by another program: its budget room is larger on paper
+        // than renderD130's after a 2 GiB reservation there, but its real room is smaller
+        let snap = machine(28, 9);
+        let mut m = manager(&snap);
+        let mon = Monitor::default();
+        let pin = Request { gpu: Some(GpuRequest { vram_bytes: 2 * GIB, node: Some("renderD130".into()) }), ..req(Class::Background, 0, 0, None) };
+        m.try_reserve(&pin, &snap, &mon).unwrap();
+        let any = m.try_reserve(&req(Class::Background, 0, 0, Some(1)), &snap, &mon).unwrap();
+        assert_eq!(any.gpu_node.as_deref(), Some("renderD130"));
     }
 
     #[test]

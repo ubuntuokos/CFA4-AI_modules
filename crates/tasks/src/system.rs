@@ -149,9 +149,30 @@ pub(crate) fn cgroup_memory_max(root: &Path, cgroup: &Path) -> Option<u64> {
     tightest(root, cgroup, |dir| read_text(&dir.join("memory.max")).and_then(|t| t.trim().parse::<u64>().ok()))
 }
 
-/// `memory.current` of the cgroup itself, in bytes.
+/// `memory.current` of one cgroup, in bytes.
 pub(crate) fn cgroup_memory_current(cgroup: &Path) -> Option<u64> {
     read_text(&cgroup.join("memory.current"))?.trim().parse().ok()
+}
+
+/// Memory still free under the cgroup limits, in bytes: for every cgroup from this one up to the
+/// root that has a `memory.max`, its limit minus its own `memory.current` (which also counts its
+/// other children, the siblings of this process's cgroup); the smallest wins. `None` when no
+/// cgroup is limited, or when a limited one's usage cannot be read (then the caller must treat
+/// the free memory as unknown, not as the limit).
+pub(crate) fn cgroup_memory_free(root: &Path, cgroup: &Path) -> Option<u64> {
+    let top = root.join("sys/fs/cgroup");
+    let mut best: Option<u64> = None;
+    let mut dir = cgroup.to_path_buf();
+    for _ in 0..MAX_CGROUP_DEPTH {
+        if let Some(max) = read_text(&dir.join("memory.max")).and_then(|t| t.trim().parse::<u64>().ok()) {
+            let free = max.saturating_sub(cgroup_memory_current(&dir)?);
+            best = Some(best.map_or(free, |b| b.min(free)));
+        }
+        if dir == top || !dir.starts_with(&top) || !dir.pop() {
+            break;
+        }
+    }
+    best
 }
 
 /// The tightest `cpu.max` quota of the cgroup and its ancestors, in thousandths of a CPU

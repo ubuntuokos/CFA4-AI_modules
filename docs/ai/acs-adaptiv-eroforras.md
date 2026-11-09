@@ -82,7 +82,7 @@ soha nem nulla és soha nem pánik. Minden adat serde, így a vezérlőcsatorna 
 - GPU-nként a VRAM mínusz tartalék (alapból 512 MiB).
 
 Nem kap keretet az a GPU, amelynek VRAM-ja ismeretlen, amelyet a felhasználó nem választott ki,
-vagy amely kijelzőt hajt, miközben van másik alkalmas kártya. Ha egyetlen kártya van, és az
+vagy amely kijelzőt hajt (vagy nem tudni, hajt-e), miközben van biztosan kijelző nélküli alkalmas kártya. Ha egyetlen kártya van, és az
 kijelzőt hajt, akkor csak a felhasználó engedélyével (`allowDisplayGpu`). Minden kizárásnak oka
 van.
 
@@ -93,7 +93,8 @@ adja meg, vagy semmit** (nincs „tartok és várok”, nincs holtpont). Négy e
    utat választ. Ismeretlen keretre semmi nem fér.
 2. A többi foglalás és az új igény együtt sem lépheti túl a keretet.
 3. A pillanatnyi szabad memória és VRAM (a tartalék nélkül) fedezze az igényt, mert más programok
-   is használják.
+   is használják. cgroup-korlátnál a korlát és a cgroupok saját `memory.current`-je közti rés is
+   számít; ha a pillanatnyi szabad érték nem olvasható, a feladat vár (`unknown`).
 4. Nyomás osztályonként:
    - memórianyomásnál vagy kevés memóriánál (kiugrás vagy tartós) csak az `Interactive` (P0)
      indul, mert a felhasználó vár rá;
@@ -101,7 +102,8 @@ adja meg, vagy semmit** (nincs „tartok és várok”, nincs holtpont). Négy e
    - tartósan tele VRAM-ú GPU új munkát nem kap.
 
 Ha valami nem teljesül, `Wait` jön, minden okkal; az újrapróbálást a sor (ACS-4) végzi. A GPU-t a
-kezelő választja: amelyiken a legtöbb hely van.
+kezelő választja: amelyiken a legtöbb valódi hely van (a keret és a pillanatnyi szabad VRAM közül a
+kisebb). Ha a foglalási azonosítók elfogynának, `IdsExhausted` jön, ismételt azonosító soha.
 
 ## 6. Következő lépés: ACS-3
 
