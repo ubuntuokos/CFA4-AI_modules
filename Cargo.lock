@@ -1313,6 +1313,7 @@ dependencies = [
 name = "cfa4-platform"
 version = "0.10.0"
 dependencies = [
+ "cfa4-accel",
  "cfa4-bitstream",
  "cfa4-codecs",
  "cfa4-color",

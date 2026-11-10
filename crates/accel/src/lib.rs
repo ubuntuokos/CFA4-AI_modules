@@ -32,7 +32,7 @@ pub mod vendor;
 
 pub use catalog::{Backend, Maturity, Unit, Workload};
 pub use inventory::{Device, DeviceKind, Inventory};
-pub use memory::{GpuMemory, GpuMemoryReport, gpu_memory};
+pub use memory::{GpuMemory, GpuMemoryReport, PciAddress, PciMemoryReading, gpu_memory};
 pub use plan::{Coverage, Plan, Preference, Settings, Skip, coverage, plan, plan_all};
 pub use probe::probe;
 pub use vendor::Vendor;

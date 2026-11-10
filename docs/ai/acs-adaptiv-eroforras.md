@@ -3,7 +3,7 @@
 > **Állapot:** elfogadott irány; a forrás István CFA4-ADAPTIVE-CAPABILITY-001 terve (2026-11-07),
 > a tulajdonosi döntésekkel (2026-11-07, [ADR 0008](../adr/ADR-0008-ai-processing-layer.md)
 > „Lezárt kérdések”) · **ACS-0:** ez a dokumentum · **ACS-1:** kész (`cfa4-tasks`, `cfa4-accel`
-> `memory`) · **ACS-2:** kész (`budget`, `manager`) · **Utolsó átnézés:** 2026-11-09
+> `memory`) · **ACS-2:** kész (`budget`, `manager`) · **ACS-3:** kész (`plan`, `cfa4-platform` `nvml`) · **Utolsó átnézés:** 2026-11-10
 
 ## 1. Mi ez
 
@@ -39,7 +39,7 @@ Alkalmazás, modell-előkészítés, licencelfogadás).
 | ACS-0 | Architektúra-ellenőrzés: az AI-terv, a modellkezelő, a PostgreSQL, az Event Fabric és a meglévő erőforrás-megoldások összevetése, felelősségi határok | Nincs párhuzamos, versengő architektúra | Kész: összevetés 2026-11-07, döntések az ADR 0008-ban, ez a dokumentum |
 | ACS-1 | Hardverfelmérés és futásidejű erőforrás-figyelés | A rendszer a névleges és az aktuális erőforrásokat külön kezeli | Kész (4. pont) |
 | ACS-2 | Erőforrás-elérhetőség kezelése: dinamikus keretek, tartalékok, CPU/GPU-korlátok, párhuzamos feladatok összehangolása, atomi foglalás | A CFA4 nem veszélyezteti a gazdarendszer stabilitását | Kész (5. pont) |
-| ACS-3 | Adaptív végrehajtási terv: alternatív utak (manifest v5 `paths`), szakaszos futás, streaming, részleges modellbetöltés, időbecslés tartománnyal | Egy funkcióhoz több validált út érhető el, ahol a technológia engedi | |
+| ACS-3 | Adaptív végrehajtási terv: alternatív utak (manifest v5 `paths`), szakaszos futás, streaming, részleges modellbetöltés, időbecslés tartománnyal | Egy funkcióhoz több validált út érhető el, ahol a technológia engedi | Kész (6. pont) |
 | ACS-4 | Feladatsor és ütemezett végrehajtás: központi sor, P0/P1/P2/R osztály és felhasználói prioritás, négy indítási mód (azonnal, erőforrásra, időpontra, időpontra és erőforrásra), `scheduled` és `paused` állapot, folytatás | Újraindítás után sem vész el feladat, és egyik sem indul kétszer (PG-2: bérlet, `SKIP LOCKED`) | |
 | ACS-5 | Értesítés és Qt 6 feladatkezelő: előzetes tájékoztatás, becsült idő, késés, döntési lehetőség | A felhasználó indítás előtt és közben is megfelelő információt kap | Qt 6 után |
 | ACS-6 | Modulok bekötése: AI-videó és -hang, Media Intelligence, render és kodekek (az `export` jobja kliens lesz, nem cserélődik le) | A modulok a közös infrastruktúrát használják | |
@@ -109,10 +109,47 @@ Ha valami nem teljesül, `Wait` jön, minden okkal; az újrapróbálást a sor (
 kezelő választja: amelyiken a legtöbb valódi hely van (a keret és a pillanatnyi szabad VRAM közül a
 kisebb). Ha a foglalási azonosítók elfogynának, `IdsExhausted` jön, ismételt azonosító soha.
 
-## 6. Következő lépés: ACS-3
+## 6. ACS-3: ami elkészült
 
-Adaptív végrehajtási terv: a manifest v5 `paths` útjai közül az válik futtathatóvá, amelynek
-`Request`-je a keretbe fér. A `NeverFits` a következő utat próbálja (automatikusan csak
-`tolerance.automatic=true` esetén, egyébként jóváhagyással). Időbecslés tartománnyal
-(`estimate {min_s, max_s, confidence}`). NVML-olvasó a `cfa4-platform`-ban az NVIDIA VRAM-jához,
-a `GpuMemoryReport` felületen át.
+**Tervező (`plan`).** A `plan(job, paths, manager, snapshot, monitor)` egy feladat igazolt útjait
+(SDK manifest 5. változat, `paths`) veszi sorra. A számokat a kliens (`cfa4-ai-jobs`, render,
+proxy) adja meg a konkrét feladatra: a VRAM-ot a feladat felbontásához, és a munkaegységek számát
+(képkocka, hangmásodperc). Így a crate AI- és manifestfüggetlen marad.
+
+- **Sorrend, a kétrészes OOM-létra szerint:** előbb a referencia-út, utána az `automatic: true`
+  tűrésű utak, végül az eredményt megváltoztatók, a manifest sorrendjében. Az utóbbiakat a tervező
+  csak felajánlja, a felhasználó hagyja jóvá; néma minőségcsökkentés nincs.
+- **Döntés:**
+  - `Run`: azonnal fut. A `switched` jelzi, ha nem a referencia-út fut; erről a felhasználó
+    tájékoztatást kap.
+  - `Wait`: az első, valaha is elférő automatikus út most nem fér el. Az `approvalNow` megnevezi
+    azt az eredményt megváltoztató utat, amely azonnal futhatna, ha a felhasználó a várakozás
+    helyett azt választja.
+  - `NeedsApproval`: csak eredményt megváltoztató út fér el; a tűrésével együtt ajánlja fel.
+  - `Unavailable`: „jelenleg nem végrehajtható”; minden út értékelése okkal együtt megmarad.
+  - `InvalidPaths`: hibás útlista (nincs út, nem pontosan egy referencia-út van, tűrés hiányzik
+    vagy hibás, ismétlődő azonosító).
+- **Ismeretlen igény:** ha egy út nem adja meg a RAM- vagy a VRAM-igényét, nem tervezhető
+  (`NotStated`); az ismeretlen soha nem elég.
+- **Eszköz:** a futtató (`cuda`, `tensorrt`: NVIDIA; `rocm`, `migraphx`: AMD; `openvino`: Intel;
+  `cpu`) csak a megfelelő gyártó kártyáján kap helyet (`GpuRequest.vendor`). A foglalás nélküli
+  ellenőrzést a `Manager::check` végzi.
+- **Időbecslés:** mindig tartomány (`minS`, `maxS`), bizonyossággal együtt.
+  - Ha az utat ugyanazzal a `run-minspec.sh`-profillal mérték, mint amilyen a gép:
+    `Medium` bizonyosság, az alapidő 0,8–1,5-szerese.
+  - Ha más profillal mérték, vagy a profil nem ismert: `Low` bizonyosság, az alapidő 0,5–3-szorosa.
+  - Tartós CPU- vagy I/O-nyomásnál a felső határ megduplázódik.
+  - Ellenséges számra (nulla, negatív vagy végtelen sebesség) nincs becslés.
+
+**NVML-olvasó (`cfa4-platform` `nvml`).** Az NVIDIA zárt meghajtója nem ad VRAM-számlálót a
+sysfs-ben, ezért ez a modul a `libnvidia-ml.so.1`-ből olvassa ki a VRAM-ot, futásidőben
+betöltve: ha a meghajtó hiányzik, egyszerűen nincs jelentés, nem hiba. A leolvasott értékeket a
+PCI-cím köti a renderelőcsomóponthoz (`cfa4-accel` `reports_by_pci`), az eredmény pedig
+`GpuMemoryReport` lesz, amelyet a hívó `Snapshot::apply_gpu_report`-tal alkalmaz. A sysfs saját
+számlálója mindig elsőbbséget kap.
+
+## 7. Következő lépés: ACS-4
+
+Feladatsor és ütemezés a PostgreSQL `tasks` sémáján (PG-2): központi sor, P0/P1/P2/R osztályok,
+négy indítási mód, `scheduled` és `paused` állapot, bérlet és `SKIP LOCKED`, újraindítás utáni
+folytatás. A `Wait`-et itt próbálja újra a sor, a `NeedsApproval` itt vár a felhasználóra.
