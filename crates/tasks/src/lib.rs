@@ -6,12 +6,16 @@
 //! 2026-11-07; `cfa4-ai-jobs` will be a client of it). It grows phase by phase
 //! (`docs/ai/acs-adaptiv-eroforras.md`):
 //!
-//! - **ACS-1 (here now): hardware discovery and runtime resource monitor.** [`sample`] reads the
+//! - **ACS-1 (done): hardware discovery and runtime resource monitor.** [`sample`] reads the
 //!   machine's **nominal** resources (RAM, CPUs, cgroup limits, every GPU's VRAM) and its
 //!   **current** ones (free memory, swap, PSI pressure, VRAM in use) as separate types;
 //!   [`class`] places the machine against the owner's floors (16 / 32 GB RAM, 12 GB VRAM for
 //!   AI); [`Monitor`] turns samples into events and tells a spike from a sustained limit.
-//! - ACS-2: resource availability manager (budgets, reserves, atomic reservations).
+//! - **ACS-2 (here now): resource availability manager.** [`Budget`] turns the nominal
+//!   resources and the user's [`BudgetSettings`] into what heavy work may take at most (reserves for
+//!   the desktop, display GPU left out); [`Manager::try_reserve`] grants a [`Request`] all at once or
+//!   not at all, against the budget, the other reservations, the current load and the monitor's
+//!   pressure levels, and tells [`Denied::NeverFits`] (pick another path) from [`Denied::Wait`].
 //! - ACS-3: adaptive execution planner (validated paths, manifest v5 `paths`).
 //! - ACS-4: task queue and scheduler on the PostgreSQL `tasks` schema (PG-2).
 //!
@@ -21,12 +25,16 @@
 
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
+pub mod budget;
 pub mod class;
+pub mod manager;
 pub mod monitor;
 pub mod resources;
 mod system;
 
+pub use budget::{Budget, BudgetSettings, GpuBudget, GpuExcluded};
 pub use class::{AiFloor, FloorReason, RamProfile, ai_floor, ram_profile};
+pub use manager::{Class, Denied, GpuRequest, Grant, Manager, Request, ReservationId, Resource, WaitReason};
 pub use monitor::{Event, Level, Monitor, MonitorConfig, NominalChange, Signal};
 pub use resources::{Current, GpuCurrent, GpuNominal, Nominal, Snapshot, sample, sample_root};
 pub use system::Pressure;

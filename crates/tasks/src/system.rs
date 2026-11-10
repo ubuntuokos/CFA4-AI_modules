@@ -143,15 +143,90 @@ pub(crate) fn own_cgroup(root: &Path) -> Option<PathBuf> {
     Some(root.join("sys/fs/cgroup").join(rel))
 }
 
-/// The tightest `memory.max` of the cgroup and its ancestors, in bytes; `None` when unlimited
-/// or unknown.
-pub(crate) fn cgroup_memory_max(root: &Path, cgroup: &Path) -> Option<u64> {
-    tightest(root, cgroup, |dir| read_text(&dir.join("memory.max")).and_then(|t| t.trim().parse::<u64>().ok()))
+/// One cgroup's `memory.max`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum MemoryMax {
+    /// No file: the memory controller is not enabled there (or the root cgroup), no limit.
+    Absent,
+    /// `max`.
+    Unlimited,
+    Bytes(u64),
+    /// The file exists but cannot be read or parsed: a limit may exist, its size is unknown.
+    Unknown,
 }
 
-/// `memory.current` of the cgroup itself, in bytes.
+pub(crate) fn memory_max(dir: &Path) -> MemoryMax {
+    let path = dir.join("memory.max");
+    match fs::metadata(&path) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return MemoryMax::Absent,
+        _ => {}
+    }
+    let Some(text) = read_text(&path) else {
+        return MemoryMax::Unknown;
+    };
+    match text.trim() {
+        "max" => MemoryMax::Unlimited,
+        t => t.parse().map_or(MemoryMax::Unknown, MemoryMax::Bytes),
+    }
+}
+
+/// The tightest `memory.max` of the cgroup and its ancestors, in bytes (`None` when unlimited),
+/// and whether some `memory.max` on the way could not be read (then the real limit is unknown and
+/// may be tighter).
+pub(crate) fn cgroup_memory_max(root: &Path, cgroup: &Path) -> (Option<u64>, bool) {
+    let unknown = walk_up(root, cgroup).iter().any(|dir| memory_max(dir) == MemoryMax::Unknown);
+    let tightest = tightest(root, cgroup, |dir| match memory_max(dir) {
+        MemoryMax::Bytes(b) => Some(b),
+        _ => None,
+    });
+    (tightest, unknown)
+}
+
+/// The cgroup and its ancestors up to the cgroup root (at most [`MAX_CGROUP_DEPTH`]).
+fn walk_up(root: &Path, cgroup: &Path) -> Vec<PathBuf> {
+    let top = root.join("sys/fs/cgroup");
+    let mut out = Vec::new();
+    let mut dir = cgroup.to_path_buf();
+    for _ in 0..MAX_CGROUP_DEPTH {
+        out.push(dir.clone());
+        if dir == top || !dir.starts_with(&top) || !dir.pop() {
+            break;
+        }
+    }
+    out
+}
+
+/// `memory.current` of one cgroup, in bytes.
 pub(crate) fn cgroup_memory_current(cgroup: &Path) -> Option<u64> {
     read_text(&cgroup.join("memory.current"))?.trim().parse().ok()
+}
+
+/// Memory still free under the cgroup limits, in bytes: for every cgroup from this one up to the
+/// root that has a `memory.max`, its limit minus its own `memory.current` (which also counts its
+/// other children, the siblings of this process's cgroup); the smallest wins. `None` when no
+/// cgroup is limited, or when a limit or a limited cgroup's usage cannot be read (then the caller
+/// must treat the free memory as unknown, not as the limit).
+pub(crate) fn cgroup_memory_free(root: &Path, cgroup: &Path) -> Option<u64> {
+    let mut best: Option<u64> = None;
+    for dir in walk_up(root, cgroup) {
+        match memory_max(&dir) {
+            MemoryMax::Bytes(max) => {
+                let free = max.saturating_sub(cgroup_memory_current(&dir)?);
+                best = Some(best.map_or(free, |b| b.min(free)));
+            }
+            MemoryMax::Unknown => return None,
+            MemoryMax::Absent | MemoryMax::Unlimited => {}
+        }
+    }
+    best
+}
+
+/// The CPUs this process may run on (`Cpus_allowed_list` in `/proc/self/status`: the affinity
+/// mask, which the cgroup `cpuset` also narrows).
+pub(crate) fn allowed_cpus(root: &Path) -> Option<u32> {
+    let text = read_text(&root.join("proc/self/status"))?;
+    let list = text.lines().find_map(|l| l.strip_prefix("Cpus_allowed_list:"))?;
+    parse_cpu_list(list)
 }
 
 /// The tightest `cpu.max` quota of the cgroup and its ancestors, in thousandths of a CPU
@@ -172,21 +247,7 @@ pub(crate) fn parse_cpu_max(text: &str) -> Option<u64> {
 
 /// The smallest value `read` finds on the way from `cgroup` up to the cgroup root.
 fn tightest(root: &Path, cgroup: &Path, read: impl Fn(&Path) -> Option<u64>) -> Option<u64> {
-    let top = root.join("sys/fs/cgroup");
-    let mut best: Option<u64> = None;
-    let mut dir = cgroup.to_path_buf();
-    for _ in 0..MAX_CGROUP_DEPTH {
-        if let Some(v) = read(&dir) {
-            best = Some(best.map_or(v, |b| b.min(v)));
-        }
-        if dir == top || !dir.starts_with(&top) {
-            break;
-        }
-        if !dir.pop() {
-            break;
-        }
-    }
-    best
+    walk_up(root, cgroup).iter().filter_map(|dir| read(dir)).min()
 }
 
 #[cfg(test)]

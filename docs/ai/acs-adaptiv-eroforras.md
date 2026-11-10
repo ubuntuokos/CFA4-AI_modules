@@ -3,7 +3,7 @@
 > **Állapot:** elfogadott irány; a forrás István CFA4-ADAPTIVE-CAPABILITY-001 terve (2026-11-07),
 > a tulajdonosi döntésekkel (2026-11-07, [ADR 0008](../adr/ADR-0008-ai-processing-layer.md)
 > „Lezárt kérdések”) · **ACS-0:** ez a dokumentum · **ACS-1:** kész (`cfa4-tasks`, `cfa4-accel`
-> `memory`) · **Utolsó átnézés:** 2026-11-09
+> `memory`) · **ACS-2:** kész (`budget`, `manager`) · **Utolsó átnézés:** 2026-11-09
 
 ## 1. Mi ez
 
@@ -38,7 +38,7 @@ Alkalmazás, modell-előkészítés, licencelfogadás).
 |---|---|---|---|
 | ACS-0 | Architektúra-ellenőrzés: az AI-terv, a modellkezelő, a PostgreSQL, az Event Fabric és a meglévő erőforrás-megoldások összevetése, felelősségi határok | Nincs párhuzamos, versengő architektúra | Kész: összevetés 2026-11-07, döntések az ADR 0008-ban, ez a dokumentum |
 | ACS-1 | Hardverfelmérés és futásidejű erőforrás-figyelés | A rendszer a névleges és az aktuális erőforrásokat külön kezeli | Kész (4. pont) |
-| ACS-2 | Erőforrás-elérhetőség kezelése: dinamikus keretek, tartalékok, CPU/GPU-korlátok, párhuzamos feladatok összehangolása, atomi foglalás | A CFA4 nem veszélyezteti a gazdarendszer stabilitását | Következik |
+| ACS-2 | Erőforrás-elérhetőség kezelése: dinamikus keretek, tartalékok, CPU/GPU-korlátok, párhuzamos feladatok összehangolása, atomi foglalás | A CFA4 nem veszélyezteti a gazdarendszer stabilitását | Kész (5. pont) |
 | ACS-3 | Adaptív végrehajtási terv: alternatív utak (manifest v5 `paths`), szakaszos futás, streaming, részleges modellbetöltés, időbecslés tartománnyal | Egy funkcióhoz több validált út érhető el, ahol a technológia engedi | |
 | ACS-4 | Feladatsor és ütemezett végrehajtás: központi sor, P0/P1/P2/R osztály és felhasználói prioritás, négy indítási mód (azonnal, erőforrásra, időpontra, időpontra és erőforrásra), `scheduled` és `paused` állapot, folytatás | Újraindítás után sem vész el feladat, és egyik sem indul kétszer (PG-2: bérlet, `SKIP LOCKED`) | |
 | ACS-5 | Értesítés és Qt 6 feladatkezelő: előzetes tájékoztatás, becsült idő, késés, döntési lehetőség | A felhasználó indítás előtt és közben is megfelelő információt kap | Qt 6 után |
@@ -56,7 +56,8 @@ worker jelentése) ki nem tölti.
 **`cfa4-tasks` crate.**
 
 - `Nominal` (névleges): fizikai RAM, a folyamat és őseinek cgroup-korlátja (`memory.max`,
-  `cpu.max`, a legszigorúbb számít), online CPU-k, GPU-k VRAM-ja és kijelzőhasználata. A
+  `cpu.max`, a legszigorúbb számít; az olvashatatlan `memory.max` „ismeretlen korlát”, nem
+  „nincs korlát”), online és a folyamat számára engedélyezett CPU-k (affinitás, `cpuset`), GPU-k VRAM-ja és kijelzőhasználata. A
   `ram_effective_bytes` a fizikai RAM és a cgroup-korlát közül a kisebbet adja, így a
   `run-minspec.sh` 16 és 32 GB-os profilja helyesen látszik az 512 GB-os fejlesztőgépen is.
 - `Current` (aktuális): `MemAvailable`, a cgroup `memory.current`-je, foglalt swap, PSI-nyomás
@@ -71,10 +72,47 @@ worker jelentése) ki nem tölti.
 Minden olvasás korlátos, minden szám ellenőrzött; hiányzó vagy ellenséges fájl „ismeretlen”,
 soha nem nulla és soha nem pánik. Minden adat serde, így a vezérlőcsatorna és az MCP olvashatja.
 
-## 5. Következő lépés: ACS-2
+## 5. ACS-2: ami elkészült
 
-Erőforrás-keretek a névleges értékekből (felhasználói tartalék és korlát), atomi foglalás
-(nincs „tartok és várok”), a kijelzőt hajtó GPU alapból kimarad, a foglalás az aktuális
-értékekhez igazodik (tartós `Sustained` jelzésnél új feladat nem indul, kiugrásnál vár). NVIDIA
-VRAM-hoz NVML-olvasó a `cfa4-platform`-ban (az egyetlen `unsafe`-et engedő crate), opcionálisan,
+**Keret (`budget`).** A névleges értékekből és a felhasználó beállításaiból
+(`BudgetSettings`, serde) számol:
+
+- RAM: a hatásos RAM mínusz tartalék (alapból 2 GiB és a 10 % közül a nagyobb), a felhasználó
+  ezt felső korláttal szűkítheti;
+- CPU: a hatásos CPU-k mínusz tartalék (alapból egy CPU marad az asztalnak);
+- GPU-nként a VRAM mínusz tartalék (alapból 512 MiB).
+
+Nem kap keretet az a GPU, amelynek VRAM-ja ismeretlen, amelyet a felhasználó nem választott ki,
+vagy amely kijelzőt hajt (vagy nem tudni, hajt-e), miközben van biztosan kijelző nélküli alkalmas kártya. Ha egyetlen kártya van, és az
+kijelzőt hajt, akkor csak a felhasználó engedélyével (`allowDisplayGpu`). Minden kizárásnak oka
+van.
+
+**Foglalás (`manager`).** A `try_reserve` egy feladat RAM-, CPU- és VRAM-igényét **egyszerre
+adja meg, vagy semmit** (nincs „tartok és várok”, nincs holtpont). Négy ellenőrzés:
+
+1. A kereten túli igény `NeverFits`: így ezen a gépen nem fut, a tervező (ACS-3) másik validált
+   utat választ. Ismeretlen keretre semmi nem fér.
+2. A többi foglalás és az új igény együtt sem lépheti túl a keretet.
+3. A pillanatnyi szabad memória és VRAM (a tartalék nélkül) fedezze az igényt, mert más programok
+   is használják. cgroup-korlátnál a korlát és a cgroupok saját `memory.current`-je közti rés is
+   számít; ha a pillanatnyi szabad érték nem olvasható, a feladat vár (`unknown`).
+   Egy friss foglalás még nem látszik a terhelésben (a feladat még foglal), ezért három
+   mintavételig (`observe_sample`) a pillanatnyi szabad értékből is levonódik: két kérés ugyanarra
+   a pillanatképre nem osztozhat ugyanazon a helyen.
+4. Nyomás osztályonként:
+   - memórianyomásnál vagy kevés memóriánál (kiugrás vagy tartós) csak az `Interactive` (P0)
+     indul, mert a felhasználó vár rá;
+   - tartós CPU- vagy I/O-nyomásnál a `Speculative` (P2) vár, a többi csak lassabb lesz;
+   - tartósan tele VRAM-ú GPU új munkát nem kap.
+
+Ha valami nem teljesül, `Wait` jön, minden okkal; az újrapróbálást a sor (ACS-4) végzi. A GPU-t a
+kezelő választja: amelyiken a legtöbb valódi hely van (a keret és a pillanatnyi szabad VRAM közül a
+kisebb). Ha a foglalási azonosítók elfogynának, `IdsExhausted` jön, ismételt azonosító soha.
+
+## 6. Következő lépés: ACS-3
+
+Adaptív végrehajtási terv: a manifest v5 `paths` útjai közül az válik futtathatóvá, amelynek
+`Request`-je a keretbe fér. A `NeverFits` a következő utat próbálja (automatikusan csak
+`tolerance.automatic=true` esetén, egyébként jóváhagyással). Időbecslés tartománnyal
+(`estimate {min_s, max_s, confidence}`). NVML-olvasó a `cfa4-platform`-ban az NVIDIA VRAM-jához,
 a `GpuMemoryReport` felületen át.

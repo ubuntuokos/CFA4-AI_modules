@@ -53,7 +53,9 @@ pub enum Level {
 pub enum NominalChange {
     RamPhysical { from: Option<u64>, to: Option<u64> },
     RamLimit { from: Option<u64>, to: Option<u64> },
+    RamLimitUnknown { from: bool, to: bool },
     CpusOnline { from: Option<u32>, to: Option<u32> },
+    CpusAllowed { from: Option<u32>, to: Option<u32> },
     CpuQuota { from: Option<u64>, to: Option<u64> },
     GpuAdded { node: String },
     GpuRemoved { node: String },
@@ -236,8 +238,14 @@ fn nominal_changes(a: &Nominal, b: &Nominal) -> Vec<NominalChange> {
     if a.ram_cgroup_limit_bytes != b.ram_cgroup_limit_bytes {
         out.push(NominalChange::RamLimit { from: a.ram_cgroup_limit_bytes, to: b.ram_cgroup_limit_bytes });
     }
+    if a.ram_cgroup_limit_unknown != b.ram_cgroup_limit_unknown {
+        out.push(NominalChange::RamLimitUnknown { from: a.ram_cgroup_limit_unknown, to: b.ram_cgroup_limit_unknown });
+    }
     if a.cpus_online != b.cpus_online {
         out.push(NominalChange::CpusOnline { from: a.cpus_online, to: b.cpus_online });
+    }
+    if a.cpus_allowed != b.cpus_allowed {
+        out.push(NominalChange::CpusAllowed { from: a.cpus_allowed, to: b.cpus_allowed });
     }
     if a.cpu_quota_milli != b.cpu_quota_milli {
         out.push(NominalChange::CpuQuota { from: a.cpu_quota_milli, to: b.cpu_quota_milli });
