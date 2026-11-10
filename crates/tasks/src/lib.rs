@@ -16,12 +16,16 @@
 //!   the desktop, display GPU left out); [`Manager::try_reserve`] grants a [`Request`] all at once or
 //!   not at all, against the budget, the other reservations, the current load and the monitor's
 //!   pressure levels, and tells [`Denied::NeverFits`] (pick another path) from [`Denied::Wait`].
-//! - **ACS-3 (here now): adaptive execution planner.** [`plan()`] takes a task's validated
+//! - **ACS-3 (done): adaptive execution planner.** [`plan()`] takes a task's validated
 //!   [`ExecutionPath`]s (SDK manifest v5 `paths`, resolved for the job) and decides: run the
 //!   reference path, switch on its own only to a result-preserving (`automatic`) path, wait, or
 //!   offer a result-changing path for the user's approval; "currently not executable" when none
 //!   fits. Every path gets a time [`Estimate`] as a range with its confidence.
-//! - ACS-4: task queue and scheduler on the PostgreSQL `tasks` schema (PG-2).
+//! - **ACS-4 (here now): task queue and scheduler.** [`Queue`] holds the rules every store
+//!   follows: states (SDK host report v2), order (class, user priority, age) with starvation
+//!   protection, four [`StartMode`]s, leases that never restart a task from the beginning, version
+//!   checks and missed starts. The PostgreSQL store (`tasks` schema, PG-2) applies the same
+//!   operations in transactions and must pass the same tests.
 //!
 //! GPU sysfs reading lives in `cfa4-accel` ([`cfa4_accel::memory`]); this crate adds the system
 //! side (`/proc`, cgroup v2, PSI) and the policy. Unknown numbers stay `None` everywhere: unknown
@@ -34,6 +38,7 @@ pub mod class;
 pub mod manager;
 pub mod monitor;
 pub mod plan;
+pub mod queue;
 pub mod resources;
 mod system;
 
@@ -42,5 +47,6 @@ pub use class::{AiFloor, FloorReason, RamProfile, ai_floor, ram_profile};
 pub use manager::{Class, Denied, GpuRequest, Grant, Manager, Request, ReservationId, Resource, WaitReason};
 pub use monitor::{Event, Level, Monitor, MonitorConfig, NominalChange, Signal};
 pub use plan::{Assessment, Confidence, Decision, Estimate, ExecutionPath, Fit, Job, Metric, Plan, Provider, Tolerance, plan};
+pub use queue::{Actor, MissedStart, NewTask, Priority, Queue, QueueConfig, QueueError, QueueEvent, StartMode, State, Task, Transition, UtcMs};
 pub use resources::{Current, GpuCurrent, GpuNominal, Nominal, Snapshot, sample, sample_root};
 pub use system::Pressure;

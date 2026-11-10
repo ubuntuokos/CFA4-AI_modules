@@ -40,7 +40,7 @@ Alkalmazás, modell-előkészítés, licencelfogadás).
 | ACS-1 | Hardverfelmérés és futásidejű erőforrás-figyelés | A rendszer a névleges és az aktuális erőforrásokat külön kezeli | Kész (4. pont) |
 | ACS-2 | Erőforrás-elérhetőség kezelése: dinamikus keretek, tartalékok, CPU/GPU-korlátok, párhuzamos feladatok összehangolása, atomi foglalás | A CFA4 nem veszélyezteti a gazdarendszer stabilitását | Kész (5. pont) |
 | ACS-3 | Adaptív végrehajtási terv: alternatív utak (manifest v5 `paths`), szakaszos futás, streaming, részleges modellbetöltés, időbecslés tartománnyal | Egy funkcióhoz több validált út érhető el, ahol a technológia engedi | Kész (6. pont) |
-| ACS-4 | Feladatsor és ütemezett végrehajtás: központi sor, P0/P1/P2/R osztály és felhasználói prioritás, négy indítási mód (azonnal, erőforrásra, időpontra, időpontra és erőforrásra), `scheduled` és `paused` állapot, folytatás | Újraindítás után sem vész el feladat, és egyik sem indul kétszer (PG-2: bérlet, `SKIP LOCKED`) | |
+| ACS-4 | Feladatsor és ütemezett végrehajtás: központi sor, P0/P1/P2/R osztály és felhasználói prioritás, négy indítási mód (azonnal, erőforrásra, időpontra, időpontra és erőforrásra), `scheduled` és `paused` állapot, folytatás | Újraindítás után sem vész el feladat, és egyik sem indul kétszer (PG-2: bérlet, `SKIP LOCKED`) | Folyamatban: a sor magja kész (7. pont), a PostgreSQL-tár hátravan |
 | ACS-5 | Értesítés és Qt 6 feladatkezelő: előzetes tájékoztatás, becsült idő, késés, döntési lehetőség | A felhasználó indítás előtt és közben is megfelelő információt kap | Qt 6 után |
 | ACS-6 | Modulok bekötése: AI-videó és -hang, Media Intelligence, render és kodekek (az `export` jobja kliens lesz, nem cserélődik le) | A modulok a közös infrastruktúrát használják | |
 | ACS-7 | Integrációs és stabilitási próbák: hardverkonfigurációk, háttérterhelés, hosszú feladatok, újraindítás, memóriahiány, eredményhelyesség (CPU és GPU arany kimenettel) | A funkciók elérhetők maradnak, ahol van biztonságos út | |
@@ -148,8 +148,42 @@ PCI-cím köti a renderelőcsomóponthoz (`cfa4-accel` `reports_by_pci`), az ere
 `GpuMemoryReport` lesz, amelyet a hívó `Snapshot::apply_gpu_report`-tal alkalmaz. A sysfs saját
 számlálója mindig elsőbbséget kap.
 
-## 7. Következő lépés: ACS-4
+## 7. ACS-4: a sor magja (folyamatban)
 
-Feladatsor és ütemezés a PostgreSQL `tasks` sémáján (PG-2): központi sor, P0/P1/P2/R osztályok,
-négy indítási mód, `scheduled` és `paused` állapot, bérlet és `SKIP LOCKED`, újraindítás utáni
-folytatás. A `Wait`-et itt próbálja újra a sor, a `NeedsApproval` itt vár a felhasználóra.
+**Sor (`queue`).** A közös CFA4-feladatsor szabályai tár nélkül. Ezek a szabályok kötelezők minden
+tárra: a PostgreSQL-tár (`tasks` séma, PG-2, a `cfa4-store`-on át) ugyanezeket a műveleteket
+tranzakcióban végzi (`FOR UPDATE SKIP LOCKED`, bérlet, verziószám), és ugyanezeket a teszteket
+kell teljesítenie. Az időt a hívó adja meg (UTC ezredmásodperc), az ütemező maga nem olvas órát.
+
+- **Állapotok** (SDK gazdajelentés, 2. változat): `scheduled`, `queued`, `waiting` (erőforrásra),
+  `blocked` (egyik út sem fér el: a kliens újratervez, vagy a felhasználó másik utat hagy jóvá),
+  `running`, `paused`, `cancelling`, `succeeded`, `failed`, `cancelled`. Az AI-alszakaszok
+  (`preparing_model`, `loading`) a `cfa4-ai-jobs`-ban maradnak. Az állapotváltást az átmenettábla
+  ellenőrzi, a napló legfeljebb 256 sort tart meg.
+- **Sorrend:**
+  - Elsőként az osztály számít: P0 (interaktív), R (végső render), P1 (háttér), P2 (spekulatív).
+    Az R a P1 elé kerül, mert a felhasználó kifejezetten kiadásra indította; ezt én döntöttem
+    el, az ADR nem rögzíti.
+  - Osztályon belül a felhasználói prioritás, azon belül a beküldés ideje dönt.
+  - Ha egy feladat erőforrásra vár, az alatta lévő elindulhat helyette, de csak amíg a várakozó
+    10 percnél rövidebb ideje vár (`starvationMs`). Utána ő következik, így a nagy feladat nem
+    éhezik ki.
+- **Négy indítási mód:** azonnal, erőforrásra, időpontra, időpontra és erőforrásra. Ha az
+  „azonnal” vagy az „időpontra” módú feladatnak várnia kell, a felhasználó értesítést kap; a másik
+  kettő csendben vár.
+- **Egyszeri indítás:**
+  - A futó feladat bérletét a felügyelő újítja meg (alapból 30 másodpercenként).
+  - Ha a bérlet lejár, a folytatható feladat az ellenőrzőpontjától kerül vissza a sorba, minden
+    más `failed` lesz. Elejéről magától soha nem indul újra.
+- **Verziószám:** a felhasználói művelet (szüneteltetés, folytatás, megszakítás, átütemezés, új
+  út) a látott verzióra feltételes. Az elavult kérést a sor elutasítja.
+- **Elmaradt indítás:** ha a késés több mint 5 perc, a feladat saját szabálya dönt:
+  - `runLate`: elindul késve;
+  - `nextSlot`: a hívó a feladat IANA-időzónájában kiszámolja a következő időpontot
+    (`reschedule`);
+  - `askUser`: a felhasználó dönt.
+- **Ellenséges bemenet:** üres vagy túl hosszú azonosító, legfeljebb 100 000 feladat, szaturáló
+  idők; hibát ad, pánikot nem.
+
+**Hátralévő rész:** a PostgreSQL-tár (PG-1 `cfa4-store` és PG-2 `tasks` séma), a meghajtó
+kiválasztása után. A meghajtót a BacklotHub G2 kapujával közösen kell kiválasztani.
