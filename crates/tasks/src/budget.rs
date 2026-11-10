@@ -14,6 +14,7 @@
 //!   ([`BudgetSettings::allow_display_gpu`]);
 //! - the user may restrict heavy work to some GPUs ([`BudgetSettings::gpus`]).
 
+use cfa4_accel::Vendor;
 use serde::{Deserialize, Serialize};
 
 use crate::resources::Nominal;
@@ -58,6 +59,9 @@ impl Default for BudgetSettings {
 #[serde(rename_all = "camelCase")]
 pub struct GpuBudget {
     pub node: String,
+    /// Which runtimes can use it (CUDA: NVIDIA, ROCm: AMD, OpenVINO: Intel).
+    #[serde(default)]
+    pub vendor: Option<Vendor>,
     pub vram_bytes: u64,
     /// Kept free on the card, also against other programs' current use.
     pub vram_reserve_bytes: u64,
@@ -135,7 +139,7 @@ impl Budget {
                 excluded.push(if gpu.drives_display.is_none() { GpuExcluded::DisplayUnknown { node } } else { GpuExcluded::DrivesDisplay { node } });
                 continue;
             }
-            gpus.push(GpuBudget { node: gpu.node.clone(), vram_bytes: vram, vram_reserve_bytes: settings.vram_reserve_bytes });
+            gpus.push(GpuBudget { node: gpu.node.clone(), vendor: Some(gpu.vendor), vram_bytes: vram, vram_reserve_bytes: settings.vram_reserve_bytes });
         }
         Budget { ram_bytes, ram_reserve_bytes: ram_reserve, cpu_milli, gpus, excluded }
     }
@@ -149,7 +153,6 @@ impl Budget {
 mod tests {
     use super::*;
     use crate::resources::GpuNominal;
-    use cfa4_accel::Vendor;
 
     fn gpu(node: &str, vram_gib: Option<u64>, display: Option<bool>) -> GpuNominal {
         GpuNominal { node: node.into(), vendor: Vendor::Nvidia, driver: "nvidia".into(), vram_total_bytes: vram_gib.map(|g| g * GIB), drives_display: display }
@@ -170,7 +173,10 @@ mod tests {
         assert_eq!(b.ram_reserve_bytes, 2 * GIB, "10 % of 16 GiB is below the 2 GiB floor");
         assert_eq!(b.ram_bytes, Some(14 * GIB));
         assert_eq!(b.cpu_milli, Some(7000));
-        assert_eq!(b.gpus, vec![GpuBudget { node: "renderD129".into(), vram_bytes: 16 * GIB - 512 * MIB, vram_reserve_bytes: 512 * MIB }]);
+        assert_eq!(
+            b.gpus,
+            vec![GpuBudget { node: "renderD129".into(), vendor: Some(Vendor::Nvidia), vram_bytes: 16 * GIB - 512 * MIB, vram_reserve_bytes: 512 * MIB }]
+        );
         assert_eq!(b.excluded, vec![GpuExcluded::DrivesDisplay { node: "renderD128".into() }]);
     }
 

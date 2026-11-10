@@ -24,6 +24,7 @@
 //! event); the queue (ACS-4) owns the retry. The manager is plain data: the caller keeps it
 //! behind one lock.
 
+use cfa4_accel::Vendor;
 use serde::{Deserialize, Serialize};
 
 use crate::budget::Budget;
@@ -51,6 +52,9 @@ pub struct GpuRequest {
     pub vram_bytes: u64,
     /// A specific render node; `None`: any budgeted GPU, the manager picks.
     pub node: Option<String>,
+    /// Only GPUs of this vendor (the runtime's: CUDA needs NVIDIA); `None`: any.
+    #[serde(default)]
+    pub vendor: Option<Vendor>,
 }
 
 /// What one task needs, all at once.
@@ -216,6 +220,22 @@ impl Manager {
 
     /// Grant everything `request` needs, or nothing.
     pub fn try_reserve(&mut self, request: &Request, snap: &Snapshot, monitor: &Monitor) -> Result<Grant, Denied> {
+        let gpu_node = self.check(request, snap, monitor)?;
+        let id = ReservationId(self.next_id);
+        if self.held.iter().any(|h| h.id == id) {
+            return Err(Denied::IdsExhausted);
+        }
+        let Some(next) = self.next_id.checked_add(1) else {
+            return Err(Denied::IdsExhausted);
+        };
+        self.next_id = next;
+        self.held.push(Held { id, request: request.clone(), gpu_node: gpu_node.clone(), unsettled_samples: self.settle_samples.max(1) });
+        Ok(Grant { id, gpu_node })
+    }
+
+    /// What [`Manager::try_reserve`] would answer now, without reserving anything (the planner
+    /// compares paths with it). `Ok` carries the GPU that would be chosen.
+    pub fn check(&self, request: &Request, snap: &Snapshot, monitor: &Monitor) -> Result<Option<String>, Denied> {
         let mut waits = Vec::new();
 
         // RAM
@@ -255,7 +275,8 @@ impl Manager {
         // (the smaller of what the budget and the card's current use leave)
         let mut gpu_node = None;
         if let Some(gpu) = &request.gpu {
-            let candidates: Vec<_> = self.budget.gpus.iter().filter(|g| gpu.node.as_ref().is_none_or(|n| *n == g.node)).collect();
+            let candidates: Vec<_> =
+                self.budget.gpus.iter().filter(|g| gpu.node.as_ref().is_none_or(|n| *n == g.node) && gpu.vendor.is_none_or(|v| g.vendor == Some(v))).collect();
             if candidates.is_empty() {
                 return Err(Denied::NeverFits { resource: Resource::Gpu { node: gpu.node.clone() }, needed: gpu.vram_bytes, budget: None });
             }
@@ -324,16 +345,7 @@ impl Manager {
         if !waits.is_empty() {
             return Err(Denied::Wait { reasons: waits });
         }
-        let id = ReservationId(self.next_id);
-        if self.held.iter().any(|h| h.id == id) {
-            return Err(Denied::IdsExhausted);
-        }
-        let Some(next) = self.next_id.checked_add(1) else {
-            return Err(Denied::IdsExhausted);
-        };
-        self.next_id = next;
-        self.held.push(Held { id, request: request.clone(), gpu_node: gpu_node.clone(), unsettled_samples: self.settle_samples.max(1) });
-        Ok(Grant { id, gpu_node })
+        Ok(gpu_node)
     }
 
     /// Release a reservation; `false` when it was not held (already released, unknown id).
@@ -387,7 +399,7 @@ mod tests {
     }
 
     fn req(class: Class, ram_gib: u64, cpus: u64, vram_gib: Option<u64>) -> Request {
-        Request { class, ram_bytes: ram_gib * GIB, cpu_milli: cpus * 1000, gpu: vram_gib.map(|v| GpuRequest { vram_bytes: v * GIB, node: None }) }
+        Request { class, ram_bytes: ram_gib * GIB, cpu_milli: cpus * 1000, gpu: vram_gib.map(|v| GpuRequest { vram_bytes: v * GIB, node: None, vendor: None }) }
     }
 
     #[test]
@@ -420,7 +432,8 @@ mod tests {
         );
         assert!(matches!(m.try_reserve(&req(Class::Background, 64, 0, None), &snap, &mon), Err(Denied::NeverFits { resource: Resource::Ram, .. })));
         assert!(matches!(m.try_reserve(&req(Class::Background, 0, 32, None), &snap, &mon), Err(Denied::NeverFits { resource: Resource::Cpu, .. })));
-        let display = Request { gpu: Some(GpuRequest { vram_bytes: GIB, node: Some("renderD128".into()) }), ..req(Class::Background, 0, 0, None) };
+        let display =
+            Request { gpu: Some(GpuRequest { vram_bytes: GIB, node: Some("renderD128".into()), vendor: None }), ..req(Class::Background, 0, 0, None) };
         assert!(
             matches!(m.try_reserve(&display, &snap, &mon), Err(Denied::NeverFits { resource: Resource::Gpu { .. }, .. })),
             "the display card has no budget"
@@ -438,7 +451,8 @@ mod tests {
         let mon = Monitor::default();
         let r = m.try_reserve(&req(Class::Background, 4, 1, None), &snap, &mon);
         assert!(matches!(&r, Err(Denied::Wait { reasons }) if matches!(reasons.as_slice(), [WaitReason::InUse { resource: Resource::Ram, .. }])), "{r:?}");
-        let pinned = Request { gpu: Some(GpuRequest { vram_bytes: 4 * GIB, node: Some("renderD129".into()) }), ..req(Class::Background, 1, 1, None) };
+        let pinned =
+            Request { gpu: Some(GpuRequest { vram_bytes: 4 * GIB, node: Some("renderD129".into()), vendor: None }), ..req(Class::Background, 1, 1, None) };
         let r = m.try_reserve(&pinned, &snap, &mon);
         assert!(
             matches!(&r, Err(Denied::Wait { reasons }) if matches!(reasons.as_slice(), [WaitReason::InUse { resource: Resource::Vram { .. }, .. }])),
@@ -478,7 +492,8 @@ mod tests {
         }
         mon.observe(&snap);
         mon.observe(&snap);
-        let pinned = Request { gpu: Some(GpuRequest { vram_bytes: GIB / 4, node: Some("renderD130".into()) }), ..req(Class::Interactive, 0, 0, None) };
+        let pinned =
+            Request { gpu: Some(GpuRequest { vram_bytes: GIB / 4, node: Some("renderD130".into()), vendor: None }), ..req(Class::Interactive, 0, 0, None) };
         let r = m.try_reserve(&pinned, &snap, &mon);
         assert!(matches!(&r, Err(Denied::Wait { reasons }) if matches!(reasons.first(), Some(WaitReason::Pressure { .. }))), "{r:?}");
     }
@@ -488,7 +503,12 @@ mod tests {
         let snap = machine(28, 0);
         let mut m = manager(&snap);
         let mon = Monitor::default();
-        let huge = Request { class: Class::Background, ram_bytes: u64::MAX, cpu_milli: u64::MAX, gpu: Some(GpuRequest { vram_bytes: u64::MAX, node: None }) };
+        let huge = Request {
+            class: Class::Background,
+            ram_bytes: u64::MAX,
+            cpu_milli: u64::MAX,
+            gpu: Some(GpuRequest { vram_bytes: u64::MAX, node: None, vendor: None }),
+        };
         assert!(matches!(m.try_reserve(&huge, &snap, &mon), Err(Denied::NeverFits { .. })));
         let mut m = Manager { next_id: u64::MAX - 1, ..manager(&snap) };
         let a = m.try_reserve(&req(Class::Interactive, 0, 0, None), &snap, &mon).unwrap();
@@ -558,7 +578,8 @@ mod tests {
         let snap = machine(28, 9);
         let mut m = manager(&snap);
         let mon = Monitor::default();
-        let pin = Request { gpu: Some(GpuRequest { vram_bytes: 2 * GIB, node: Some("renderD130".into()) }), ..req(Class::Background, 0, 0, None) };
+        let pin =
+            Request { gpu: Some(GpuRequest { vram_bytes: 2 * GIB, node: Some("renderD130".into()), vendor: None }), ..req(Class::Background, 0, 0, None) };
         m.try_reserve(&pin, &snap, &mon).unwrap();
         let any = m.try_reserve(&req(Class::Background, 0, 0, Some(1)), &snap, &mon).unwrap();
         assert_eq!(any.gpu_node.as_deref(), Some("renderD130"));

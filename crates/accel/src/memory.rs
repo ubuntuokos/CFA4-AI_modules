@@ -56,6 +56,78 @@ pub struct GpuMemoryReport {
     pub vram_used_bytes: Option<u64>,
 }
 
+/// A PCI address (`0000:03:00.0`; NVML writes the domain with eight digits, `00000000:03:00.0`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PciAddress {
+    pub domain: u32,
+    pub bus: u8,
+    pub device: u8,
+    pub function: u8,
+}
+
+fn hex(t: &str, max: usize) -> Option<&str> {
+    (!t.is_empty() && t.len() <= max && t.bytes().all(|b| b.is_ascii_hexdigit())).then_some(t)
+}
+
+impl PciAddress {
+    /// `domain:bus:device.function` in hex, any case; `None` for anything else.
+    pub fn parse(text: &str) -> Option<Self> {
+        let mut parts = text.trim().split(':');
+        let (domain, bus, rest) = (parts.next()?, parts.next()?, parts.next()?);
+        if parts.next().is_some() {
+            return None;
+        }
+        let (device, function) = rest.split_once('.')?;
+        let address = PciAddress {
+            domain: u32::from_str_radix(hex(domain, 8)?, 16).ok()?,
+            bus: u8::from_str_radix(hex(bus, 2)?, 16).ok()?,
+            device: u8::from_str_radix(hex(device, 2)?, 16).ok()?,
+            function: u8::from_str_radix(hex(function, 1)?, 16).ok()?,
+        };
+        // a PCI device number is 5 bits, a function 3 bits
+        (address.device < 32 && address.function < 8).then_some(address)
+    }
+}
+
+/// A VRAM reading keyed by PCI address (what NVML reports), before it is tied to a render node.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PciMemoryReading {
+    pub pci: PciAddress,
+    pub vram_total_bytes: Option<u64>,
+    pub vram_used_bytes: Option<u64>,
+}
+
+/// The PCI address behind a render node (`/sys/class/drm/<node>/device`).
+pub fn node_pci_address_root(root: &Path, node: &str) -> Option<PciAddress> {
+    if node.is_empty() || node.contains('/') || node.contains("..") {
+        return None;
+    }
+    let target = fs::canonicalize(root.join("sys/class/drm").join(node).join("device")).ok()?;
+    PciAddress::parse(target.file_name()?.to_str()?)
+}
+
+/// Tie PCI-keyed readings to the render nodes of `inventory`: one report per GPU whose PCI
+/// address has a reading. Readings for unknown addresses are left out.
+pub fn reports_by_pci_root(root: &Path, inventory: &Inventory, readings: &[PciMemoryReading]) -> Vec<GpuMemoryReport> {
+    inventory
+        .devices
+        .iter()
+        .filter(|d| d.kind == DeviceKind::Gpu)
+        .filter_map(|d| {
+            let pci = node_pci_address_root(root, &d.node)?;
+            let r = readings.iter().find(|r| r.pci == pci)?;
+            Some(GpuMemoryReport { node: d.node.clone(), vram_total_bytes: r.vram_total_bytes, vram_used_bytes: r.vram_used_bytes })
+        })
+        .collect()
+}
+
+/// [`reports_by_pci_root`] on this machine; empty outside Linux.
+pub fn reports_by_pci(inventory: &Inventory, readings: &[PciMemoryReading]) -> Vec<GpuMemoryReport> {
+    if cfg!(target_os = "linux") { reports_by_pci_root(Path::new("/"), inventory, readings) } else { Vec::new() }
+}
+
 impl GpuMemory {
     /// VRAM free now, when both numbers are known (saturating: a used value above the total,
     /// from a racing or hostile reading, gives zero, not an underflow).
@@ -211,6 +283,33 @@ mod tests {
 
     fn gpu(node: &str, vendor: Vendor, driver: &str) -> Device {
         Device { kind: DeviceKind::Gpu, vendor, pci_vendor: 0, pci_device: 0, driver: driver.into(), node: node.into() }
+    }
+
+    #[test]
+    fn pci_addresses_parse_strictly() {
+        let a = PciAddress { domain: 0, bus: 3, device: 0, function: 0 };
+        assert_eq!(PciAddress::parse("0000:03:00.0"), Some(a));
+        assert_eq!(PciAddress::parse("00000000:03:00.0\n"), Some(a), "NVML's eight-digit domain");
+        assert_eq!(PciAddress::parse("0000:0A:1f.7"), Some(PciAddress { domain: 0, bus: 10, device: 31, function: 7 }));
+        for bad in ["", "0000:03:00", "0000:03:20.0", "0000:03:00.8", "000000000:03:00.0", "0000:003:00.0", "x:03:00.0", "0000:03:00.0:1", "+0:03:00.0"] {
+            assert_eq!(PciAddress::parse(bad), None, "{bad}");
+        }
+    }
+
+    #[test]
+    fn nvml_readings_are_tied_to_render_nodes_by_pci_address() {
+        let sys = FakeSys::new("nvml").unwrap();
+        sys.gpu("0000:01:00.0", "renderD128", "card0", &[]).unwrap();
+        sys.gpu("0000:02:00.0", "renderD129", "card1", &[]).unwrap();
+        let inv = Inventory { devices: vec![gpu("renderD128", Vendor::Nvidia, "nvidia"), gpu("renderD129", Vendor::Nvidia, "nvidia")], notes: vec![] };
+        let pci = |bus| PciAddress { domain: 0, bus, device: 0, function: 0 };
+        let readings = [
+            PciMemoryReading { pci: pci(2), vram_total_bytes: Some(16 << 30), vram_used_bytes: Some(1 << 30) },
+            PciMemoryReading { pci: pci(9), vram_total_bytes: Some(1), vram_used_bytes: Some(1) },
+        ];
+        let reports = reports_by_pci_root(&sys.root, &inv, &readings);
+        assert_eq!(reports, vec![GpuMemoryReport { node: "renderD129".into(), vram_total_bytes: Some(16 << 30), vram_used_bytes: Some(1 << 30) }]);
+        assert_eq!(node_pci_address_root(&sys.root, "../../etc"), None);
     }
 
     #[test]

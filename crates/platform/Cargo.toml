@@ -21,6 +21,7 @@ type_complexity = "allow"
 undocumented_unsafe_blocks = "deny"
 
 [dependencies]
+cfa4-accel = { workspace = true }
 cfa4-bitstream = { workspace = true }
 cfa4-codecs = { workspace = true }
 cfa4-color = { workspace = true }
