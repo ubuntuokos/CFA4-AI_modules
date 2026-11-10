@@ -43,9 +43,9 @@ its version; real editor operations require a future explicitly tested adapter.
 CFA4 is free software under the **GNU General Public License, version 3 or later**
 (`GPL-3.0-or-later`, see [LICENSE](LICENSE)). All of CFA4 is free of charge and free to use, change
 and redistribute: there is no paid edition, no paid extra or worker, no licence key and no
-watermark. CFA4 can be supported with a voluntary donation, which unlocks nothing (GitHub
-Sponsors: <https://github.com/sponsors/ubuntuokos>, Ko-fi: <https://ko-fi.com/istvanhorvath>,
-Liberapay: <https://liberapay.com/CFA4Hugo>, PayPal: <https://paypal.me/hpitu>).
+watermark. CFA4 can be supported with a voluntary donation, which unlocks nothing (Ko-fi:
+<https://ko-fi.com/istvanhorvath>, Liberapay: <https://liberapay.com/CFA4Hugo>, PayPal:
+<https://paypal.me/hpitu>).
 [docs/licensing.md](docs/licensing.md) is the licensing policy, including the rules for reusing
 code from other projects.
 
