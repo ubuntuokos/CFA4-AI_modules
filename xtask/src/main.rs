@@ -87,6 +87,7 @@ const LAYERS: &[(&str, u8)] = &[
     ("format", 3),
     ("engine", 4),
     ("platform", 5),
+    ("store", 5),
     ("gstreamer", 5),
     ("ui-egui", 5),
     ("automation", 5),

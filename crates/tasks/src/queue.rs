@@ -346,6 +346,16 @@ impl Queue {
         Queue { config, tasks: Vec::new() }
     }
 
+    /// A queue over tasks loaded from a store (the store runs one operation on them and writes
+    /// back what changed).
+    pub fn from_tasks(config: QueueConfig, tasks: Vec<Task>) -> Self {
+        Queue { config, tasks }
+    }
+
+    pub fn into_tasks(self) -> Vec<Task> {
+        self.tasks
+    }
+
     pub fn config(&self) -> &QueueConfig {
         &self.config
     }

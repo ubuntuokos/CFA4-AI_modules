@@ -40,7 +40,7 @@ Alkalmazás, modell-előkészítés, licencelfogadás).
 | ACS-1 | Hardverfelmérés és futásidejű erőforrás-figyelés | A rendszer a névleges és az aktuális erőforrásokat külön kezeli | Kész (4. pont) |
 | ACS-2 | Erőforrás-elérhetőség kezelése: dinamikus keretek, tartalékok, CPU/GPU-korlátok, párhuzamos feladatok összehangolása, atomi foglalás | A CFA4 nem veszélyezteti a gazdarendszer stabilitását | Kész (5. pont) |
 | ACS-3 | Adaptív végrehajtási terv: alternatív utak (manifest v5 `paths`), szakaszos futás, streaming, részleges modellbetöltés, időbecslés tartománnyal | Egy funkcióhoz több validált út érhető el, ahol a technológia engedi | Kész (6. pont) |
-| ACS-4 | Feladatsor és ütemezett végrehajtás: központi sor, P0/P1/P2/R osztály és felhasználói prioritás, négy indítási mód (azonnal, erőforrásra, időpontra, időpontra és erőforrásra), `scheduled` és `paused` állapot, folytatás | Újraindítás után sem vész el feladat, és egyik sem indul kétszer (PG-2: bérlet, `SKIP LOCKED`) | Folyamatban: a sor magja kész (7. pont), a PostgreSQL-tár hátravan |
+| ACS-4 | Feladatsor és ütemezett végrehajtás: központi sor, P0/P1/P2/R osztály és felhasználói prioritás, négy indítási mód (azonnal, erőforrásra, időpontra, időpontra és erőforrásra), `scheduled` és `paused` állapot, folytatás | Újraindítás után sem vész el feladat, és egyik sem indul kétszer (PG-2: bérlet, `SKIP LOCKED`) | Kész a sor magja és a PostgreSQL-tár (7. pont); az ébresztés, az időzóna és a kimenőtár-továbbító az ACS-6-ban |
 | ACS-5 | Értesítés és Qt 6 feladatkezelő: előzetes tájékoztatás, becsült idő, késés, döntési lehetőség | A felhasználó indítás előtt és közben is megfelelő információt kap | Qt 6 után |
 | ACS-6 | Modulok bekötése: AI-videó és -hang, Media Intelligence, render és kodekek (az `export` jobja kliens lesz, nem cserélődik le) | A modulok a közös infrastruktúrát használják | |
 | ACS-7 | Integrációs és stabilitási próbák: hardverkonfigurációk, háttérterhelés, hosszú feladatok, újraindítás, memóriahiány, eredményhelyesség (CPU és GPU arany kimenettel) | A funkciók elérhetők maradnak, ahol van biztonságos út | |
@@ -148,7 +148,7 @@ PCI-cím köti a renderelőcsomóponthoz (`cfa4-accel` `reports_by_pci`), az ere
 `GpuMemoryReport` lesz, amelyet a hívó `Snapshot::apply_gpu_report`-tal alkalmaz. A sysfs saját
 számlálója mindig elsőbbséget kap.
 
-## 7. ACS-4: a sor magja (folyamatban)
+## 7. ACS-4: feladatsor és PostgreSQL-tár
 
 **Sor (`queue`).** A közös CFA4-feladatsor szabályai tár nélkül. Ezek a szabályok kötelezők minden
 tárra: a PostgreSQL-tár (`tasks` séma, PG-2, a `cfa4-store`-on át) ugyanezeket a műveleteket
@@ -185,5 +185,36 @@ kell teljesítenie. Az időt a hívó adja meg (UTC ezredmásodperc), az ütemez
 - **Ellenséges bemenet:** üres vagy túl hosszú azonosító, legfeljebb 100 000 feladat, szaturáló
   idők; hibát ad, pánikot nem.
 
-**Hátralévő rész:** a PostgreSQL-tár (PG-1 `cfa4-store` és PG-2 `tasks` séma), a meghajtó
-kiválasztása után. A meghajtót a BacklotHub G2 kapujával közösen kell kiválasztani.
+**PostgreSQL-tár (`cfa4-store`, PG-1 és PG-2).** A meghajtó a `tokio-postgres` a
+`deadpool-postgres` kapcsolatkészlettel (tulajdonosi döntés, 2026-11-11; a BacklotHubbal közös).
+A crate L5-ös, mert egy másik folyamattal beszél socketen át, mint a `cfa4-platform`. A terv
+L2-t írt, de az L0–L4 WASM-ellenőrzés nem tudná lefordítani.
+
+- **Kapcsolat:** hiányzó vagy leállt szerverre kezelhető hibát ad, a telepítés módjával együtt
+  (`Unavailable`). A vágás, a lejátszás és a mentés nem függ tőle.
+- **Migráció:** komponensenként beágyazott lépésekből áll, mindegyiknek van visszafelé iránya. Egy
+  lépés egy tranzakció, tanácsadó zárral; a nyilvántartás a `cfa4_store.migration` tábla.
+- **`tasks` séma:** `task` (indexelt oszlopok és a teljes feladat `jsonb`-ben), `transition`
+  (csak hozzáfűzhető napló) és `outbox` (Event Fabric, `cfa4.execution.job.<állapot>`). Az időket
+  UTC ezredmásodpercben tárolja, a `cfa4_tasks::UtcMs`-sel egyezően. A terv itt `timestamptz`-t
+  írt, ettől eltértem.
+- **Egy művelet egy tranzakció:**
+  1. zárolja a sorokat (`FOR UPDATE`, az ütemezőlépés `SKIP LOCKED`-del);
+  2. lefuttatja rajtuk a sor saját szabályát;
+  3. visszaírja a megváltozott feladatokat (verzióra feltételesen), a naplót és a kimenő
+     eseményeket;
+  4. véglegesít.
+
+  Az erőforrás-kezelő egy másolaton változik, és csak a véglegesítés után lép a hívó helyére.
+  Ha a véglegesítés elmarad, semmi nem történt.
+- **Tesztek:** eldobható klaszteren futnak (`initdb` és `pg_ctl` ideiglenes könyvtárban, csak
+  Unix socketen). Lefedik a migrációt oda-vissza, a két párhuzamos ütemezőt (a feladat pontosan
+  egyszer indul), az újraindítás utáni folytatást az ellenőrzőponttól, a verzióellenőrzést, a
+  sérült sort (hiba, nem pánik) és a hiányzó szervert.
+
+**Hátralévő rész az ACS-4-ben:**
+- `LISTEN` alapú ébresztés az ütemezőben;
+- az elmaradt indítás `nextSlot` időpontjának kiszámítása IANA-időzónában;
+- a kimenőtár továbbítója az Event Fabric felé.
+
+Mindhárom a CFA4-alkalmazás bekötésekor (ACS-6) jön.

@@ -170,9 +170,10 @@ keverhet.
 - Új, felületfüggetlen crate: `cfa4-store`. Ez adja a kapcsolatkészletet, a migrációkat és a
   típusos lekérdezéseket. A feladatsor (`cfa4-tasks`, nem AI-s közös crate; tulajdonosi döntés,
   2026-11-07) és a `cfa4-ai-jobs` ezen át éri el az adatbázist, más crate közvetlenül nem.
-- Meghajtó: tiszta Rust (`tokio-postgres` vagy `sqlx`), MIT/Apache-licenccel, `cargo deny`
-  ellenőrzéssel; a végleges választás a BacklotHub G2 kapujával közös, hogy egy meghajtó legyen.
-- A `cfa4-store` L2-es crate, felület nélkül; a rétegtáblába (`cargo xtask layers`) a létrehozásakor
+- Meghajtó: `tokio-postgres` a `deadpool-postgres` kapcsolatkészlettel (MIT/Apache; tulajdonosi
+  döntés, 2026-11-11), a BacklotHubbal közösen; `cargo deny` ellenőrzéssel.
+- A `cfa4-store` felület nélküli crate, a megvalósításban L5-ös (mint a `cfa4-platform`, mert socketen
+  át egy másik folyamattal beszél, és a WASM-ellenőrzés az L0–L4 crate-eket fordítja); a rétegtáblába (`cargo xtask layers`) a létrehozásakor
   kerül be. A `cargo xtask wasm` a CFA4 fő repójában már nem kapu (a WASM nem CFA4-cél), ezért a
   meghajtó natív függősége nem akadály.
 - Migráció: egy út minden módban, egy verzió visszafelé, valós méretű adaton tesztelve.
