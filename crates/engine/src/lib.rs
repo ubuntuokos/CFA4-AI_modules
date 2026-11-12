@@ -54,6 +54,7 @@ pub mod shortcut_presets;
 pub mod shortcuts;
 pub mod source_monitor;
 pub mod sync;
+pub mod task_host;
 pub mod transcript;
 pub mod trim;
 pub mod voiceover;
@@ -433,6 +434,9 @@ pub struct Session {
     pub export_presets: export_tools::ExportPresetLibrary,
     /// The export queue (session state, not saved with the project).
     pub export_queue: export_tools::ExportQueue,
+    /// The CFA4-wide task queue and resource manager this session's heavy work goes through
+    /// (ACS-6; the export queue is its first client).
+    pub tasks: task_host::TaskHost,
     /// Exports run a batch at a time by [`Session::pump_jobs`] (hosts without threads: web).
     pub stepped: Vec<SteppedJob>,
     /// Speech recogniser for `transcript.generate` (None = the Whisper model named by the command,
@@ -534,6 +538,7 @@ impl Session {
             presets: Default::default(),
             export_presets: Default::default(),
             export_queue: Default::default(),
+            tasks: Default::default(),
             stepped: Vec::new(),
             transcriber: None,
             log: Default::default(),

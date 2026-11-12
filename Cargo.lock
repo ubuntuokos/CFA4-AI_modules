@@ -1042,6 +1042,7 @@ dependencies = [
  "cfa4-render",
  "cfa4-scopes",
  "cfa4-speech",
+ "cfa4-tasks",
  "cfa4-testkit",
  "cfa4-text",
  "cfa4-time",

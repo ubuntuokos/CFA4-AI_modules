@@ -42,7 +42,7 @@ Alkalmazás, modell-előkészítés, licencelfogadás).
 | ACS-3 | Adaptív végrehajtási terv: alternatív utak (manifest v5 `paths`), szakaszos futás, streaming, részleges modellbetöltés, időbecslés tartománnyal | Egy funkcióhoz több validált út érhető el, ahol a technológia engedi | Kész (6. pont) |
 | ACS-4 | Feladatsor és ütemezett végrehajtás: központi sor, P0/P1/P2/R osztály és felhasználói prioritás, négy indítási mód (azonnal, erőforrásra, időpontra, időpontra és erőforrásra), `scheduled` és `paused` állapot, folytatás | Újraindítás után sem vész el feladat, és egyik sem indul kétszer (PG-2: bérlet, `SKIP LOCKED`) | Kész a sor magja és a PostgreSQL-tár (7. pont); az ébresztés, az időzóna és a kimenőtár-továbbító az ACS-6-ban |
 | ACS-5 | Értesítés és Qt 6 feladatkezelő: előzetes tájékoztatás, becsült idő, késés, döntési lehetőség | A felhasználó indítás előtt és közben is megfelelő információt kap | Qt 6 után |
-| ACS-6 | Modulok bekötése: AI-videó és -hang, Media Intelligence, render és kodekek (az `export` jobja kliens lesz, nem cserélődik le) | A modulok a közös infrastruktúrát használják | |
+| ACS-6 | Modulok bekötése: AI-videó és -hang, Media Intelligence, render és kodekek (az `export` jobja kliens lesz, nem cserélődik le) | A modulok a közös infrastruktúrát használják | Folyamatban: az exportsor az első kliens (8. pont) |
 | ACS-7 | Integrációs és stabilitási próbák: hardverkonfigurációk, háttérterhelés, hosszú feladatok, újraindítás, memóriahiány, eredményhelyesség (CPU és GPU arany kimenettel) | A funkciók elérhetők maradnak, ahol van biztonságos út | |
 
 ## 4. ACS-1: ami elkészült
@@ -218,3 +218,37 @@ L2-t írt, de az L0–L4 WASM-ellenőrzés nem tudná lefordítani.
 - a kimenőtár továbbítója az Event Fabric felé.
 
 Mindhárom a CFA4-alkalmazás bekötésekor (ACS-6) jön.
+
+## 8. ACS-6: modulok bekötése
+
+**Az első kliens az exportsor.** Az `engine` crate `task_host` modulja (`TaskHost`) a munkamenet
+saját `cfa4_tasks::Queue`-ja és erőforrás-kezelője. Az exportsor sorrendje és elemei maradnak,
+ahogy a felhasználó megadta (a terv szerint az `export` jobja kliens lesz, nem cserélődik le).
+
+- **Indítás:** a sor elején álló elem feladatot kér (`FinalRender` osztály), és csak akkor indul,
+  ha a sor szabályai és a gép kerete engedik. Addig `ready` marad, és a `waitingFor` mezőben
+  olvasható az ok, például hogy más programok használják a memóriát.
+- **Erőforrás-kérés:** nyolc képkocka a kimeneti méretben teljes pontossággal, plusz 256 MiB és
+  legfeljebb négy CPU.
+- **Befejezés:** ha az export véget ér (kész, hiba vagy megszakítás), a foglalás felszabadul.
+  Felszabadul akkor is, ha az elem helyet veszít a sorban, törlik, vagy a sor leáll.
+- **A médiamotor mindig működik (VISION 2.4).** Egy médiafeladat ezért itt sosem lesz „nem
+  végrehajtható”:
+  - a kérést a keretre vágjuk;
+  - amit nem lehet mérni (szabad RAM, CPU-szám), azt nem kéri;
+  - várhat helyre, de soha nem vár örökké egy olvashatatlan számra.
+
+  Az AI-feladatok a tervezőn át kérnek (ACS-3), ott az ismeretlen soha nem „elég”.
+- **Blokkoló export:** a parancssori vagy szkriptből indított (`wait`) export azonnal indul,
+  mert a hívó most kérte.
+- **Vezérlés:** a `tasks.list` parancs mutatja a feladatokat, az állapotukat, a kérésüket és a
+  várakozás okát.
+- **Tárolás:** a sor memóriában van, mert a vágás, a lejátszás és a mentés nem függ az
+  adatbázistól. A `cfa4-store` bekötése az alkalmazásban következik, a 7. pont hátralévő
+  részével együtt.
+
+**Következik az ACS-6-ban:**
+- a proxy-, ingest- és projektkezelő-feladatok, a jelenetfelismerés, a maszkkövetés és az
+  átirat ugyanígy kérjen;
+- a `cfa4-store` és az ébresztés bekötése az alkalmazásba;
+- az AI-modulok, amikor elkészülnek (a Qt 6 után).

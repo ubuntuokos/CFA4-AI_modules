@@ -1604,6 +1604,8 @@ fn build() -> Vec<CommandSpec> {
             crate::export_tools::export_media
         ),
         query!("jobs.list", "List Jobs", "{}", |s, _| Ok(Value::Array(s.jobs.iter().map(|j| crate::export_tools::job_json(s, j)).collect()))),
+        // ACS-6: the CFA4 task queue the heavy work goes through (state, request, why it waits)
+        query!("tasks.list", "List Tasks", "{}", |s, _| Ok(s.tasks.to_json())),
         query!("perf.stats", "Performance Statistics", "{}", |s, _| Ok(crate::perf::stats(s))),
         cmd!("jobs.cancel", "Cancel Job", [], None, r#"{"job":id}"#, always, |s, p| {
             let id = u64_p(p, "job").ok_or_else(|| bad("jobs.cancel", "need `job`"))?;
