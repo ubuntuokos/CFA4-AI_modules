@@ -42,7 +42,7 @@ Alkalmazás, modell-előkészítés, licencelfogadás).
 | ACS-3 | Adaptív végrehajtási terv: alternatív utak (manifest v5 `paths`), szakaszos futás, streaming, részleges modellbetöltés, időbecslés tartománnyal | Egy funkcióhoz több validált út érhető el, ahol a technológia engedi | Kész (6. pont) |
 | ACS-4 | Feladatsor és ütemezett végrehajtás: központi sor, P0/P1/P2/R osztály és felhasználói prioritás, négy indítási mód (azonnal, erőforrásra, időpontra, időpontra és erőforrásra), `scheduled` és `paused` állapot, folytatás | Újraindítás után sem vész el feladat, és egyik sem indul kétszer (PG-2: bérlet, `SKIP LOCKED`) | Kész a sor magja és a PostgreSQL-tár (7. pont); az ébresztés, az időzóna és a kimenőtár-továbbító az ACS-6-ban |
 | ACS-5 | Értesítés és Qt 6 feladatkezelő: előzetes tájékoztatás, becsült idő, késés, döntési lehetőség | A felhasználó indítás előtt és közben is megfelelő információt kap | Qt 6 után |
-| ACS-6 | Modulok bekötése: AI-videó és -hang, Media Intelligence, render és kodekek (az `export` jobja kliens lesz, nem cserélődik le) | A modulok a közös infrastruktúrát használják | Folyamatban: az exportsor az első kliens (8. pont) |
+| ACS-6 | Modulok bekötése: AI-videó és -hang, Media Intelligence, render és kodekek (az `export` jobja kliens lesz, nem cserélődik le) | A modulok a közös infrastruktúrát használják | Folyamatban: az exportsor és a motor háttérfeladatai már a közös soron mennek (8. pont) |
 | ACS-7 | Integrációs és stabilitási próbák: hardverkonfigurációk, háttérterhelés, hosszú feladatok, újraindítás, memóriahiány, eredményhelyesség (CPU és GPU arany kimenettel) | A funkciók elérhetők maradnak, ahol van biztonságos út | |
 
 ## 4. ACS-1: ami elkészült
@@ -247,8 +247,28 @@ ahogy a felhasználó megadta (a terv szerint az `export` jobja kliens lesz, nem
   adatbázistól. A `cfa4-store` bekötése az alkalmazásban következik, a 7. pont hátralévő
   részével együtt.
 
+**A többi háttérfeladat (`engine::background`).** Ugyanígy kérnek erőforrást, mielőtt a
+száluk elindul:
+
+| Feladat | Kérés |
+|---|---|
+| Proxy, ingest és átkódolás | 1 GiB, 2 CPU |
+| Projektkezelő | 1 GiB, 2 CPU |
+| Előnézet-renderelés (videó) | 1 GiB, 2 CPU |
+| Hang-előnézet | 256 MiB, 1 CPU |
+| Jelenetfelismerés | 512 MiB, 1 CPU |
+| Maszkkövetés | 512 MiB, 1 CPU |
+| Narráció | 512 MiB, 1 CPU |
+
+Mindegyik `Background` (P1) osztályú, így az export (R) megelőzi őket.
+
+- **Várakozás:** a feladat a kéréstől kezdve látszik a `jobs.list`-ben. Ha nincs hely, az
+  állapotsora „Waiting: …” az okkal, és a képkockánkénti munkában (`poll_persistence`) indul el,
+  amint elfér.
+- **Megszakítás várakozás közben:** a feladat azonnal véget ér, el sem indul.
+- **Befejezés:** amikor a szál befejezi, a foglalás felszabadul.
+- **Kivétel:** a blokkoló és a wasm32-es futás most is azonnal indul.
+
 **Következik az ACS-6-ban:**
-- a proxy-, ingest- és projektkezelő-feladatok, a jelenetfelismerés, a maszkkövetés és az
-  átirat ugyanígy kérjen;
 - a `cfa4-store` és az ébresztés bekötése az alkalmazásba;
 - az AI-modulok, amikor elkészülnek (a Qt 6 után).
