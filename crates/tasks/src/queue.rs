@@ -420,13 +420,20 @@ impl Queue {
     }
 
     fn expire_leases(&mut self, now: UtcMs, manager: &mut Manager, events: &mut Vec<QueueEvent>) {
-        for t in self.tasks.iter_mut().filter(|t| t.state == State::Running && t.lease_until.is_some_and(|u| u < now)) {
+        for t in self.tasks.iter_mut().filter(|t| matches!(t.state, State::Running | State::Cancelling) && t.lease_until.is_some_and(|u| u < now)) {
             if let Some(r) = t.reservation.take() {
                 manager.release(r);
             }
             t.lease_owner = None;
             t.lease_until = None;
             t.gpu_node = None;
+            // its worker died while stopping: it is cancelled, as the user asked
+            if t.state == State::Cancelling {
+                if t.set_state(State::Cancelled, now, Actor::Scheduler, "lease lapsed while cancelling").is_ok() {
+                    events.push(QueueEvent::LeaseLost { id: t.id.clone(), resumed: false });
+                }
+                continue;
+            }
             // never from the beginning a second time: only a checkpointed resumable task continues
             let resumed = t.resumable && t.checkpoint.is_some();
             let (to, reason) = if resumed { (State::Queued, "lease lapsed, resume from checkpoint") } else { (State::Failed, "lease lapsed, not resumable") };
@@ -562,6 +569,11 @@ impl Queue {
     pub fn cancel(&mut self, id: &str, expected_version: u64, now: UtcMs) -> Result<State, QueueError> {
         let t = self.get_mut(id)?;
         t.check_version(expected_version)?;
+        // already stopping: its worker (or the lapsed lease) ends it and releases the resources;
+        // cancelling it again must not skip that (ACS-7 stability run)
+        if t.state == State::Cancelling {
+            return Ok(State::Cancelling);
+        }
         let to = if t.state == State::Running { State::Cancelling } else { State::Cancelled };
         t.set_state(to, now, Actor::User, "cancelled by the user")?;
         Ok(to)
@@ -596,6 +608,11 @@ impl Queue {
     pub fn resume(&mut self, id: &str, expected_version: u64, now: UtcMs) -> Result<(), QueueError> {
         let t = self.get_mut(id)?;
         t.check_version(expected_version)?;
+        // only a paused task: a running one would be queued again with its reservation still held
+        // and start a second time (ACS-7 stability run)
+        if t.state != State::Paused {
+            return Err(QueueError::NotAllowed { id: id.to_owned(), from: t.state, to: State::Queued });
+        }
         t.set_state(State::Queued, now, Actor::User, "resumed by the user")
     }
 
@@ -712,6 +729,35 @@ mod tests {
         assert!(matches!(e.first(), Some(QueueEvent::Started { id, .. }) if id == "p0"), "{e:?}");
         assert_eq!((state(&q, "p0"), state(&q, "p1-high"), state(&q, "p1-low")), (Some(State::Running), Some(State::Running), Some(State::Waiting)));
         assert!(matches!(e.last(), Some(QueueEvent::Waiting { notify: true, .. })), "started now: the user is told");
+    }
+
+    #[test]
+    fn cancelling_twice_or_losing_the_worker_never_leaks_the_reservation() {
+        let s = snap();
+        let mut m = manager(&s);
+        let mon = Monitor::default();
+        let mut q = Queue::default();
+        q.submit(task("a", Class::Background, Priority::Normal, 2, StartMode::Now), 0).unwrap();
+        q.submit(task("b", Class::Background, Priority::Normal, 2, StartMode::Now), 0).unwrap();
+        q.tick(1, "sup", &mut m, &s, &mon).unwrap();
+        assert_eq!(m.held_count(), 2);
+        // a second cancel of a stopping task changes nothing (it used to cancel it and keep its reservation)
+        let v = q.get("a").unwrap().version;
+        assert_eq!(q.cancel("a", v, 2).unwrap(), State::Cancelling);
+        let v = q.get("a").unwrap().version;
+        assert_eq!(q.cancel("a", v, 3).unwrap(), State::Cancelling);
+        assert_eq!(m.held_count(), 2);
+        // nor does resuming a running task: it would start twice
+        let v = q.get("b").unwrap().version;
+        assert!(matches!(q.resume("b", v, 3), Err(QueueError::NotAllowed { .. })));
+        q.cancelled("a", "sup", 4, &mut m).unwrap();
+        assert_eq!(m.held_count(), 1);
+        // the worker of a stopping task dies: the lapsed lease cancels it and frees its resources
+        let v = q.get("b").unwrap().version;
+        q.cancel("b", v, 5).unwrap();
+        let e = q.tick(10 * MIN, "sup", &mut m, &s, &mon).unwrap();
+        assert!(e.contains(&QueueEvent::LeaseLost { id: "b".into(), resumed: false }), "{e:?}");
+        assert_eq!((state(&q, "b"), m.held_count()), (Some(State::Cancelled), 0));
     }
 
     #[test]

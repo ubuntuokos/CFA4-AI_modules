@@ -88,10 +88,13 @@ async fn migrations_go_up_once_and_back_one_step() {
     let Some((_db, store)) = setup().await else { return };
     assert_eq!(store.migrate().await.unwrap(), vec![], "already up to date");
     assert_eq!(count(&store, "SELECT count(*) FROM tasks.task").await, 0);
+    assert_eq!(store.rollback("tasks").await.unwrap(), Some(2));
+    assert_eq!(count(&store, "SELECT count(*) FROM pg_indexes WHERE indexname = 'task_open' AND indexdef LIKE '%cancelling%'").await, 0);
     assert_eq!(store.rollback("tasks").await.unwrap(), Some(1));
     assert_eq!(count(&store, "SELECT count(*) FROM information_schema.schemata WHERE schema_name = 'tasks'").await, 0);
     assert_eq!(store.rollback("tasks").await.unwrap(), None);
-    assert_eq!(store.migrate().await.unwrap(), vec![("tasks".to_owned(), 1)]);
+    assert_eq!(store.migrate().await.unwrap(), vec![("tasks".to_owned(), 1), ("tasks".to_owned(), 2)]);
+    assert_eq!(count(&store, "SELECT count(*) FROM pg_indexes WHERE indexname = 'task_open' AND indexdef LIKE '%cancelling%'").await, 1);
     assert!(store.rollback("nope").await.is_err());
 }
 
@@ -164,5 +167,25 @@ async fn a_corrupt_row_is_an_error_not_a_panic() {
     assert!(matches!(q.get("bad").await, Err(StoreError::Corrupt { .. })));
     let mut m = manager();
     assert!(matches!(q.tick(1, "sup", &mut m, &snap(), &Monitor::default()).await, Err(StoreError::Corrupt { .. })));
+    assert_eq!(m.held_count(), 0);
+}
+
+#[tokio::test]
+async fn a_task_whose_worker_dies_while_cancelling_frees_its_resources() {
+    let Some((_db, store)) = setup().await else { return };
+    let q = store.tasks(QueueConfig::default());
+    q.submit(task("stuck", 4), 0).await.unwrap();
+    let (s, mon) = (snap(), Monitor::default());
+    let mut m = manager();
+    q.tick(0, "sup-a", &mut m, &s, &mon).await.unwrap();
+    let v = q.get("stuck").await.unwrap().unwrap().version;
+    assert_eq!(q.cancel("stuck", v, 1).await.unwrap(), State::Cancelling);
+    // cancelling again changes nothing
+    assert_eq!(q.cancel("stuck", v + 1, 2).await.unwrap(), State::Cancelling);
+    assert_eq!(m.held_count(), 1);
+    // the worker never reports; once the lease lapses the scheduler cancels it and frees the VRAM
+    let e = q.tick(60_000, "sup-a", &mut m, &s, &mon).await.unwrap();
+    assert!(e.contains(&QueueEvent::LeaseLost { id: "stuck".into(), resumed: false }), "{e:?}");
+    assert_eq!(q.get("stuck").await.unwrap().map(|t| t.state), Some(State::Cancelled));
     assert_eq!(m.held_count(), 0);
 }

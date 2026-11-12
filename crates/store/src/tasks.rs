@@ -209,7 +209,7 @@ impl TaskStore {
         let tx = client.transaction().await.map_err(StoreError::query)?;
         let tasks = Self::load(
             &tx,
-            "SELECT id, doc FROM tasks.task WHERE state IN ('scheduled', 'queued', 'waiting', 'running') ORDER BY class_rank, priority DESC, submitted_at LIMIT $1 FOR UPDATE SKIP LOCKED",
+            "SELECT id, doc FROM tasks.task WHERE state IN ('scheduled', 'queued', 'waiting', 'running', 'cancelling') ORDER BY class_rank, priority DESC, submitted_at LIMIT $1 FOR UPDATE SKIP LOCKED",
             &[&MAX_LOCKED],
         )
         .await?;

@@ -17,9 +17,10 @@ pub fn components() -> &'static [(&'static str, &'static [Step])] {
     &[("tasks", TASKS)]
 }
 
-const TASKS: &[Step] = &[Step {
-    version: 1,
-    up: r#"
+const TASKS: &[Step] = &[
+    Step {
+        version: 1,
+        up: r#"
 CREATE SCHEMA tasks;
 -- one row per task: the indexed columns the scheduler selects on, and the whole task as the queue
 -- keeps it (`doc`); times are UTC milliseconds like `cfa4_tasks::UtcMs`
@@ -60,8 +61,19 @@ CREATE TABLE tasks.outbox (
 );
 CREATE INDEX outbox_unpublished ON tasks.outbox (id) WHERE published_at IS NULL;
 "#,
-    down: "DROP SCHEMA tasks CASCADE;",
-}];
+        down: "DROP SCHEMA tasks CASCADE;",
+    },
+    Step {
+        version: 2,
+        // the scheduler also expires the lease of a task whose worker died while cancelling (ACS-7)
+        up: "DROP INDEX tasks.task_open;
+CREATE INDEX task_open ON tasks.task (class_rank, priority DESC, submitted_at)
+    WHERE state IN ('scheduled', 'queued', 'waiting', 'running', 'cancelling');",
+        down: "DROP INDEX tasks.task_open;
+CREATE INDEX task_open ON tasks.task (class_rank, priority DESC, submitted_at)
+    WHERE state IN ('scheduled', 'queued', 'waiting', 'running');",
+    },
+];
 
 const LEDGER: &str = "CREATE SCHEMA IF NOT EXISTS cfa4_store;
 CREATE TABLE IF NOT EXISTS cfa4_store.migration (
