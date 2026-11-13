@@ -40,8 +40,8 @@ Alkalmazás, modell-előkészítés, licencelfogadás).
 | ACS-1 | Hardverfelmérés és futásidejű erőforrás-figyelés | A rendszer a névleges és az aktuális erőforrásokat külön kezeli | Kész (4. pont) |
 | ACS-2 | Erőforrás-elérhetőség kezelése: dinamikus keretek, tartalékok, CPU/GPU-korlátok, párhuzamos feladatok összehangolása, atomi foglalás | A CFA4 nem veszélyezteti a gazdarendszer stabilitását | Kész (5. pont) |
 | ACS-3 | Adaptív végrehajtási terv: alternatív utak (manifest v5 `paths`), szakaszos futás, streaming, részleges modellbetöltés, időbecslés tartománnyal | Egy funkcióhoz több validált út érhető el, ahol a technológia engedi | Kész (6. pont) |
-| ACS-4 | Feladatsor és ütemezett végrehajtás: központi sor, P0/P1/P2/R osztály és felhasználói prioritás, négy indítási mód (azonnal, erőforrásra, időpontra, időpontra és erőforrásra), `scheduled` és `paused` állapot, folytatás | Újraindítás után sem vész el feladat, és egyik sem indul kétszer (PG-2: bérlet, `SKIP LOCKED`) | Kész a sor magja és a PostgreSQL-tár (7. pont); az ébresztés, az időzóna és a kimenőtár-továbbító az ACS-6-ban |
-| ACS-5 | Értesítés és Qt 6 feladatkezelő: előzetes tájékoztatás, becsült idő, késés, döntési lehetőség | A felhasználó indítás előtt és közben is megfelelő információt kap | Qt 6 után |
+| ACS-4 | Feladatsor és ütemezett végrehajtás: központi sor, P0/P1/P2/R osztály és felhasználói prioritás, négy indítási mód (azonnal, erőforrásra, időpontra, időpontra és erőforrásra), `scheduled` és `paused` állapot, folytatás | Újraindítás után sem vész el feladat, és egyik sem indul kétszer (PG-2: bérlet, `SKIP LOCKED`) | Kész (7. pont): a sor, a PostgreSQL-tár, az ébresztés, a kimenőtár-továbbító és az időzónás következő időpont |
+| ACS-5 | Értesítés és Qt 6 feladatkezelő: előzetes tájékoztatás, becsült idő, késés, döntési lehetőség | A felhasználó indítás előtt és közben is megfelelő információt kap | Blokkolva: a Qt 6 felület még készül, és a CFA4 főágában még nincsenek ACS-crate-ek. Addig a `tasks.list` és a `waitingFor` adja ugyanezt az információt |
 | ACS-6 | Modulok bekötése: AI-videó és -hang, Media Intelligence, render és kodekek (az `export` jobja kliens lesz, nem cserélődik le) | A modulok a közös infrastruktúrát használják | Folyamatban: az exportsor és a motor háttérfeladatai már a közös soron mennek (8. pont) |
 | ACS-7 | Integrációs és stabilitási próbák: hardverkonfigurációk, háttérterhelés, hosszú feladatok, újraindítás, memóriahiány, eredményhelyesség (CPU és GPU arany kimenettel) | A funkciók elérhetők maradnak, ahol van biztonságos út | Folyamatban: a sor stabilitási próbája kész, két hibát talált és javított (9. pont) |
 
@@ -212,12 +212,36 @@ L2-t írt, de az L0–L4 WASM-ellenőrzés nem tudná lefordítani.
   egyszer indul), az újraindítás utáni folytatást az ellenőrzőponttól, a verzióellenőrzést, a
   sérült sort (hiba, nem pánik) és a hiányzó szervert.
 
-**Hátralévő rész az ACS-4-ben:**
-- `LISTEN` alapú ébresztés az ütemezőben;
-- az elmaradt indítás `nextSlot` időpontjának kiszámítása IANA-időzónában;
-- a kimenőtár továbbítója az Event Fabric felé.
+**Ébresztés (`Store::listen`).** Saját kapcsolat, amely `LISTEN cfa4_tasks`-ra figyel.
+- **Ki értesít:** minden beküldés és minden változás, amely más feladatot indíthat (megszakítás,
+  folytatás, befejezés). Az értesítés ugyanabban a tranzakcióban megy el, ezért csak a
+  véglegesítés után érkezik meg; a visszagörgetett változás nem ébreszt.
+- **`Listener::wait(timeout)`:** a megváltozott feladatok azonosítóit adja, vagy `Timeout`-ot,
+  vagy `Lost`-ot (új kapcsolat kell).
+- **Az időkorlát marad:** a bérletek, az időzített indítások és a CFA4-en kívül felszabaduló
+  erőforrások miatt.
 
-Mindhárom a CFA4-alkalmazás bekötésekor (ACS-6) jön.
+**Kimenőtár-továbbító (`outbox::Relay`).**
+- **Sorrend és kizárás:** a még el nem küldött `cfa4.execution.job.*` eseményeket a kimenőtár
+  sorrendjében adja át a küldőnek. A `FOR UPDATE SKIP LOCKED` miatt két továbbító nem küldi
+  ugyanazt egyszerre.
+- **Jelölés:** csak azt jelöli elküldöttnek, amit a küldő visszaigazolt.
+- **Legalább egyszeri kézbesítés:** ha a CFA4 a küldés és a véglegesítés között áll le, az
+  esemény újra kimegy. A fogyasztó az `id` alapján szűri az ismétlést.
+- **Az Event Fabric kliense** (NATS JetStream) a küldő dolga, a crate nem függ tőle.
+
+**Következő helyi időpont (`schedule`, `jiff`).** A feladat megadhat egy IANA-időzónát
+(`timeZone`, például `Europe/Budapest`); beküldéskor ellenőrizzük.
+- **Új időpont:** a `nextSlot` szabályú, elmaradt indítás magától átkerül ugyanarra a helyi
+  időpontra azon az első napon, amikor az még előttünk van. Időzóna nélkül UTC szerint számol.
+- **Állapot és esemény:** a feladat `scheduled` marad, a `Missed` esemény `nextAt` mezője
+  hordozza az új időt.
+- **Óraátállítás:** a helyi idő megmarad. Ha az adott idő aznap nem létezik (előreállítás), a
+  feladat a kihagyott óra utáni első pillanatban indul; ha kétszer létezik (visszaállítás), az
+  elsőnél.
+- **Ismeretlen időzóna:** a feladat szünetel, a felhasználó dönt, nincs találgatás.
+- **Az időzóna-adatbázis** a rendszeré, tartaléknak beépített másolattal.
+- **Új függőség:** `jiff` (Unlicense OR MIT, tiszta Rust).
 
 ## 8. ACS-6: modulok bekötése
 
@@ -270,7 +294,8 @@ Mindegyik `Background` (P1) osztályú, így az export (R) megelőzi őket.
 - **Kivétel:** a blokkoló és a wasm32-es futás most is azonnal indul.
 
 **Következik az ACS-6-ban:**
-- a `cfa4-store` és az ébresztés bekötése az alkalmazásba;
+- a `cfa4-store` bekötése az alkalmazásba, az AI-workerekkel együtt (a motor feladatai újraindítás
+  után nem folytathatók, a vágás pedig nem függhet az adatbázistól);
 - az AI-modulok, amikor elkészülnek (a Qt 6 után).
 
 ## 9. ACS-7: stabilitási próbák
@@ -306,7 +331,26 @@ Minden lépés után ellenőrzi:
   ezért a `cancelling` sorokat is betölti. A 2. migráció a részleges indexet erre bővíti, és
   visszafelé is lefut.
 
-**Még hátravan:**
-- valós hardverkonfigurációk a referenciagépen (`run-minspec.sh` profiljai);
-- hosszú feladatok és tényleges memóriahiány;
-- eredményhelyesség CPU-n és GPU-n, arany kimenettel. Ez az AI-workerekkel jön.
+**Valódi gépen: memóriaterhelés (`crates/tasks/tests/machine.rs`).**
+- **Mit csinál:** magától lefoglalja a szabad memória legfeljebb 60%-át, minden lapját írva.
+- **Mit ellenőriz:**
+  - a hatásos RAM a cgroup-korlát;
+  - a szabad memória a terheléssel csökken;
+  - a már el nem férő kérés várakozik, nem indul;
+  - a felszabadítás után minden visszaáll.
+- **Futtatás:** alapból ki van hagyva (`#[ignore]`). Ebben a környezetben (16 GB-os korlát) zöld:
+  9 GB foglalásnál a szabad memória 15,3 GB-ról 6,1 GB-ra csökkent, és a kérés várakozott.
+
+**A referenciagépen (`scripts/dev/acs7-stability.sh`).** A `run-minspec.sh` két profiljában
+(minimum: 16 GB, ajánlott: 32 GB, swap nélkül, 8 mag, a referencia-GPU) futtatja:
+- a sor hosszú üzemű véletlenszerű próbáját (`CFA4_ACS7_STEPS`, alapból 200 000 lépés kiinduló
+  értékenként);
+- a memóriaterhelési próbát, a cgroup-korlát ellenőrzésével;
+- a PostgreSQL-tár tesztjeit;
+- a motor háttérfeladat-tesztjeit.
+
+A napló a `target/acs7/` könyvtárba kerül. A tulajdonos gépén kell lefuttatni, mert a felhőben
+nincs referencia-GPU.
+
+**Még hátravan:** az eredményhelyesség CPU-n és GPU-n, arany kimenettel. Ez az AI-workerekkel
+jön, mert most nincs GPU-s feladat, amelyet ellenőrizni lehetne.
