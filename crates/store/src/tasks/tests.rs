@@ -49,6 +49,7 @@ fn task(id: &str, vram_gib: u64) -> NewTask {
         start: StartMode::Now,
         missed: MissedStart::RunLate,
         resumable: true,
+        time_zone: None,
     }
 }
 
@@ -251,4 +252,23 @@ async fn a_scheduler_is_woken_by_changes_not_by_polling() {
     // a rolled-back change does not
     assert!(q.cancel("x", v, 2).await.is_err());
     assert_eq!(listener.wait(Duration::from_millis(100)).await, Wake::Timeout);
+}
+
+#[tokio::test]
+async fn a_missed_start_moves_to_its_next_local_slot_in_the_store() {
+    use cfa4_tasks::StartMode;
+    let Some((_db, store)) = setup().await else { return };
+    let q = store.tasks(QueueConfig::default());
+    // 02:00 Budapest on 2026-11-12 is 01:00 UTC; CFA4 was off until 09:00 local
+    let planned: u64 = 1_794_445_200_000;
+    let woke = planned + 7 * 3_600_000;
+    let new = NewTask { start: StartMode::At { at: planned }, missed: MissedStart::NextSlot, time_zone: Some("Europe/Budapest".into()), ..task("night", 2) };
+    q.submit(new, 0).await.unwrap();
+    let mut m = manager();
+    let e = q.tick(woke, "sup", &mut m, &snap(), &Monitor::default()).await.unwrap();
+    let next = planned + 24 * 3_600_000;
+    assert!(e.contains(&QueueEvent::Missed { id: "night".into(), scheduled_at: planned, action: MissedStart::NextSlot, next_at: Some(next) }), "{e:?}");
+    let t = q.get("night").await.unwrap().unwrap();
+    assert_eq!((t.state, t.start, t.time_zone.as_deref()), (State::Scheduled, StartMode::At { at: next }, Some("Europe/Budapest")));
+    assert_eq!(count(&store, &format!("SELECT count(*) FROM tasks.task WHERE id = 'night' AND start_at = {next}")).await, 1, "the indexed column moved too");
 }

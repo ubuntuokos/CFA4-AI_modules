@@ -150,7 +150,15 @@ impl TaskHost {
     pub fn admit(&mut self, id: &str, request: impl FnOnce(&mut Self) -> Request) -> Admission {
         if self.queue.get(id).is_none() {
             let request = request(self);
-            let new = NewTask { id: id.to_owned(), request, priority: Priority::Normal, start: StartMode::Now, missed: MissedStart::RunLate, resumable: false };
+            let new = NewTask {
+                id: id.to_owned(),
+                request,
+                priority: Priority::Normal,
+                start: StartMode::Now,
+                missed: MissedStart::RunLate,
+                resumable: false,
+                time_zone: None,
+            };
             if let Err(e) = self.queue.submit(new, now_ms()) {
                 return Admission::Refused(format!("{e:?}"));
             }

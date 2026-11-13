@@ -128,6 +128,7 @@ fn run(seed: u64) {
                     start: if rng.below(4) == 0 { StartMode::At { at: now + rng.below(120_000) } } else { StartMode::Now },
                     missed: [MissedStart::RunLate, MissedStart::NextSlot, MissedStart::AskUser][rng.below(3) as usize],
                     resumable: rng.below(2) == 0,
+                    time_zone: [None, Some("Europe/Budapest".to_owned()), Some("America/New_York".to_owned())][rng.below(3) as usize].clone(),
                 };
                 let _ = q.submit(new, now);
             }

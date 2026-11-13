@@ -25,7 +25,8 @@
 //! - **Versions:** every change bumps the task's version; a change the user asks for names the
 //!   version it saw, and a stale one is refused ([`QueueError::Stale`]).
 //! - **Missed starts** (the machine was off at the scheduled time): run late, move to the next
-//!   slot the caller computes in the task's time zone, or ask the user ([`MissedStart`]).
+//!   slot (the same local time in the task's IANA time zone, [`crate::schedule`]), or ask the
+//!   user ([`MissedStart`]).
 
 use serde::{Deserialize, Serialize};
 
@@ -85,7 +86,8 @@ impl StartMode {
 pub enum MissedStart {
     /// Start as soon as possible.
     RunLate,
-    /// Move to the next slot (the caller computes it in the task's IANA time zone).
+    /// Move to the next slot: the same local time on the next day it is still ahead, in the
+    /// task's IANA time zone.
     NextSlot,
     /// Wait for the user.
     AskUser,
@@ -160,6 +162,10 @@ pub struct NewTask {
     pub missed: MissedStart,
     /// It saves checkpoints and can continue from the last one.
     pub resumable: bool,
+    /// The IANA time zone its start time was chosen in (`Europe/Budapest`); a missed start moves
+    /// to the next slot there ([`crate::schedule::next_slot`]). `None`: UTC.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub time_zone: Option<String>,
 }
 
 /// A task in the queue.
@@ -172,6 +178,8 @@ pub struct Task {
     pub start: StartMode,
     pub missed: MissedStart,
     pub resumable: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub time_zone: Option<String>,
     pub state: State,
     pub version: u64,
     pub submitted_at: UtcMs,
@@ -259,12 +267,13 @@ pub enum QueueEvent {
         id: String,
         denied: Denied,
     },
-    /// A scheduled start was missed; with [`MissedStart::NextSlot`] the caller sets the new time
-    /// with [`Queue::reschedule`].
+    /// A scheduled start was missed; with [`MissedStart::NextSlot`] it moved to `next_at`.
     Missed {
         id: String,
         scheduled_at: UtcMs,
         action: MissedStart,
+        /// With [`MissedStart::NextSlot`]: the new start time (stays `scheduled`).
+        next_at: Option<UtcMs>,
     },
     /// The lease lapsed: resumed from the checkpoint (queued) or failed.
     LeaseLost {
@@ -381,6 +390,9 @@ impl Queue {
         if self.get(&new.id).is_some() {
             return Err(QueueError::DuplicateId { id: new.id });
         }
+        if let Some(zone) = &new.time_zone {
+            crate::schedule::check_zone(zone).map_err(|e| QueueError::Invalid { reason: format!("time zone: {e:?}") })?;
+        }
         let scheduled = new.start.at().is_some();
         let task = Task {
             id: new.id,
@@ -389,6 +401,7 @@ impl Queue {
             start: new.start,
             missed: new.missed,
             resumable: new.resumable,
+            time_zone: new.time_zone,
             state: if scheduled { State::Scheduled } else { State::Queued },
             version: 1,
             submitted_at: now,
@@ -456,16 +469,33 @@ impl Queue {
                 let _ = t.set_state(State::Queued, now, Actor::Scheduler, "start time reached");
                 continue;
             }
-            events.push(QueueEvent::Missed { id: t.id.clone(), scheduled_at: at, action: t.missed });
-            match t.missed {
+            let next_at = match t.missed {
                 MissedStart::RunLate => {
                     let _ = t.set_state(State::Queued, now, Actor::Scheduler, "missed start, running late");
+                    None
                 }
-                // stays scheduled until the caller sets the next slot or the user decides
-                MissedStart::NextSlot | MissedStart::AskUser => {
+                // the same local time on the next day it is still ahead, in the task's time zone
+                MissedStart::NextSlot => match crate::schedule::next_slot(at, t.time_zone.as_deref().unwrap_or("UTC"), now) {
+                    Ok(next) => {
+                        t.start = match t.start {
+                            StartMode::AtWithResources { .. } => StartMode::AtWithResources { at: next },
+                            _ => StartMode::At { at: next },
+                        };
+                        t.version = t.version.saturating_add(1);
+                        Some(next)
+                    }
+                    // no zone to compute it in: the user decides
+                    Err(_) => {
+                        let _ = t.set_state(State::Paused, now, Actor::Scheduler, "missed start, next slot unknown");
+                        None
+                    }
+                },
+                MissedStart::AskUser => {
                     let _ = t.set_state(State::Paused, now, Actor::Scheduler, "missed start");
+                    None
                 }
-            }
+            };
+            events.push(QueueEvent::Missed { id: t.id.clone(), scheduled_at: at, action: t.missed, next_at });
         }
     }
 
@@ -708,6 +738,7 @@ mod tests {
             start,
             missed: MissedStart::RunLate,
             resumable: true,
+            time_zone: None,
         }
     }
 
@@ -819,11 +850,18 @@ mod tests {
         // the machine was off from minute 1 to minute 60
         let e = q.tick(60 * MIN, "sup", &mut m, &s, &mon).unwrap();
         assert_eq!(state(&q, "late"), Some(State::Running), "run late");
-        assert_eq!((state(&q, "slot"), state(&q, "ask")), (Some(State::Paused), Some(State::Paused)));
-        assert!(e.contains(&QueueEvent::Missed { id: "slot".into(), scheduled_at: 10 * MIN, action: MissedStart::NextSlot }));
+        // the next slot: the same time of day tomorrow (no zone given: UTC), still scheduled
+        assert_eq!((state(&q, "slot"), state(&q, "ask")), (Some(State::Scheduled), Some(State::Paused)));
+        let next = 24 * 60 * MIN + 10 * MIN;
+        assert!(e.contains(&QueueEvent::Missed { id: "slot".into(), scheduled_at: 10 * MIN, action: MissedStart::NextSlot, next_at: Some(next) }), "{e:?}");
+        assert_eq!(q.get("slot").map(|t| t.start), Some(StartMode::At { at: next }));
+        // the user can still move it
         let v = q.get("slot").map_or(0, |t| t.version);
-        q.reschedule("slot", v, 24 * 60 * MIN, 60 * MIN).unwrap();
+        q.reschedule("slot", v, 2 * next, 60 * MIN).unwrap();
         assert_eq!(state(&q, "slot"), Some(State::Scheduled));
+        // an unknown zone is refused when the task is submitted
+        let bad = NewTask { time_zone: Some("Nowhere/Atlantis".into()), ..task("tz", Class::Background, Priority::Normal, 0, StartMode::Now) };
+        assert!(matches!(q.submit(bad, 0), Err(QueueError::Invalid { .. })));
         // on time (within the grace)
         q.tick(102 * MIN, "sup", &mut m, &s, &mon).unwrap();
         assert_eq!(state(&q, "night"), Some(State::Running));
