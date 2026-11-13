@@ -3,7 +3,9 @@
 > **Állapot:** elfogadott irány; a forrás István CFA4-ADAPTIVE-CAPABILITY-001 terve (2026-11-07),
 > a tulajdonosi döntésekkel (2026-11-07, [ADR 0008](../adr/ADR-0008-ai-processing-layer.md)
 > „Lezárt kérdések”) · **ACS-0:** ez a dokumentum · **ACS-1:** kész (`cfa4-tasks`, `cfa4-accel`
-> `memory`) · **ACS-2:** kész (`budget`, `manager`) · **ACS-3:** kész (`plan`, `cfa4-platform` `nvml`) · **Utolsó átnézés:** 2026-11-10
+> `memory`) · **ACS-2:** kész (`budget`, `manager`) · **ACS-3:** kész (`plan`, `cfa4-platform` `nvml`;
+> 2026-11-13: tájékoztatási kategória, arany kimenetes ellenőrzés) · **ACS-4:** kész (`queue`, `cfa4-store`) ·
+> **ACS-6, ACS-7:** folyamatban · **Utolsó átnézés:** 2026-11-13
 
 ## 1. Mi ez
 
@@ -39,7 +41,7 @@ Alkalmazás, modell-előkészítés, licencelfogadás).
 | ACS-0 | Architektúra-ellenőrzés: az AI-terv, a modellkezelő, a PostgreSQL, az Event Fabric és a meglévő erőforrás-megoldások összevetése, felelősségi határok | Nincs párhuzamos, versengő architektúra | Kész: összevetés 2026-11-07, döntések az ADR 0008-ban, ez a dokumentum |
 | ACS-1 | Hardverfelmérés és futásidejű erőforrás-figyelés | A rendszer a névleges és az aktuális erőforrásokat külön kezeli | Kész (4. pont) |
 | ACS-2 | Erőforrás-elérhetőség kezelése: dinamikus keretek, tartalékok, CPU/GPU-korlátok, párhuzamos feladatok összehangolása, atomi foglalás | A CFA4 nem veszélyezteti a gazdarendszer stabilitását | Kész (5. pont) |
-| ACS-3 | Adaptív végrehajtási terv: alternatív utak (manifest v5 `paths`), szakaszos futás, streaming, részleges modellbetöltés, időbecslés tartománnyal | Egy funkcióhoz több validált út érhető el, ahol a technológia engedi | Kész (6. pont) |
+| ACS-3 | Adaptív végrehajtási terv: alternatív utak (manifest v5 `paths`), szakaszos futás, streaming, részleges modellbetöltés, időbecslés tartománnyal, tájékoztatási kategória, az utak arany kimenetes ellenőrzése (manifest v7) | Egy funkcióhoz több validált út érhető el, ahol a technológia engedi | Kész (6. pont) |
 | ACS-4 | Feladatsor és ütemezett végrehajtás: központi sor, P0/P1/P2/R osztály és felhasználói prioritás, négy indítási mód (azonnal, erőforrásra, időpontra, időpontra és erőforrásra), `scheduled` és `paused` állapot, folytatás | Újraindítás után sem vész el feladat, és egyik sem indul kétszer (PG-2: bérlet, `SKIP LOCKED`) | Kész a sor magja és a PostgreSQL-tár (7. pont); az ébresztés, az időzóna és a kimenőtár-továbbító az ACS-6-ban |
 | ACS-5 | Értesítés és Qt 6 feladatkezelő: előzetes tájékoztatás, becsült idő, késés, döntési lehetőség | A felhasználó indítás előtt és közben is megfelelő információt kap | Qt 6 után |
 | ACS-6 | Modulok bekötése: AI-videó és -hang, Media Intelligence, render és kodekek (az `export` jobja kliens lesz, nem cserélődik le) | A modulok a közös infrastruktúrát használják | Folyamatban: az exportsor és a motor háttérfeladatai már a közös soron mennek (8. pont) |
@@ -141,6 +143,25 @@ proxy) adja meg a konkrét feladatra: a VRAM-ot a feladat felbontásához, és a
   - Tartós CPU- vagy I/O-nyomásnál a felső határ megduplázódik.
   - Ellenséges számra (nulla, negatív vagy végtelen sebesség) nincs becslés.
 
+**Tájékoztatási kategória (`Plan::outlook`, 2026-11-13).** Az ACS 4.1 négy kategóriája a döntésből
+és a választott út becsléséből:
+
+- `NotExecutableNow`, ha a feladat nem elérhető (`Unavailable`) vagy az útlista hibás;
+- különben a becslés felső vége (`max_s`) szerint `VeryLong`, `Slower` vagy `Normal`, a
+  felhasználó két küszöbével (`OutlookSettings`, alapból 10 perc és 4 óra). A nagyon hosszú
+  feladatot felajánljuk, nem tiltjuk.
+- Ha az idő ismeretlen (nincs munkaegység vagy mért sebesség), nincs kategória: nem találgatunk.
+
+A gazdajelentésben (CFA4-sdk 4. változat) ez az `outlook` mező; a becslés, az út és az ütemezés
+ugyanott látszik.
+
+**Arany kimenetes ellenőrzés (2026-11-13).** Az `ExecutionPath::golden_worst` a manifest
+7. változatának `validated.golden.worst` értéke: a referencia-út arany kimeneteitől mért
+legrosszabb eltérés. A `Tolerance::admits` a mérték szerint dönt (`exact`: 0, `max_abs` és
+`boundary_ms`: legfeljebb a határ, `psnr_db`: legalább a határ). A tűrésen kívüli vagy ellenséges
+érték, és a referencia-út önmagához mért eltérése `InvalidPaths`; a 7. változat előtti
+manifestekben a mező hiányzik, és nem blokkol.
+
 **NVML-olvasó (`cfa4-platform` `nvml`).** Az NVIDIA zárt meghajtója nem ad VRAM-számlálót a
 sysfs-ben, ezért ez a modul a `libnvidia-ml.so.1`-ből olvassa ki a VRAM-ot, futásidőben
 betöltve: ha a meghajtó hiányzik, egyszerűen nincs jelentés, nem hiba. A leolvasott értékeket a
@@ -162,8 +183,8 @@ kell teljesítenie. Az időt a hívó adja meg (UTC ezredmásodperc), az ütemez
   ellenőrzi, a napló legfeljebb 256 sort tart meg.
 - **Sorrend:**
   - Elsőként az osztály számít: P0 (interaktív), R (végső render), P1 (háttér), P2 (spekulatív).
-    Az R a P1 elé kerül, mert a felhasználó kifejezetten kiadásra indította; ezt én döntöttem
-    el, az ADR nem rögzíti.
+    Az R a P1 elé kerül, mert a felhasználó kifejezetten kiadásra indította (tulajdonosi
+    döntés, 2026-11-13; ADR 0008, 3. pont).
   - Osztályon belül a felhasználói prioritás, azon belül a beküldés ideje dönt.
   - Ha egy feladat erőforrásra vár, az alatta lévő elindulhat helyette, de csak amíg a várakozó
     10 percnél rövidebb ideje vár (`starvationMs`). Utána ő következik, így a nagy feladat nem
@@ -309,4 +330,5 @@ Minden lépés után ellenőrzi:
 **Még hátravan:**
 - valós hardverkonfigurációk a referenciagépen (`run-minspec.sh` profiljai);
 - hosszú feladatok és tényleges memóriahiány;
-- eredményhelyesség CPU-n és GPU-n, arany kimenettel. Ez az AI-workerekkel jön.
+- eredményhelyesség CPU-n és GPU-n, arany kimenettel: a szabály kész (manifest 7. változat,
+  `golden_worst`, `Tolerance::admits`), a mérések az AI-workerekkel jönnek.

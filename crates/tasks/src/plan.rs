@@ -17,7 +17,9 @@
 //! - **Unknown is never enough:** a path whose RAM or VRAM need is not stated cannot be planned.
 //!
 //! Every decision carries its reasons, and the estimate is a range with its confidence, never a
-//! single promised number.
+//! single promised number. [`Plan::outlook`] turns the decision and the estimate into what the
+//! user is told before starting (ACS 4.1, SDK host report version 4 `outlook`), and a path's
+//! golden-output check (SDK manifest version 7, `validated.golden`) must lie within its tolerance.
 
 use cfa4_accel::Vendor;
 use serde::{Deserialize, Serialize};
@@ -90,6 +92,56 @@ pub struct ExecutionPath {
     pub tolerance: Option<Tolerance>,
     /// The `run-minspec.sh` profile it was measured under.
     pub validated_profile: Option<RamProfile>,
+    /// Manifest version 7 `validated.golden.worst`: the largest deviation from the reference
+    /// path's golden outputs, in the tolerance's metric (the smallest PSNR for `psnr_db`).
+    /// `None` on the reference path and for manifests before version 7.
+    #[serde(default)]
+    pub golden_worst: Option<f64>,
+}
+
+impl Tolerance {
+    /// Whether a measured worst deviation lies within this tolerance: 0 for `exact`, at most
+    /// `value` for `max_abs` and `boundary_ms`, at least `value` for `psnr_db`. A hostile number
+    /// (not finite, negative) is never within.
+    pub fn admits(&self, worst: f64) -> bool {
+        if !worst.is_finite() || worst < 0.0 {
+            return false;
+        }
+        match self.metric {
+            Metric::Exact => worst == 0.0,
+            Metric::MaxAbs | Metric::BoundaryMs => worst <= self.value,
+            Metric::PsnrDb => worst >= self.value,
+        }
+    }
+}
+
+/// What the user is told before a task starts (ACS 4.1; SDK host report version 4 `outlook`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Outlook {
+    Normal,
+    /// Above the user's slower threshold.
+    Slower,
+    /// Above the user's very-long threshold: offered, never refused.
+    VeryLong,
+    /// No validated path fits this machine now; the reasons are in the assessments.
+    NotExecutableNow,
+}
+
+/// The user's thresholds for [`Outlook`], applied to the estimate's upper end.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct OutlookSettings {
+    /// Above this many seconds the task is `Slower` (default 10 minutes).
+    pub slower_after_s: u64,
+    /// Above this many seconds the task is `VeryLong` (default 4 hours).
+    pub very_long_after_s: u64,
+}
+
+impl Default for OutlookSettings {
+    fn default() -> Self {
+        OutlookSettings { slower_after_s: 10 * 60, very_long_after_s: 4 * 60 * 60 }
+    }
 }
 
 /// What is to be run.
@@ -180,6 +232,38 @@ impl Plan {
     pub fn available(&self) -> bool {
         matches!(self.decision, Decision::Run { .. } | Decision::Wait { .. } | Decision::NeedsApproval { .. })
     }
+
+    /// The path the decision names, if any.
+    pub fn path(&self) -> Option<&str> {
+        match &self.decision {
+            Decision::Run { path, .. } | Decision::Wait { path, .. } | Decision::NeedsApproval { path, .. } => Some(path),
+            Decision::Unavailable | Decision::InvalidPaths { .. } => None,
+        }
+    }
+
+    /// The estimate of the path the decision names.
+    pub fn estimate(&self) -> Option<Estimate> {
+        let path = self.path()?;
+        self.assessments.iter().find(|a| a.path == path).and_then(|a| a.estimate)
+    }
+
+    /// What the user is told before starting. `None` when the task is available but its time is
+    /// unknown (no work units or no measured speed): the user then sees no category rather than
+    /// a guessed one. Thresholds the user set the wrong way round still order the categories:
+    /// `VeryLong` wins.
+    pub fn outlook(&self, settings: &OutlookSettings) -> Option<Outlook> {
+        if !self.available() {
+            return Some(Outlook::NotExecutableNow);
+        }
+        let max_s = self.estimate()?.max_s;
+        Some(if max_s > settings.very_long_after_s {
+            Outlook::VeryLong
+        } else if max_s > settings.slower_after_s {
+            Outlook::Slower
+        } else {
+            Outlook::Normal
+        })
+    }
 }
 
 /// The resource request of a path, `None` when its needs are not stated.
@@ -252,6 +336,15 @@ fn validate(paths: &[ExecutionPath]) -> Result<(), String> {
     }
     if let Some(p) = paths.iter().find(|p| p.tolerance.as_ref().is_some_and(|t| !t.value.is_finite() || t.value < 0.0)) {
         return Err(format!("path {} has an invalid tolerance value", p.id));
+    }
+    if let Some(p) = paths.iter().find(|p| p.reference && p.golden_worst.is_some()) {
+        return Err(format!("reference path {} states a golden deviation from itself", p.id));
+    }
+    if let Some(p) = paths.iter().find(|p| match (&p.tolerance, p.golden_worst) {
+        (Some(t), Some(worst)) => !t.admits(worst),
+        _ => false,
+    }) {
+        return Err(format!("path {} fails its golden-output check: outside its tolerance", p.id));
     }
     for (i, p) in paths.iter().enumerate() {
         if paths.iter().skip(i.saturating_add(1)).any(|q| q.id == p.id) {
@@ -352,6 +445,7 @@ mod tests {
             units_per_second: Some(10.0),
             tolerance: automatic.map(|automatic| Tolerance { metric: Metric::PsnrDb, value: 40.0, automatic }),
             validated_profile: Some(RamProfile::Minimum),
+            golden_worst: None,
         }
     }
 
@@ -489,5 +583,90 @@ mod tests {
         assert_eq!(provider.vendor(), Some(Vendor::Nvidia));
         let metric: Metric = serde_json::from_str(r#""psnr_db""#).unwrap();
         assert_eq!(metric, Metric::PsnrDb);
+    }
+
+    #[test]
+    fn the_outlook_follows_the_decision_and_the_estimate() {
+        let settings = OutlookSettings::default();
+        let (snap, m) = setup(0);
+        // 1000 units at 10/s on the machine's own profile: 80–150 s
+        let fast = plan(&job(), &[path("fp16", Provider::Cuda, Some(10), None)], &m, &snap, &Monitor::default());
+        assert_eq!(fast.outlook(&settings), Some(Outlook::Normal));
+        let mut slow = path("fp16", Provider::Cuda, Some(10), None);
+        slow.units_per_second = Some(0.1); // 8000–15000 s
+        let p = plan(&job(), std::slice::from_ref(&slow), &m, &snap, &Monitor::default());
+        assert_eq!(p.outlook(&settings), Some(Outlook::VeryLong), "offered, never refused");
+        assert!(p.available());
+        slow.units_per_second = Some(2.0); // 400–750 s
+        let p = plan(&job(), std::slice::from_ref(&slow), &m, &snap, &Monitor::default());
+        assert_eq!(p.outlook(&settings), Some(Outlook::Slower));
+        // thresholds set the wrong way round: very long still wins
+        let odd = OutlookSettings { slower_after_s: 10_000, very_long_after_s: 100 };
+        assert_eq!(p.outlook(&odd), Some(Outlook::VeryLong));
+        // unknown time: no category rather than a guessed one
+        let unknown = plan(&Job { work_units: None, ..job() }, std::slice::from_ref(&slow), &m, &snap, &Monitor::default());
+        assert_eq!(unknown.outlook(&settings), None);
+        // nothing fits: not executable now, whatever the estimate
+        let none = plan(&job(), &[path("big", Provider::Cuda, Some(20), None)], &m, &snap, &Monitor::default());
+        assert_eq!(none.outlook(&settings), Some(Outlook::NotExecutableNow));
+        let invalid = plan(&job(), &[], &m, &snap, &Monitor::default());
+        assert_eq!(invalid.outlook(&settings), Some(Outlook::NotExecutableNow));
+    }
+
+    #[test]
+    fn the_outlook_of_a_wait_or_an_approval_uses_that_path() {
+        let settings = OutlookSettings::default();
+        let (snap, m) = setup(0);
+        let mut int8 = path("int8", Provider::Cuda, Some(5), Some(false));
+        int8.units_per_second = Some(2.0);
+        let p = plan(&job(), &[path("fp32", Provider::Cuda, Some(14), None), int8], &m, &snap, &Monitor::default());
+        assert_eq!(p.path(), Some("int8"));
+        assert_eq!(p.estimate().map(|e| e.max_s), Some(750));
+        assert_eq!(p.outlook(&settings), Some(Outlook::Slower));
+    }
+
+    #[test]
+    fn a_golden_check_outside_the_tolerance_is_refused() {
+        let (snap, m) = setup(0);
+        let reference = path("fp32", Provider::Cuda, Some(10), None);
+        let mut fp16 = path("fp16", Provider::Cuda, Some(5), Some(true));
+        // PSNR 40 dB tolerance: 47.5 dB measured is within, 39 dB is not
+        fp16.golden_worst = Some(47.5);
+        let ok = plan(&job(), &[reference.clone(), fp16.clone()], &m, &snap, &Monitor::default());
+        assert!(ok.available(), "{:?}", ok.decision);
+        for worst in [39.0, -1.0, f64::NAN, f64::INFINITY] {
+            fp16.golden_worst = Some(worst);
+            let p = plan(&job(), &[reference.clone(), fp16.clone()], &m, &snap, &Monitor::default());
+            assert!(matches!(p.decision, Decision::InvalidPaths { .. }), "{worst}: {:?}", p.decision);
+        }
+        let mut self_check = reference.clone();
+        self_check.golden_worst = Some(0.0);
+        let p = plan(&job(), &[self_check], &m, &snap, &Monitor::default());
+        assert!(matches!(p.decision, Decision::InvalidPaths { .. }));
+    }
+
+    #[test]
+    fn tolerances_admit_by_their_metric() {
+        let t = |metric, value| Tolerance { metric, value, automatic: true };
+        assert!(t(Metric::Exact, 5.0).admits(0.0));
+        assert!(!t(Metric::Exact, 5.0).admits(0.5), "exact means zero, whatever the value");
+        assert!(t(Metric::MaxAbs, 0.01).admits(0.01));
+        assert!(!t(Metric::MaxAbs, 0.01).admits(0.02));
+        assert!(t(Metric::BoundaryMs, 20.0).admits(12.0));
+        assert!(!t(Metric::BoundaryMs, 20.0).admits(21.0));
+        assert!(t(Metric::PsnrDb, 45.0).admits(45.0));
+        assert!(!t(Metric::PsnrDb, 45.0).admits(44.9));
+    }
+
+    #[test]
+    fn outlook_settings_are_serde_with_defaults() {
+        let s: OutlookSettings = serde_json::from_str(r#"{"slowerAfterS":60}"#).unwrap();
+        assert_eq!(s, OutlookSettings { slower_after_s: 60, ..OutlookSettings::default() });
+        assert_eq!(serde_json::to_string(&Outlook::NotExecutableNow).unwrap(), r#""notExecutableNow""#);
+        let p: ExecutionPath = serde_json::from_str(
+            r#"{"id":"a","reference":true,"provider":"cuda","ramBytes":1,"vramBytes":1,"cpuMilli":0,"unitsPerSecond":null,"tolerance":null,"validatedProfile":null}"#,
+        )
+        .unwrap();
+        assert_eq!(p.golden_worst, None, "manifests before version 7 have no golden check");
     }
 }

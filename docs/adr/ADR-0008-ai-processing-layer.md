@@ -1,10 +1,13 @@
 # CFA4 ADR 0008 – AI-feldolgozó réteg (korábban ADR 0006)
 
 **Dátum:** 2026-10-25, átdolgozva 2026-10-30  
-**Állapot:** ELFOGADVA (tulajdonosi jóváhagyás, 2026-10-30); KÓD MÉG NINCS  
+**Állapot:** ELFOGADVA (tulajdonosi jóváhagyás, 2026-10-30); AI-crate még nincs, a közös, nem AI-s
+`cfa4-tasks` és `cfa4-store` (ACS-1…ACS-4) elkészült  
 **Kiadás:** HOLD
 
-> **Utolsó átnézés:** 2026-11-08 (8. pont: nincs fizetős rész, a zárt workerek, a licenckulcs és a 2K fölötti vízjel kikerült; 2026-11-07: 9. pont: RAM-minimum 16 GB, ajánlott 32 GB; tartós jobtár: PostgreSQL, [PostgreSQL-adatréteg](../ai/postgresql-adatreteg.md); 2. pont: a súly és a tanítóadat licence a felhasználó felelőssége; 2026-11-02: F3: angol felirat-időzítés; 2026-11-01: a 6. pont, az ONNX nem kötelező; 2026-10-31: a 2. pont kivétele a zárt workerekre) · **Változás:** major (CFA4-AI-PLAN-001 és a CFA3/FA3 elődtervek
+> **Utolsó átnézés:** 2026-11-13 (az AI-terv és az ACS összevetésének hátralévő hiányai, a tulajdonos
+> utasítására: 3. pont tájékoztatási kategória és osztálysorrend (R a P1 előtt, tulajdonosi döntés), 4. pont gazdajelentés, 7. pont sémaverziók,
+> 9. pont eredményhelyesség; a `cfa4-store` rétege L5); 2026-11-08 (8. pont: nincs fizetős rész, a zárt workerek, a licenckulcs és a 2K fölötti vízjel kikerült; 2026-11-07: 9. pont: RAM-minimum 16 GB, ajánlott 32 GB; tartós jobtár: PostgreSQL, [PostgreSQL-adatréteg](../ai/postgresql-adatreteg.md); 2. pont: a súly és a tanítóadat licence a felhasználó felelőssége; 2026-11-02: F3: angol felirat-időzítés; 2026-11-01: a 6. pont, az ONNX nem kötelező; 2026-10-31: a 2. pont kivétele a zárt workerekre) · **Változás:** major (CFA4-AI-PLAN-001 és a CFA3/FA3 elődtervek
 > beépítése: F0–F6 kapuk, ONNX-es első kör, modellkezelő, erőforrás-kezelési szabályok, tartós
 > jobtár, bővített jobállapotok, szétbontott licencmezők) · **Részletes terv:**
 > [CFA4 AI tervdokumentum](https://claude.ai/artifact/MLd6UfHG1uPBdJ16B2JZBh) ·
@@ -159,6 +162,15 @@ K18), jóváhagyással. A modellkezelő szabályai:
   csempézés átfedéssel, szakaszolás, a modell részleges kiürítése RAM-ba. **Jóváhagyás kell**
   ahhoz, ami az eredményt változtatja: kisebb pontosság, kisebb felbontás, másik futtató vagy
   modell. Minden lépés a jobnaplóba kerül.
+- **Tájékoztatás indítás előtt** (ACS 4.1): a becsült idő mindig tartomány, bizonyossággal; ebből
+  a felület egy kategóriát mutat: normál, lassabb, nagyon hosszú (felajánljuk, nem tiltjuk), vagy
+  jelenleg nem végrehajtható (okokkal). A két küszöböt a felhasználó állítja (alapból 10 perc és
+  4 óra), a becslés felső végére. Ismeretlen időnél nincs kategória, nem találgatunk
+  (`cfa4-tasks` `Plan::outlook`).
+- **Osztályok és prioritás:** a rendszerosztály P0 (interaktív), R (végső render), P1 (háttér),
+  P2 (spekulatív); egy osztályon belül a felhasználó prioritása (alacsony, normál, magas), azon
+  belül a beküldés ideje dönt. Az R a P1 előtt áll, mert a felhasználó kifejezetten kiadásra
+  indította (tulajdonosi döntés, 2026-11-13; a megvalósítás 2026-11-10 óta így működik).
 - **Stabil GPU-azonosítás:** UUID vagy PCI-cím szerint, nem a CUDA sorszáma szerint.
 - **A kijelzőt hajtó GPU** alapból nem kap AI-feladatot, ha van másik alkalmas kártya. Egykártyás
   gépen a felhasználó engedélyezheti.
@@ -194,6 +206,14 @@ számolni vagy a felhasználónak jóvá kell hagynia. Az Alkalmazás egyetlen v
 A worker a kézfogásban deklarálja, hogy támogatja-e a megszakítást, az előrehaladás jelzését, az
 előnézetet és a folytatást. A felület csak azt kínálja fel, amit a worker ténylegesen tud.
 
+**Amit a felület a jobról lát** (CFA4-sdk gazdajelentés, 4. változat, 2026-11-13): az állapot mellett
+a becsült időt tartományként és bizonyossággal, a futás közben eltelt és a hátralévő időt, a
+tájékoztatási kategóriát, a futó végrehajtási utat (és hogy nem a referencia-út fut-e), a
+rendszerosztályt, a felhasználói prioritást, valamint az indítási módot: azonnal, erőforrásra,
+időpontra, időpontra és erőforrásra; időpontnál IANA-időzónával és az elmaradt indítás
+szabályával (késve indul, a következő időpontra kerül, vagy a felhasználó dönt). A gépet a CFA4
+nem ébreszti fel. A nevek a `cfa4-tasks` típusait követik.
+
 **Tartós jobtár** (tulajdonosi döntés, 2026-11-07): a jobokat, az állapotnaplót, a
 licencelfogadásokat, a modellrekordokat és a gyorsítótár indexét a közös CFA4 PostgreSQL-klaszter
 őrzi (ugyanaz, amelyet a CFA4 BacklotHub-ADR-je bevezet), saját `tasks`, `ai` és `cache` sémában, a
@@ -213,7 +233,7 @@ A tervezett rétegbesorolás a crate-ek létrehozásakor az `xtask layers` szab�
 | `cfa4-ai-types` | L1 | Közös típusok: képességazonosító, alak (frame/window/clip/generative), jobállapotok, hibakódok |
 | `cfa4-ai-models` | L2 | Modelltár, modellrekordok, SHA-256 ellenőrzés, deduplikáció, verziók |
 | `cfa4-ai-registry` | L2 | Manifestolvasás, sémaellenőrzés, hardver szerinti szűrés, útválasztás |
-| `cfa4-store` | L2 | PostgreSQL-kapcsolatkészlet, migrációk, típusos lekérdezések (a `cargo xtask wasm` nem kapu, a WASM nem CFA4-cél) |
+| `cfa4-store` | L5 | PostgreSQL-kapcsolatkészlet, migrációk, típusos lekérdezések; L5, mert socketen át egy másik folyamattal beszél, mint a `cfa4-platform` (a terv L2-t írt) |
 | `cfa4-tasks` | L2 | Nem AI-s, közös CFA4-crate (tulajdonosi döntés, 2026-11-07): erőforrás-kezelő (az ACS hardverfelmérése az `accel` crate-re építve, foglalás, futásidejű figyelés), feladatsor, ütemező, tartós jobtár (a `cfa4-store`-on át); felület nélkül |
 | `cfa4-ai-jobs` | L2 | AI-feladatgráf, VRAM-igény, gyorsítótár-kulcs; a `cfa4-tasks` kliense |
 | `cfa4-ai-workers` | L3 | Worker-folyamatok indítása, felügyelete és újraindítása, az IPC kliensoldala |
@@ -272,7 +292,8 @@ AI-réteg motorja.
 ([CFA4-sdk](https://github.com/ubuntuokos/CFA4-sdk)),
 megengedő licenccel (MIT OR Apache-2.0, frissen írt kóddal), hogy bárki, más licenccel is írhasson
 workert. A CFA4 maga nem szállít zárt vagy fizetős workert (8. pont). A CFA4 ebben a repóban csak
-fogyasztja a sémát. A jobállapotok és a manifest v3 licencmezői az SDK-ban kerülnek a sémába.
+fogyasztja a sémát. A jobállapotok, a becslések és az ütemezés (gazdajelentés 4. változat), valamint
+a licencmezők, a végrehajtási utak és az arany kimenetes ellenőrzés (manifest 7. változat) az SDK sémáiban vannak.
 
 ### 8. Licenc; nincs fizetős rész
 
@@ -316,6 +337,11 @@ fogyasztja a sémát. A jobállapotok és a manifest v3 licencmezői az SDK-ban 
 - **Nagyobb gépek:** a nagyobb VRAM nagyobb modelleket és több funkciót nyit meg, a több GPU
   pedig lehetőség, nem követelmény.
 - **Gyártók:** első körben NVIDIA, utána 12 GB-os AMD és Intel kártyák az ONNX úton.
+- **Eredményhelyesség** (ACS 13.5, 2026-11-13): a referencia-út állítja elő az arany kimeneteket; minden
+  más út (például fp16 vagy CPU-s kiürítés) ugyanazokat az eseteket futtatja, és a legrosszabb
+  eltérése a manifest 7. változatában (`validated.golden`) rögzül. Ha ez a tűrésen kívül esik, az
+  utat a tervező elutasítja (`cfa4-tasks`, `Tolerance::admits`). Determinisztikus referencia-útnál
+  az ismételt futás bitre azonos.
 - **Minimumtesztek:** a [`scripts/dev/run-minspec.sh`](../../scripts/dev/run-minspec.sh)
   alatt futnak, két profillal: `CFA4_PROFILE=ajanlott` (alap, 32 GB RAM) és `CFA4_PROFILE=minimum`
   (16 GB RAM); mindkettő swap nélkül, 8 CPU-val és egyetlen referencia-GPU-val, mert a fejlesztőgép
@@ -366,7 +392,8 @@ alatt is folytatható, mert nem érinti a felületet:
   döntés, 2026-11-07). A Kimi K3 (kimi-k3-in-c, Apache-2.0, C99) fogalmait Rustban írjuk meg ebbe
   a közös infrastruktúrába; C-kód a CFA4 folyamatába nem kerül. Külön workerként, helyi LLM-hez
   csak későbbi, külön döntéssel jöhet. Terv és állapot:
-  [ACS-terv](../ai/acs-adaptiv-eroforras.md); az ACS-1 és az ACS-2 kész (2026-11-09), az ACS-3 kész (2026-11-10).
+  [ACS-terv](../ai/acs-adaptiv-eroforras.md); az ACS-1…ACS-4 kész (2026-11-09…11), az ACS-6 és az ACS-7
+  folyamatban.
 
 *Kilépés:* az egui nincs a buildben, a Qt 6 shell a valódi motorral dolgozik.
 
