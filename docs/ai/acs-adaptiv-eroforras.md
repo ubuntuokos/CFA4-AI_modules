@@ -183,8 +183,8 @@ kell teljesítenie. Az időt a hívó adja meg (UTC ezredmásodperc), az ütemez
   ellenőrzi, a napló legfeljebb 256 sort tart meg.
 - **Sorrend:**
   - Elsőként az osztály számít: P0 (interaktív), R (végső render), P1 (háttér), P2 (spekulatív).
-    Az R a P1 elé kerül, mert a felhasználó kifejezetten kiadásra indította. Ez a megvalósítás
-    választása; az ADR 0008 3. pontja rögzíti, tulajdonosi megerősítésre vár.
+    Az R a P1 elé kerül, mert a felhasználó kifejezetten kiadásra indította (tulajdonosi
+    döntés, 2026-11-13; ADR 0008, 3. pont).
   - Osztályon belül a felhasználói prioritás, azon belül a beküldés ideje dönt.
   - Ha egy feladat erőforrásra vár, az alatta lévő elindulhat helyette, de csak amíg a várakozó
     10 percnél rövidebb ideje vár (`starvationMs`). Utána ő következik, így a nagy feladat nem

@@ -6,7 +6,7 @@
 **Kiadás:** HOLD
 
 > **Utolsó átnézés:** 2026-11-13 (az AI-terv és az ACS összevetésének hátralévő hiányai, a tulajdonos
-> utasítására: 3. pont tájékoztatási kategória és osztálysorrend, 4. pont gazdajelentés, 7. pont sémaverziók,
+> utasítására: 3. pont tájékoztatási kategória és osztálysorrend (R a P1 előtt, tulajdonosi döntés), 4. pont gazdajelentés, 7. pont sémaverziók,
 > 9. pont eredményhelyesség; a `cfa4-store` rétege L5); 2026-11-08 (8. pont: nincs fizetős rész, a zárt workerek, a licenckulcs és a 2K fölötti vízjel kikerült; 2026-11-07: 9. pont: RAM-minimum 16 GB, ajánlott 32 GB; tartós jobtár: PostgreSQL, [PostgreSQL-adatréteg](../ai/postgresql-adatreteg.md); 2. pont: a súly és a tanítóadat licence a felhasználó felelőssége; 2026-11-02: F3: angol felirat-időzítés; 2026-11-01: a 6. pont, az ONNX nem kötelező; 2026-10-31: a 2. pont kivétele a zárt workerekre) · **Változás:** major (CFA4-AI-PLAN-001 és a CFA3/FA3 elődtervek
 > beépítése: F0–F6 kapuk, ONNX-es első kör, modellkezelő, erőforrás-kezelési szabályok, tartós
 > jobtár, bővített jobállapotok, szétbontott licencmezők) · **Részletes terv:**
@@ -170,7 +170,7 @@ K18), jóváhagyással. A modellkezelő szabályai:
 - **Osztályok és prioritás:** a rendszerosztály P0 (interaktív), R (végső render), P1 (háttér),
   P2 (spekulatív); egy osztályon belül a felhasználó prioritása (alacsony, normál, magas), azon
   belül a beküldés ideje dönt. Az R a P1 előtt áll, mert a felhasználó kifejezetten kiadásra
-  indította (a megvalósítás választása, 2026-11-10; tulajdonosi megerősítésre vár).
+  indította (tulajdonosi döntés, 2026-11-13; a megvalósítás 2026-11-10 óta így működik).
 - **Stabil GPU-azonosítás:** UUID vagy PCI-cím szerint, nem a CUDA sorszáma szerint.
 - **A kijelzőt hajtó GPU** alapból nem kap AI-feladatot, ha van másik alkalmas kártya. Egykártyás
   gépen a felhasználó engedélyezheti.
