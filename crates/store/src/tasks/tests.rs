@@ -189,3 +189,66 @@ async fn a_task_whose_worker_dies_while_cancelling_frees_its_resources() {
     assert_eq!(q.get("stuck").await.unwrap().map(|t| t.state), Some(State::Cancelled));
     assert_eq!(m.held_count(), 0);
 }
+
+#[tokio::test]
+async fn the_outbox_goes_out_at_least_once_and_in_order() {
+    let Some((_db, store)) = setup().await else { return };
+    let q = store.tasks(QueueConfig::default());
+    let (s, mon) = (snap(), Monitor::default());
+    let mut m = manager();
+    q.submit(task("a", 2), 0).await.unwrap();
+    q.tick(1, "sup", &mut m, &s, &mon).await.unwrap();
+    q.finish("a", "sup", State::Succeeded, 2, "done", &mut m).await.unwrap();
+    let relay = store.outbox();
+    let pending = relay.pending().await.unwrap();
+    assert!(pending >= 3, "queued→running, the Started event, running→succeeded: {pending}");
+    // the publisher fails after the first event: only that one is marked
+    let sent = relay.relay_once(10, |events| async move { if events.is_empty() { Err("empty".into()) } else { Ok(1) } }).await.unwrap();
+    assert_eq!((sent, relay.pending().await.unwrap()), (1, pending - 1));
+    // a publisher that errors marks nothing: the events come again
+    assert!(relay.relay_once(10, |_| async { Err::<usize, _>("fabric down".to_owned()) }).await.is_err());
+    assert_eq!(relay.pending().await.unwrap(), pending - 1);
+    // the rest, in outbox order
+    let mut seen = Vec::new();
+    let n = relay
+        .relay_once(100, |events| {
+            seen = events.iter().map(|e| (e.id, e.subject.clone())).collect::<Vec<_>>();
+            let n = events.len();
+            async move { Ok(n) }
+        })
+        .await
+        .unwrap();
+    assert_eq!(n as i64, pending - 1);
+    assert!(seen.windows(2).all(|w| w[0].0 < w[1].0), "{seen:?}");
+    assert!(seen.iter().any(|(_, s)| s == "cfa4.execution.job.succeeded"), "{seen:?}");
+    assert_eq!(relay.pending().await.unwrap(), 0);
+    assert_eq!(relay.relay_once(10, |_| async { Ok(0) }).await.unwrap(), 0, "nothing left");
+    assert_eq!(relay.prune(0).await.unwrap(), u64::try_from(pending).unwrap());
+}
+
+#[tokio::test]
+async fn a_scheduler_is_woken_by_changes_not_by_polling() {
+    use crate::listen::Wake;
+    use std::time::Duration;
+    let Some((_db, store)) = setup().await else { return };
+    let mut listener = store.listen().await.unwrap();
+    assert_eq!(listener.wait(Duration::from_millis(50)).await, Wake::Timeout);
+    let q = store.tasks(QueueConfig::default());
+    q.submit(task("x", 2), 0).await.unwrap();
+    q.submit(task("y", 2), 0).await.unwrap();
+    match listener.wait(Duration::from_secs(5)).await {
+        Wake::Changed(ids) => {
+            // both commits may arrive in one wake-up or two
+            assert!(ids.first().is_some_and(|i| i == "x"), "{ids:?}");
+        }
+        other => panic!("expected a wake-up, got {other:?}"),
+    }
+    let _ = listener.wait(Duration::from_millis(200)).await;
+    // a user's change wakes it too
+    let v = q.get("x").await.unwrap().unwrap().version;
+    q.cancel("x", v, 1).await.unwrap();
+    assert_eq!(listener.wait(Duration::from_secs(5)).await, Wake::Changed(vec!["x".into()]));
+    // a rolled-back change does not
+    assert!(q.cancel("x", v, 2).await.is_err());
+    assert_eq!(listener.wait(Duration::from_millis(100)).await, Wake::Timeout);
+}

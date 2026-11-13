@@ -10,6 +10,8 @@
 //!   depend on the database, only the queue and the AI do (`AGENTS.md` §0).
 //! - [`Store::migrate`] brings every component's schema up to date, [`Store::rollback`] takes
 //!   one step back; each step runs in its own transaction.
+//! - [`Store::listen`] wakes a scheduler when a task is added or changed (`LISTEN`, so it does
+//!   not poll); [`outbox::Relay`] hands the outbox events to the Event Fabric, at least once.
 //! - [`tasks::TaskStore`] keeps the `cfa4-tasks` queue in the `tasks` schema. The queue's rules
 //!   live in [`cfa4_tasks::Queue`] only: every operation locks the rows it touches
 //!   (`FOR UPDATE`, the scheduler with `SKIP LOCKED`), runs the same rule on them, and writes back
@@ -21,7 +23,9 @@
 
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
+pub mod listen;
 pub mod migrate;
+pub mod outbox;
 pub mod tasks;
 
 use std::time::Duration;
@@ -113,6 +117,8 @@ impl std::error::Error for StoreError {}
 #[derive(Clone)]
 pub struct Store {
     pool: Pool,
+    /// For the dedicated `LISTEN` connection ([`Store::listen`]).
+    pg: tokio_postgres::Config,
 }
 
 impl Store {
@@ -131,10 +137,11 @@ impl Store {
         let mut pool_config = PoolConfig::new(config.pool_size.clamp(1, 64));
         pool_config.timeouts = Timeouts { wait: Some(timeout), create: Some(timeout), recycle: Some(timeout) };
         pg.pool = Some(pool_config);
+        let listen_config = pg.get_pg_config().map_err(|e| unavailable(e.to_string()))?;
         let pool = pg.create_pool(Some(Runtime::Tokio1), NoTls).map_err(|e| unavailable(e.to_string()))?;
         let client = pool.get().await.map_err(|e| unavailable(e.to_string()))?;
         client.simple_query("SELECT 1").await.map_err(|e| unavailable(e.to_string()))?;
-        Ok(Store { pool })
+        Ok(Store { pool, pg: listen_config })
     }
 
     pub(crate) async fn client(&self) -> Result<deadpool_postgres::Object, StoreError> {
@@ -150,6 +157,11 @@ impl Store {
     /// was applied.
     pub async fn rollback(&self, component: &str) -> Result<Option<u32>, StoreError> {
         migrate::down(self, component).await
+    }
+
+    /// Wake-ups for a scheduler: a connection of its own that listens on [`tasks::CHANNEL`].
+    pub async fn listen(&self) -> Result<listen::Listener, StoreError> {
+        listen::Listener::connect(&self.pg).await
     }
 
     /// The task queue in the `tasks` schema.
