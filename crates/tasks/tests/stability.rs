@@ -102,7 +102,9 @@ fn run(seed: u64) {
     let mut submitted = 0u32;
     let (mut started, mut finished) = (0usize, 0usize);
     let owners = ["sup-a", "sup-b"];
-    for step in 0..5_000 {
+    // a longer soak on the reference machine: CFA4_ACS7_STEPS=1000000 (scripts/dev/acs7-stability.sh)
+    let steps: usize = std::env::var("CFA4_ACS7_STEPS").ok().and_then(|v| v.parse().ok()).unwrap_or(5_000);
+    for step in 0..steps {
         // background load: other programs take memory and VRAM, sometimes unreadable, sometimes under pressure
         let free = match rng.below(10) {
             0 => None,
@@ -128,6 +130,7 @@ fn run(seed: u64) {
                     start: if rng.below(4) == 0 { StartMode::At { at: now + rng.below(120_000) } } else { StartMode::Now },
                     missed: [MissedStart::RunLate, MissedStart::NextSlot, MissedStart::AskUser][rng.below(3) as usize],
                     resumable: rng.below(2) == 0,
+                    time_zone: [None, Some("Europe/Budapest".to_owned()), Some("America/New_York".to_owned())][rng.below(3) as usize].clone(),
                 };
                 let _ = q.submit(new, now);
             }
@@ -172,6 +175,6 @@ fn run(seed: u64) {
         }
         check(&q, &m, step);
     }
-    assert!(submitted > 1_000, "the run exercised the queue");
-    assert!(started > 100 && finished > 50, "and work started ({started}) and ended ({finished})");
+    assert!(steps < 5_000 || submitted > 1_000, "the run exercised the queue");
+    assert!(steps < 5_000 || (started > 100 && finished > 50), "and work started ({started}) and ended ({finished})");
 }

@@ -85,6 +85,8 @@ fn spawn(s: &mut Session, job: u64, task: String, name: &str, run: Run) -> Resul
 /// `need`; until then it waits. `run` is the guarded job body.
 pub fn start(s: &mut Session, job: u64, need: Need, name: &str, run: impl FnOnce() + Send + 'static) -> Result<()> {
     let task = s.tasks.new_id("job");
+    let label = s.jobs.iter().find(|j| j.id == job).map_or_else(|| name.to_owned(), |j| j.label.clone());
+    s.tasks.set_label(&task, &label);
     match s.tasks.admit(&task, |h| h.fit(need.class, need.ram_bytes, need.cpu_milli)) {
         Admission::Start => spawn(s, job, task, name, Box::new(run)),
         Admission::Wait(reasons) => {
