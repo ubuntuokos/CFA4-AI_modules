@@ -555,6 +555,17 @@ fn a_queued_export_waits_for_memory_and_starts_once_there_is_room() {
     let listed = s.execute("tasks.list", json!({})).unwrap();
     assert_eq!(listed[0]["state"], "succeeded", "{listed}");
     assert_eq!(listed[0]["class"], "finalRender", "{listed}");
+    assert!(listed[0]["label"].as_str().unwrap().starts_with("Export: "), "{listed}");
+    // ACS-5: before the next one starts, the user can ask whether it would
+    let check = s.execute("tasks.check", json!({"class": "finalRender", "ramBytes": GIB, "cpuMilli": 1000})).unwrap();
+    assert_eq!((check["verdict"].as_str(), check["ahead"].as_u64()), (Some("start"), Some(0)), "{check}");
+    free.store(0, Ordering::Relaxed);
+    s.tasks.resample();
+    let check = s.execute("tasks.check", json!({"class": "finalRender", "ramBytes": GIB})).unwrap();
+    assert_eq!(check["verdict"], "wait", "{check}");
+    assert!(check["reasons"][0].as_str().unwrap().contains("memory"), "{check}");
+    assert!(s.execute("tasks.check", json!({"class": "bogus"})).is_err());
+    assert_eq!(s.tasks.held(), 0, "a check reserves nothing");
 }
 
 #[test]

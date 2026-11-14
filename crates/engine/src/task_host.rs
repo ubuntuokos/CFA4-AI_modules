@@ -21,6 +21,7 @@ use std::sync::Arc;
 
 use cfa4_tasks::budget::{Budget, BudgetSettings};
 use cfa4_tasks::manager::{Class, Denied, Request, WaitReason};
+use cfa4_tasks::queue::class_rank;
 use cfa4_tasks::{Manager, MissedStart, Monitor, NewTask, Priority, Queue, QueueConfig, QueueEvent, Snapshot, StartMode, State};
 
 /// Reads the machine's resources (tests install a fixed one).
@@ -61,7 +62,23 @@ pub struct TaskHost {
     settings: BudgetSettings,
     sampled: Option<web_time::Instant>,
     next: u64,
+    /// What each task is, as the user knows it (the job's or the export's name).
+    labels: std::collections::HashMap<String, String>,
 }
+
+/// What would happen to a task asked for now (ACS-5: the notice before it starts).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Preview {
+    /// "start", "wait" or "never".
+    pub verdict: &'static str,
+    /// Why it would wait or not run, as the user reads it.
+    pub reasons: Vec<String>,
+    /// Tasks that would go before it.
+    pub ahead: usize,
+}
+
+/// Longest label kept (labels come from file and sequence names).
+const MAX_LABEL: usize = 200;
 
 impl Default for TaskHost {
     fn default() -> Self {
@@ -111,6 +128,7 @@ impl TaskHost {
             settings: BudgetSettings::default(),
             sampled: None,
             next: 0,
+            labels: std::collections::HashMap::new(),
         }
     }
 
@@ -129,6 +147,35 @@ impl TaskHost {
         self.monitor.observe(&self.snap);
         self.manager.observe_sample();
         self.sampled = Some(web_time::Instant::now());
+    }
+
+    /// Name task `id` for the user (shown by `tasks.list`).
+    pub fn set_label(&mut self, id: &str, label: &str) {
+        let label: String = label.chars().take(MAX_LABEL).collect();
+        self.labels.insert(id.to_owned(), label);
+    }
+
+    /// Would a media task asking for `ram_bytes` and `cpu_milli` start now? Nothing is submitted or
+    /// reserved: this is the notice before the user starts it (`tasks.check`).
+    pub fn preview(&mut self, class: Class, ram_bytes: u64, cpu_milli: u64) -> Preview {
+        self.refresh(false);
+        let request = self.fit(class, ram_bytes, cpu_milli);
+        let ahead =
+            self.queue.tasks().iter().filter(|t| matches!(t.state, State::Queued | State::Waiting) && class_rank(t.request.class) <= class_rank(class)).count();
+        let queued = |ahead: usize| if ahead == 1 { "1 task is ahead in the queue".to_owned() } else { format!("{ahead} tasks are ahead in the queue") };
+        match self.manager.check(&request, &self.snap, &self.monitor) {
+            Ok(_) if ahead == 0 => Preview { verdict: "start", reasons: Vec::new(), ahead },
+            Ok(_) => Preview { verdict: "wait", reasons: vec![queued(ahead)], ahead },
+            Err(Denied::Wait { reasons }) => {
+                let mut reasons: Vec<String> = reasons.iter().map(describe).collect();
+                if ahead > 0 {
+                    reasons.push(queued(ahead));
+                }
+                Preview { verdict: "wait", reasons, ahead }
+            }
+            Err(Denied::NeverFits { resource, .. }) => Preview { verdict: "never", reasons: vec![format!("not enough {resource:?} on this machine")], ahead },
+            Err(Denied::IdsExhausted) => Preview { verdict: "never", reasons: vec!["no reservation can be granted".into()], ahead },
+        }
     }
 
     /// What a media task may ask for: `ram_bytes` and `cpu_milli` clamped to the budget, and
@@ -197,6 +244,8 @@ impl TaskHost {
             }
         };
         self.queue.prune(now.saturating_sub(KEEP_FINISHED_MS));
+        let queue = &self.queue;
+        self.labels.retain(|id, _| queue.get(id).is_some());
         events
     }
 
@@ -257,12 +306,19 @@ impl TaskHost {
                 .tasks()
                 .iter()
                 .map(|t| {
+                    let started = t.log.iter().rev().find(|l| l.to == State::Running).map(|l| l.at);
+                    let ended = t.log.iter().rev().find(|l| l.to.is_terminal()).map(|l| l.at);
                     serde_json::json!({
                         "id": t.id,
+                        "label": self.labels.get(&t.id),
                         "state": t.state,
                         "class": t.request.class,
+                        "priority": t.priority,
                         "ramBytes": t.request.ram_bytes,
                         "cpuMilli": t.request.cpu_milli,
+                        "submittedAt": t.submitted_at,
+                        "startedAt": started,
+                        "endedAt": ended,
                         "waitingFor": t.wait_reasons.iter().map(describe).collect::<Vec<_>>(),
                     })
                 })
@@ -340,5 +396,32 @@ mod tests {
         h.end("missing", Outcome::Succeeded);
         assert_eq!(h.admit("export-3", big), Admission::Start);
         assert_eq!(h.held(), 1);
+    }
+
+    #[test]
+    fn preview_tells_before_a_task_starts_and_reserves_nothing() {
+        let mut h = host_with(Some(14 * GIB));
+        let p = h.preview(Class::FinalRender, 10 * GIB, 4000);
+        assert_eq!((p.verdict, p.ahead, h.held()), ("start", 0, 0), "{p:?}");
+        h.set_label("export-1", "Export: Main");
+        assert_eq!(h.admit("export-1", |h| h.fit(Class::FinalRender, 10 * GIB, 4000)), Admission::Start);
+        let p = h.preview(Class::FinalRender, 10 * GIB, 4000);
+        assert_eq!(p.verdict, "wait");
+        assert!(p.reasons.iter().any(|r| r.contains("memory")), "{p:?}");
+        // a second one waits too: a third would be behind it
+        assert!(matches!(h.admit("export-2", |h| h.fit(Class::FinalRender, 10 * GIB, 4000)), Admission::Wait(_)));
+        let p = h.preview(Class::Background, GIB, 1000);
+        assert_eq!((p.verdict, p.ahead), ("wait", 1), "{p:?}");
+        assert!(p.reasons.iter().any(|r| r.contains("ahead")), "{p:?}");
+        // speculative work goes after background work, an interactive task before it
+        assert_eq!(h.preview(Class::Interactive, GIB, 1000).ahead, 0);
+        assert_eq!(h.held(), 1, "preview reserves nothing");
+        let json = h.to_json();
+        let first = json.as_array().and_then(|a| a.first()).cloned().unwrap_or_default();
+        assert_eq!(first["label"], "Export: Main");
+        assert_eq!(first["priority"], "normal");
+        assert!(first["startedAt"].is_u64() && first["endedAt"].is_null(), "{first}");
+        h.set_label("x", &"a".repeat(1000));
+        assert_eq!(h.labels.get("x").map(String::len), Some(MAX_LABEL));
     }
 }

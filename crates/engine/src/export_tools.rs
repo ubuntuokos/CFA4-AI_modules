@@ -729,6 +729,7 @@ pub fn pump_queue(s: &mut Session, wait: bool) {
             // only the head of the user's order asks; one that lost its place stops asking
             s.tasks.withdraw("export-", Some(&id));
             s.export_queue.items[i].task = Some(id.clone());
+            s.tasks.set_label(&id, &format!("Export: {}", it.sequence_name));
             match s.tasks.admit(&id, |h| export_request(h, &it)) {
                 Admission::Start => Some(id),
                 Admission::Wait(reasons) => {

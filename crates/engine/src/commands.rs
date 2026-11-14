@@ -1606,6 +1606,24 @@ fn build() -> Vec<CommandSpec> {
         query!("jobs.list", "List Jobs", "{}", |s, _| Ok(Value::Array(s.jobs.iter().map(|j| crate::export_tools::job_json(s, j)).collect()))),
         // ACS-6: the CFA4 task queue the heavy work goes through (state, request, why it waits)
         query!("tasks.list", "List Tasks", "{}", |s, _| Ok(s.tasks.to_json())),
+        // ACS-5: would a task asked for now start, wait (and why) or not run here? Nothing is reserved.
+        query!(
+            "tasks.check",
+            "Check Task Resources",
+            r#"{"class":"interactive|background|speculative|finalRender"=background,"ramBytes":u64=0,"cpuMilli":u64=0}"#,
+            |s, p| {
+                use cfa4_tasks::manager::Class;
+                let class = match str_p(p, "class").unwrap_or("background") {
+                    "interactive" => Class::Interactive,
+                    "background" => Class::Background,
+                    "speculative" => Class::Speculative,
+                    "finalRender" => Class::FinalRender,
+                    other => return Err(bad("tasks.check", format!("unknown class `{other}`"))),
+                };
+                let v = s.tasks.preview(class, u64_p(p, "ramBytes").unwrap_or(0), u64_p(p, "cpuMilli").unwrap_or(0));
+                Ok(serde_json::json!({"verdict": v.verdict, "reasons": v.reasons, "ahead": v.ahead}))
+            }
+        ),
         query!("perf.stats", "Performance Statistics", "{}", |s, _| Ok(crate::perf::stats(s))),
         cmd!("jobs.cancel", "Cancel Job", [], None, r#"{"job":id}"#, always, |s, p| {
             let id = u64_p(p, "job").ok_or_else(|| bad("jobs.cancel", "need `job`"))?;

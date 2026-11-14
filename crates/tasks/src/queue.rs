@@ -290,7 +290,8 @@ pub struct Queue {
     tasks: Vec<Task>,
 }
 
-fn class_rank(class: Class) -> u8 {
+/// Start order of the classes (lower goes first): interactive, final render, background, speculative.
+pub fn class_rank(class: Class) -> u8 {
     match class {
         Class::Interactive => 0,
         Class::FinalRender => 1,

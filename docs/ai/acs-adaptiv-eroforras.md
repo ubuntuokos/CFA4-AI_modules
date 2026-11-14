@@ -41,7 +41,7 @@ Alkalmazás, modell-előkészítés, licencelfogadás).
 | ACS-2 | Erőforrás-elérhetőség kezelése: dinamikus keretek, tartalékok, CPU/GPU-korlátok, párhuzamos feladatok összehangolása, atomi foglalás | A CFA4 nem veszélyezteti a gazdarendszer stabilitását | Kész (5. pont) |
 | ACS-3 | Adaptív végrehajtási terv: alternatív utak (manifest v5 `paths`), szakaszos futás, streaming, részleges modellbetöltés, időbecslés tartománnyal | Egy funkcióhoz több validált út érhető el, ahol a technológia engedi | Kész (6. pont) |
 | ACS-4 | Feladatsor és ütemezett végrehajtás: központi sor, P0/P1/P2/R osztály és felhasználói prioritás, négy indítási mód (azonnal, erőforrásra, időpontra, időpontra és erőforrásra), `scheduled` és `paused` állapot, folytatás | Újraindítás után sem vész el feladat, és egyik sem indul kétszer (PG-2: bérlet, `SKIP LOCKED`) | Kész (7. pont): a sor, a PostgreSQL-tár, az ébresztés, a kimenőtár-továbbító és az időzónás következő időpont |
-| ACS-5 | Értesítés és Qt 6 feladatkezelő: előzetes tájékoztatás, becsült idő, késés, döntési lehetőség | A felhasználó indítás előtt és közben is megfelelő információt kap | Blokkolva: a Qt 6 felület még készül, és a CFA4 főágában még nincsenek ACS-crate-ek. Addig a `tasks.list` és a `waitingFor` adja ugyanezt az információt |
+| ACS-5 | Értesítés és Qt 6 feladatkezelő: előzetes tájékoztatás, becsült idő, késés, döntési lehetőség | A felhasználó indítás előtt és közben is megfelelő információt kap | Folyamatban (10. pont): a Qt 6 feladatkezelő panel kész (CFA4 #1172), a motor ad előzetes tájékoztatást (`tasks.check`). Hiányzik: az ACS-crate-ek a CFA4 főágában, és a lekésett indítás döntési parancsai |
 | ACS-6 | Modulok bekötése: AI-videó és -hang, Media Intelligence, render és kodekek (az `export` jobja kliens lesz, nem cserélődik le) | A modulok a közös infrastruktúrát használják | Folyamatban: az exportsor és a motor háttérfeladatai már a közös soron mennek (8. pont) |
 | ACS-7 | Integrációs és stabilitási próbák: hardverkonfigurációk, háttérterhelés, hosszú feladatok, újraindítás, memóriahiány, eredményhelyesség (CPU és GPU arany kimenettel) | A funkciók elérhetők maradnak, ahol van biztonságos út | Folyamatban: a sor stabilitási próbája kész, két hibát talált és javított (9. pont) |
 
@@ -266,7 +266,7 @@ ahogy a felhasználó megadta (a terv szerint az `export` jobja kliens lesz, nem
 - **Blokkoló export:** a parancssori vagy szkriptből indított (`wait`) export azonnal indul,
   mert a hívó most kérte.
 - **Vezérlés:** a `tasks.list` parancs mutatja a feladatokat, az állapotukat, a kérésüket és a
-  várakozás okát.
+  várakozás okát (a nevükkel és az időpontjaikkal együtt, 10. pont).
 - **Tárolás:** a sor memóriában van, mert a vágás, a lejátszás és a mentés nem függ az
   adatbázistól. A `cfa4-store` bekötése az alkalmazásban következik, a 7. pont hátralévő
   részével együtt.
@@ -354,3 +354,36 @@ nincs referencia-GPU.
 
 **Még hátravan:** az eredményhelyesség CPU-n és GPU-n, arany kimenettel. Ez az AI-workerekkel
 jön, mert most nincs GPU-s feladat, amelyet ellenőrizni lehetne.
+
+## 10. ACS-5: értesítés és Qt 6 feladatkezelő
+
+**Qt 6 panel (CFA4 #1172).** A Window ▸ Task Manager egy fában mutatja a háttérfeladatokat
+(`jobs.list`), az exportsort (`export.queue.list`) és a közös feladatsort (`tasks.list`). Mindhárom
+forrást külön olvassa, így ha a motorból valamelyik hiányzik, az nem takarja el a többit. Ami
+erőforrásra vár, az indulás előtt kiírja, miért vár; ami fut, a hátralévő idejét mutatja. A
+háttérfeladat és az export a sorából megszakítható. A CFA4 főágának motorjában még nincs
+`tasks.list`, ott a panel ezt jelzi, és a másik két forrást mutatja.
+
+**Előzetes tájékoztatás a motorban (`tasks.check`).** Egy kérésről (osztály, RAM, CPU) foglalás
+nélkül megmondja, mi történne vele most:
+
+- `start`: azonnal elindulna;
+- `wait`: várna, és miért (szabad memória, más CFA4-feladatok foglalása, rendszerterhelés, hány
+  feladat van előtte a sorban);
+- `never`: ezen a gépen nem fut.
+
+Az „előtte” azokat a várakozó feladatokat számolja, amelyek az indítási sorrendben (interaktív,
+végső render, háttér, előzetes) nem kerülnének mögé.
+
+**Gazdagabb `tasks.list`.** A feladat neve, ahogy a felhasználó ismeri (a háttérfeladat címkéje,
+az exportnál „Export: <szekvencia>”, legfeljebb 200 karakter), a prioritása, valamint a beküldés,
+az indulás és a befejezés ideje (UTC ezredmásodperc).
+
+**Ami még hiányzik:**
+
+- **ACS-crate-ek a CFA4 főágában.** Amíg nincsenek ott, a főág motorja nem ad `tasks.list`-et,
+  `tasks.check`-et, `waitingFor`-t és „Waiting: …” állapotot.
+- **Döntési parancsok a lekésett indításhoz** („fusson most”, „következő időpont”, „mégse”). A
+  motor feladatai most mind azonnali indításúak, így lekésett indítás még nem fordul elő. A
+  parancsok az időzített indítással (ACS-4 `StartMode::At`) együtt jönnek, amint egy modul ilyet
+  kér.
