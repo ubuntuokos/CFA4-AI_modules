@@ -67,7 +67,8 @@ pub enum StartMode {
 }
 
 impl StartMode {
-    fn at(self) -> Option<UtcMs> {
+    /// The scheduled start time, if any.
+    pub fn at(self) -> Option<UtcMs> {
         match self {
             StartMode::At { at } | StartMode::AtWithResources { at } => Some(at),
             StartMode::Now | StartMode::WhenResources => None,

@@ -101,6 +101,12 @@ fn now_ms() -> u64 {
     web_time::SystemTime::now().duration_since(web_time::UNIX_EPOCH).map_or(0, |d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX))
 }
 
+/// A task the scheduler paused because its start was missed: the user decides (run now, next
+/// slot, cancel).
+fn needs_decision(t: &cfa4_tasks::Task) -> bool {
+    t.state == State::Paused && t.log.last().is_some_and(|l| l.by == cfa4_tasks::Actor::Scheduler && l.reason.starts_with("missed start"))
+}
+
 /// One wait reason in words.
 pub fn describe(reason: &WaitReason) -> String {
     use cfa4_tasks::manager::Resource;
@@ -147,6 +153,56 @@ impl TaskHost {
         self.monitor.observe(&self.snap);
         self.manager.observe_sample();
         self.sampled = Some(web_time::Instant::now());
+    }
+
+    /// Submit `id` to start at `at` (UTC ms) with nothing to reserve: a trigger for work that
+    /// starts at a time (the export queue's scheduled start). `missed` says what happens when the
+    /// time passed while CFA4 could not start it (the computer slept); `time_zone` (IANA) keeps
+    /// the next slot at the same local time.
+    pub fn schedule(&mut self, id: &str, at: u64, time_zone: Option<String>, missed: MissedStart) -> Result<(), String> {
+        let new = NewTask {
+            id: id.to_owned(),
+            request: Request { class: Class::FinalRender, ram_bytes: 0, cpu_milli: 0, gpu: None },
+            priority: Priority::Normal,
+            start: StartMode::At { at },
+            missed,
+            resumable: false,
+            time_zone,
+        };
+        self.queue.submit(new, now_ms()).map(|_| ()).map_err(|e| format!("{e:?}"))
+    }
+
+    /// Whether `id` waits for the user's decision after a missed start.
+    pub fn needs_decision(&self, id: &str) -> bool {
+        self.queue.get(id).is_some_and(needs_decision)
+    }
+
+    /// The user's decision on a task that has not started (ACS-5): `run_now`, `next_slot` (the
+    /// same local time on the next day it is still ahead) or `cancel`. Returns the new state.
+    pub fn decide(&mut self, id: &str, action: &str) -> Result<State, String> {
+        let now = now_ms();
+        let t = self.queue.get(id).ok_or_else(|| format!("no task `{id}`"))?;
+        let (state, version, at, zone) = (t.state, t.version, t.start.at(), t.time_zone.clone());
+        if !matches!(state, State::Scheduled | State::Paused | State::Queued | State::Waiting) {
+            return Err(format!("task `{id}` has already started or ended ({state:?})"));
+        }
+        let r = match action {
+            "cancel" => self.queue.cancel(id, version, now).map(|_| ()),
+            "runNow" => match state {
+                State::Paused => self.queue.resume(id, version, now),
+                State::Scheduled => self.queue.reschedule(id, version, now, now),
+                _ => Ok(()), // already waiting for its turn
+            },
+            "nextSlot" => {
+                let Some(at) = at else { return Err(format!("task `{id}` has no start time")) };
+                let next = cfa4_tasks::schedule::next_slot(at, zone.as_deref().unwrap_or("UTC"), now).map_err(|e| format!("{e:?}"))?;
+                self.queue.reschedule(id, version, next, now)
+            }
+            other => return Err(format!("unknown decision `{other}` (runNow, nextSlot, cancel)")),
+        };
+        r.map_err(|e| format!("{e:?}"))?;
+        self.tick();
+        self.queue.get(id).map(|t| t.state).ok_or_else(|| format!("task `{id}` was dropped"))
     }
 
     /// Name task `id` for the user (shown by `tasks.list`).
@@ -225,7 +281,7 @@ impl TaskHost {
 
     /// Renew the leases of the running tasks and run one scheduler step.
     pub fn tick(&mut self) -> Vec<QueueEvent> {
-        let busy = self.queue.tasks().iter().any(|t| matches!(t.state, State::Queued | State::Waiting | State::Running | State::Cancelling));
+        let busy = self.queue.tasks().iter().any(|t| matches!(t.state, State::Scheduled | State::Queued | State::Waiting | State::Running | State::Cancelling));
         if !busy {
             return Vec::new();
         }
@@ -320,6 +376,11 @@ impl TaskHost {
                         "startedAt": started,
                         "endedAt": ended,
                         "waitingFor": t.wait_reasons.iter().map(describe).collect::<Vec<_>>(),
+                        "startAt": t.start.at(),
+                        "timeZone": t.time_zone,
+                        "ifMissed": t.missed,
+                        "needsDecision": needs_decision(t),
+                        "decisions": if needs_decision(t) { serde_json::json!(["runNow", "nextSlot", "cancel"]) } else { serde_json::json!([]) },
                     })
                 })
                 .collect(),
@@ -423,5 +484,44 @@ mod tests {
         assert!(first["startedAt"].is_u64() && first["endedAt"].is_null(), "{first}");
         h.set_label("x", &"a".repeat(1000));
         assert_eq!(h.labels.get("x").map(String::len), Some(MAX_LABEL));
+    }
+
+    #[test]
+    fn a_missed_start_waits_for_the_users_decision() {
+        const MIN: u64 = 60_000;
+        let mut h = host_with(Some(14 * GIB));
+        let now = now_ms();
+        // the computer slept through the start time
+        h.schedule("ask", now - 10 * MIN, None, MissedStart::AskUser).unwrap();
+        h.tick();
+        assert_eq!(h.state("ask"), Some(State::Paused));
+        assert!(h.needs_decision("ask"));
+        let json = h.to_json();
+        assert_eq!(json[0]["needsDecision"], true, "{json}");
+        assert_eq!(json[0]["decisions"], serde_json::json!(["runNow", "nextSlot", "cancel"]));
+        assert_eq!(h.decide("ask", "runNow"), Ok(State::Running));
+        assert!(!h.needs_decision("ask"));
+        h.end("ask", Outcome::Succeeded);
+        assert_eq!(h.held(), 0);
+
+        h.schedule("later", now - 10 * MIN, Some("Europe/Budapest".into()), MissedStart::AskUser).unwrap();
+        h.tick();
+        assert_eq!(h.decide("later", "nextSlot"), Ok(State::Scheduled));
+        let at = h.queue().get("later").and_then(|t| t.start.at()).unwrap_or(0);
+        assert!(at > now && at <= now + 24 * 60 * MIN, "the same local time within a day: {at}");
+        assert_eq!(h.decide("later", "cancel"), Ok(State::Cancelled));
+        assert!(h.decide("later", "runNow").is_err(), "ended");
+
+        // a start ahead: run it now instead
+        h.schedule("night", now + 60 * MIN, None, MissedStart::RunLate).unwrap();
+        h.tick();
+        assert_eq!((h.state("night"), h.needs_decision("night")), (Some(State::Scheduled), false));
+        assert_eq!(h.decide("night", "runNow"), Ok(State::Running));
+        h.end("night", Outcome::Succeeded);
+
+        assert!(h.decide("missing", "runNow").is_err());
+        h.schedule("x", now + MIN, None, MissedStart::RunLate).unwrap();
+        assert!(h.decide("x", "explode").is_err());
+        assert!(h.schedule("tz", now, Some("Nowhere/Atlantis".into()), MissedStart::RunLate).is_err());
     }
 }

@@ -41,7 +41,7 @@ Alkalmazás, modell-előkészítés, licencelfogadás).
 | ACS-2 | Erőforrás-elérhetőség kezelése: dinamikus keretek, tartalékok, CPU/GPU-korlátok, párhuzamos feladatok összehangolása, atomi foglalás | A CFA4 nem veszélyezteti a gazdarendszer stabilitását | Kész (5. pont) |
 | ACS-3 | Adaptív végrehajtási terv: alternatív utak (manifest v5 `paths`), szakaszos futás, streaming, részleges modellbetöltés, időbecslés tartománnyal | Egy funkcióhoz több validált út érhető el, ahol a technológia engedi | Kész (6. pont) |
 | ACS-4 | Feladatsor és ütemezett végrehajtás: központi sor, P0/P1/P2/R osztály és felhasználói prioritás, négy indítási mód (azonnal, erőforrásra, időpontra, időpontra és erőforrásra), `scheduled` és `paused` állapot, folytatás | Újraindítás után sem vész el feladat, és egyik sem indul kétszer (PG-2: bérlet, `SKIP LOCKED`) | Kész (7. pont): a sor, a PostgreSQL-tár, az ébresztés, a kimenőtár-továbbító és az időzónás következő időpont |
-| ACS-5 | Értesítés és Qt 6 feladatkezelő: előzetes tájékoztatás, becsült idő, késés, döntési lehetőség | A felhasználó indítás előtt és közben is megfelelő információt kap | Folyamatban (10. pont): a Qt 6 feladatkezelő panel kész (CFA4 #1172), a motor ad előzetes tájékoztatást (`tasks.check`). Hiányzik: az ACS-crate-ek a CFA4 főágában, és a lekésett indítás döntési parancsai |
+| ACS-5 | Értesítés és Qt 6 feladatkezelő: előzetes tájékoztatás, becsült idő, késés, döntési lehetőség | A felhasználó indítás előtt és közben is megfelelő információt kap | Folyamatban (10. pont): a Qt 6 feladatkezelő panel kész (CFA4 #1172); a motor ad előzetes tájékoztatást (`tasks.check`), időzíthető exportsort és döntést a lekésett indításról (`tasks.decide`). Hiányzik: az ACS-crate-ek a CFA4 főágában |
 | ACS-6 | Modulok bekötése: AI-videó és -hang, Media Intelligence, render és kodekek (az `export` jobja kliens lesz, nem cserélődik le) | A modulok a közös infrastruktúrát használják | Folyamatban: az exportsor és a motor háttérfeladatai már a közös soron mennek (8. pont) |
 | ACS-7 | Integrációs és stabilitási próbák: hardverkonfigurációk, háttérterhelés, hosszú feladatok, újraindítás, memóriahiány, eredményhelyesség (CPU és GPU arany kimenettel) | A funkciók elérhetők maradnak, ahol van biztonságos út | Folyamatban: a sor stabilitási próbája kész, két hibát talált és javított (9. pont) |
 
@@ -379,11 +379,21 @@ végső render, háttér, előzetes) nem kerülnének mögé.
 az exportnál „Export: <szekvencia>”, legfeljebb 200 karakter), a prioritása, valamint a beküldés,
 az indulás és a befejezés ideje (UTC ezredmásodperc).
 
+**Időzített exportsor és döntés a lekésett indításról.** Az `export.queue.start` egy `at`
+időpontot (UTC ezredmásodperc) is kaphat, például éjszakára, `timeZone`-nal (IANA) és
+`ifMissed`-del. Utóbbi azt mondja meg, mi legyen, ha az időpont úgy telt el, hogy a CFA4 nem
+indíthatott (a gép aludt):
+
+- `askUser` (alapértelmezés): a feladat szünetel, és a döntést a felhasználó hozza meg;
+- `runLate`: elindul késve;
+- `nextSlot`: másnap ugyanabban a helyi időben indul.
+
+Az időzített indítás a sorban egy erőforrást nem foglaló indítófeladat. Amikor elindul, az
+exportsor is elindul. A `tasks.list` a döntésre váró feladatnál `needsDecision: true`-t és a
+választható lépéseket adja. A `tasks.decide` (`runNow`, `nextSlot`, `cancel`) bármelyik, még el
+nem indult feladatra jó. Az exportsor leállítása a még el nem indult időzítést is törli.
+
 **Ami még hiányzik:**
 
 - **ACS-crate-ek a CFA4 főágában.** Amíg nincsenek ott, a főág motorja nem ad `tasks.list`-et,
   `tasks.check`-et, `waitingFor`-t és „Waiting: …” állapotot.
-- **Döntési parancsok a lekésett indításhoz** („fusson most”, „következő időpont”, „mégse”). A
-  motor feladatai most mind azonnali indításúak, így lekésett indítás még nem fordul elő. A
-  parancsok az időzített indítással (ACS-4 `StartMode::At`) együtt jönnek, amint egy modul ilyet
-  kér.

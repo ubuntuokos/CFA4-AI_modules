@@ -516,6 +516,43 @@ fn queue_cancels_a_running_export_and_retries_a_failed_one() {
 }
 
 #[test]
+fn a_scheduled_queue_start_that_was_missed_asks_the_user() {
+    let mut s = demo();
+    let dir = Scratch::new("acs5");
+    s.execute(
+        "export.queue.add",
+        json!({"preset": "Waveform Audio 48 kHz 16-bit", "path": dir.path("a.wav"), "range": "custom", "startSeconds": 0, "endSeconds": 0.1}),
+    )
+    .unwrap();
+    let now = web_time::SystemTime::now().duration_since(web_time::UNIX_EPOCH).unwrap().as_millis() as u64;
+    // ahead: nothing starts yet
+    let r = s.execute("export.queue.start", json!({"at": now + 3_600_000})).unwrap();
+    assert_eq!((r["running"].as_bool(), r["scheduledStart"]["state"].as_str()), (Some(false), Some("scheduled")), "{r}");
+    // stopping the queue drops the scheduled start
+    s.execute("export.queue.stop", json!({})).unwrap();
+    assert!(s.execute("export.queue.list", json!({})).unwrap()["scheduledStart"].is_null());
+    // the start time passed while the computer slept: the user decides
+    s.execute("export.queue.start", json!({"at": now - 600_000, "ifMissed": "askUser"})).unwrap();
+    let r = s.execute("export.queue.list", json!({})).unwrap();
+    assert_eq!((r["running"].as_bool(), r["scheduledStart"]["needsDecision"].as_bool()), (Some(false), Some(true)), "{r}");
+    assert_eq!(queue(&mut s)[0]["status"], "ready");
+    let task = r["scheduledStart"]["task"].as_str().unwrap().to_owned();
+    let listed = s.execute("tasks.list", json!({})).unwrap();
+    let row = listed.as_array().unwrap().iter().find(|t| t["id"] == task.as_str()).cloned().unwrap();
+    assert_eq!((row["label"].as_str(), row["needsDecision"].as_bool()), (Some("Start the export queue"), Some(true)), "{row}");
+    assert!(s.execute("tasks.decide", json!({"id": task, "action": "later"})).is_err());
+    assert!(s.execute("export.queue.start", json!({"at": now, "ifMissed": "never"})).is_err());
+    s.execute("tasks.decide", json!({"id": task, "action": "runNow"})).unwrap();
+    let t0 = std::time::Instant::now();
+    while queue(&mut s)[0]["status"] != "done" {
+        assert!(t0.elapsed() < std::time::Duration::from_secs(60), "{}", queue(&mut s)[0]);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    assert!(s.execute("export.queue.list", json!({})).unwrap()["scheduledStart"].is_null());
+    assert_eq!(s.tasks.held(), 0);
+}
+
+#[test]
 fn a_queued_export_waits_for_memory_and_starts_once_there_is_room() {
     use std::sync::Arc;
     use std::sync::atomic::{AtomicU64, Ordering};

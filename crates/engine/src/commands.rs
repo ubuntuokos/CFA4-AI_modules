@@ -1606,6 +1606,14 @@ fn build() -> Vec<CommandSpec> {
         query!("jobs.list", "List Jobs", "{}", |s, _| Ok(Value::Array(s.jobs.iter().map(|j| crate::export_tools::job_json(s, j)).collect()))),
         // ACS-6: the CFA4 task queue the heavy work goes through (state, request, why it waits)
         query!("tasks.list", "List Tasks", "{}", |s, _| Ok(s.tasks.to_json())),
+        // ACS-5: the user's decision on a task that has not started, e.g. after a missed start
+        cmd!("tasks.decide", "Decide on a Task", [], None, r#"{"id":str,"action":"runNow|nextSlot|cancel"}"#, always, |s, p| {
+            let id = str_p(p, "id").ok_or_else(|| bad("tasks.decide", "need `id`"))?;
+            let action = str_p(p, "action").ok_or_else(|| bad("tasks.decide", "need `action` (runNow, nextSlot, cancel)"))?;
+            let state = s.tasks.decide(id, action).map_err(|e| bad("tasks.decide", e))?;
+            crate::export_tools::pump_queue(s, false);
+            Ok(serde_json::json!({"id": id, "state": state}))
+        }),
         // ACS-5: would a task asked for now start, wait (and why) or not run here? Nothing is reserved.
         query!(
             "tasks.check",

@@ -28,6 +28,7 @@ use std::sync::atomic::Ordering;
 use cfa4_export::presets::{DEFAULT_PRESET, preset_key};
 use cfa4_export::{BitrateMode, ExportPreset, ExportSettings, Format, GpuRendering, HardwareEncoding};
 use cfa4_project::{ItemId, Project};
+use cfa4_tasks::State;
 use cfa4_tasks::manager::{Class, Request};
 use cfa4_time::{FrameRate, Tick, TimeRange};
 use serde::{Deserialize, Serialize};
@@ -620,6 +621,49 @@ pub struct ExportQueue {
     next_id: u64,
     /// Quick Export's preset (the last one used).
     pub quick_preset: Option<String>,
+    /// A scheduled start (`export.queue.start` with `at`): its trigger task in the task queue,
+    /// which reserves nothing; the queue starts when the task does (ACS-5).
+    pub start_task: Option<String>,
+}
+
+/// What a scheduled queue start does when its time passed while CFA4 could not start it.
+fn missed_p(p: &Value) -> Result<cfa4_tasks::MissedStart> {
+    use cfa4_tasks::MissedStart;
+    match str_p(p, "ifMissed").unwrap_or("askUser") {
+        "askUser" => Ok(MissedStart::AskUser),
+        "runLate" => Ok(MissedStart::RunLate),
+        "nextSlot" => Ok(MissedStart::NextSlot),
+        other => Err(bad("export.queue.start", format!("unknown `ifMissed` `{other}` (askUser, runLate, nextSlot)"))),
+    }
+}
+
+/// Start the queue when its scheduled start task starts; forget one that was cancelled.
+fn check_scheduled_start(s: &mut Session) {
+    let Some(id) = s.export_queue.start_task.clone() else { return };
+    s.tasks.tick();
+    match s.tasks.state(&id) {
+        Some(State::Running) => {
+            s.tasks.end(&id, Outcome::Succeeded);
+            s.export_queue.start_task = None;
+            if s.export_queue.items.iter().any(|i| i.status == QueueStatus::Ready) {
+                s.export_queue.running = true;
+                s.events.push(Event::Toast { message: "Scheduled export queue started".into(), error: false });
+            }
+        }
+        Some(State::Scheduled | State::Paused | State::Queued | State::Waiting) => {}
+        _ => s.export_queue.start_task = None,
+    }
+}
+
+fn scheduled_start_json(s: &Session) -> Value {
+    let Some(id) = s.export_queue.start_task.as_deref() else { return Value::Null };
+    let t = s.tasks.queue().get(id);
+    json!({
+        "task": id,
+        "at": t.and_then(|t| t.start.at()),
+        "state": t.map(|t| t.state),
+        "needsDecision": s.tasks.needs_decision(id),
+    })
 }
 
 impl ExportQueue {
@@ -672,6 +716,7 @@ fn item_json(s: &Session, it: &QueueItem) -> Value {
 /// Advance the queue: settle finished encodes, start the next ready item. `wait` encodes all of
 /// them now (blocking).
 pub fn pump_queue(s: &mut Session, wait: bool) {
+    check_scheduled_start(s);
     loop {
         // settle
         let mut finished_any = false;
@@ -864,21 +909,42 @@ fn queue_list_json(s: &Session) -> Value {
 
 fn queue_list(s: &mut Session, _: &Value) -> Result<Value> {
     pump_queue(s, false);
-    Ok(json!({"running": s.export_queue.running, "items": queue_list_json(s)}))
+    Ok(json!({"running": s.export_queue.running, "scheduledStart": scheduled_start_json(s), "items": queue_list_json(s)}))
+}
+
+fn drop_scheduled_start(s: &mut Session) {
+    if let Some(id) = s.export_queue.start_task.take() {
+        s.tasks.end(&id, Outcome::Cancelled);
+    }
 }
 
 fn queue_start(s: &mut Session, p: &Value) -> Result<Value> {
     if !s.export_queue.items.iter().any(|i| matches!(i.status, QueueStatus::Ready | QueueStatus::Encoding)) {
         return Err(bad("export.queue.start", "nothing to export: the queue has no ready items"));
     }
+    if let Some(at) = p.get("at").filter(|v| !v.is_null()) {
+        // ACS-5: start at a time (UTC milliseconds), e.g. overnight
+        let at = at.as_u64().ok_or_else(|| bad("export.queue.start", "`at` is a time in UTC milliseconds"))?;
+        let zone = str_p(p, "timeZone").map(str::to_owned);
+        let missed = missed_p(p)?;
+        drop_scheduled_start(s);
+        let id = s.tasks.new_id("queue-start");
+        s.tasks.schedule(&id, at, zone, missed).map_err(|e| bad("export.queue.start", e))?;
+        s.tasks.set_label(&id, "Start the export queue");
+        s.export_queue.start_task = Some(id);
+        pump_queue(s, false);
+        return Ok(json!({"running": s.export_queue.running, "scheduledStart": scheduled_start_json(s), "items": queue_list_json(s)}));
+    }
+    drop_scheduled_start(s);
     s.export_queue.running = true;
     pump_queue(s, bool_p(p, "wait").unwrap_or(false));
     Ok(json!({"running": s.export_queue.running, "items": queue_list_json(s)}))
 }
 
 fn queue_stop(s: &mut Session, _: &Value) -> Result<Value> {
-    // the encode in progress finishes; nothing new starts
+    // the encode in progress finishes; nothing new starts, and a scheduled start is dropped
     s.export_queue.running = false;
+    drop_scheduled_start(s);
     Ok(json!({"running": false, "items": queue_list_json(s)}))
 }
 
@@ -1251,7 +1317,14 @@ pub(crate) fn commands() -> Vec<CommandSpec> {
             true,
         ),
         spec("export.queue.list", "List Export Queue", "{}", always, queue_list, false),
-        spec("export.queue.start", "Start Export Queue", r#"{"wait":bool=false}"#, always, queue_start, true),
+        spec(
+            "export.queue.start",
+            "Start Export Queue",
+            r#"{"wait":bool=false,"at":u64?,"timeZone":str?,"ifMissed":"askUser|runLate|nextSlot"=askUser}"#,
+            always,
+            queue_start,
+            true,
+        ),
         spec("export.queue.stop", "Stop Export Queue", "{}", always, queue_stop, true),
         spec("export.queue.cancel", "Cancel Queued Export", r#"{"id":id?,"wait":bool?}"#, always, queue_cancel, true),
         spec("export.queue.retry", "Retry Queued Export", r#"{"id":id,"start":bool?,"wait":bool?}"#, always, queue_retry, true),
