@@ -52,7 +52,8 @@ jobs:
           CFA4_PG_BIN: /usr/lib/postgresql/18/bin
         run: |
           set -euo pipefail
-          export CFA4_OS_USER="$(id -un)"
+          os_user="$(id -un)"
+          export CFA4_OS_USER="$os_user"
           cargo test -p cfa4-store --locked -- --test-threads=1 --nocapture
 
       - name: "PG-1 gate 4: cargo xtask layers, store is L5"
