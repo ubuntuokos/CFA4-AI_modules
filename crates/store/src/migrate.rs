@@ -4,6 +4,9 @@
 //! an `up` and a `down` SQL text applied in one transaction together with its row in
 //! `cfa4_store.migration`. The steps are embedded in the binary, never read from disk.
 
+use deadpool_postgres::Object;
+
+use crate::role;
 use crate::{Store, StoreError};
 
 pub struct Step {
@@ -87,32 +90,78 @@ CREATE TABLE IF NOT EXISTS cfa4_store.migration (
 const LOCK: &str = "SELECT pg_advisory_xact_lock(4364100)";
 
 async fn applied(client: &tokio_postgres::Transaction<'_>, component: &str) -> Result<u32, StoreError> {
-    let row =
-        client.query_one("SELECT COALESCE(MAX(version), 0) FROM cfa4_store.migration WHERE component = $1", &[&component]).await.map_err(StoreError::query)?;
-    let v: i32 = row.try_get(0).map_err(StoreError::query)?;
+    let row = client
+        .query_one("SELECT COALESCE(MAX(version), 0) FROM cfa4_store.migration WHERE component = $1", &[&component])
+        .await
+        .map_err(StoreError::postgres)?;
+    let v: i32 = row.try_get(0).map_err(StoreError::postgres)?;
     Ok(u32::try_from(v).unwrap_or(0))
 }
+
+const LEDGER_OWNER: &str = "cfa4_owner_cfa4_store";
 
 pub(crate) async fn up(store: &Store) -> Result<Vec<(String, u32)>, StoreError> {
     let mut client = store.client().await?;
     let mut done = Vec::new();
     for (component, steps) in components() {
         for step in *steps {
-            let tx = client.transaction().await.map_err(StoreError::query)?;
-            tx.batch_execute(LEDGER).await.map_err(StoreError::query)?;
-            tx.execute(LOCK, &[]).await.map_err(StoreError::query)?;
+            let tx = client.transaction().await.map_err(StoreError::postgres)?;
+            role::assume(&tx, LEDGER_OWNER).await?;
+            tx.batch_execute(LEDGER).await.map_err(StoreError::postgres)?;
+            tx.execute(LOCK, &[]).await.map_err(StoreError::postgres)?;
             if applied(&tx, component).await? >= step.version {
+                tx.rollback().await.map_err(StoreError::postgres)?;
                 continue;
             }
-            let fail = |e: tokio_postgres::Error| StoreError::Migration { component: (*component).into(), version: step.version, detail: e.to_string() };
+            let owner = format!("cfa4_owner_{component}");
+            role::assume(&tx, &owner).await?;
+            let fail =
+                |e: tokio_postgres::Error| StoreError::Migration { component: (*component).into(), version: step.version, detail: crate::postgres_detail(&e) };
             tx.batch_execute(step.up).await.map_err(fail)?;
+            role::assume(&tx, LEDGER_OWNER).await?;
             let version = i32::try_from(step.version).unwrap_or(i32::MAX);
             tx.execute("INSERT INTO cfa4_store.migration (component, version) VALUES ($1, $2)", &[component, &version]).await.map_err(fail)?;
             tx.commit().await.map_err(fail)?;
             done.push(((*component).to_owned(), step.version));
         }
+        ensure_app_privileges(&mut client, component).await?;
     }
     Ok(done)
+}
+
+/// Table rights for `cfa4_app_<component>` once that role and the schema exist. Idempotent, and
+/// not a migration version: a cluster without the role model (the throw-away superuser) skips it.
+async fn ensure_app_privileges(client: &mut Object, component: &str) -> Result<(), StoreError> {
+    let app = format!("cfa4_app_{component}");
+    let owner = format!("cfa4_owner_{component}");
+    let tx = client.transaction().await.map_err(StoreError::postgres)?;
+    let row = tx
+        .query_one(
+            "SELECT (SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = $1)) AND (SELECT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = $2))",
+            &[&app, &component],
+        )
+        .await
+        .map_err(StoreError::postgres)?;
+    let ready: bool = row.try_get(0).map_err(StoreError::postgres)?;
+    if !ready {
+        tx.rollback().await.map_err(StoreError::postgres)?;
+        return Ok(());
+    }
+    role::assume(&tx, &owner).await?;
+    let row = tx
+        .query_one(
+            "SELECT format('GRANT USAGE ON SCHEMA %I TO %I; GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA %I TO %I; GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA %I TO %I;', $1::text, $2::text, $1::text, $2::text, $1::text, $2::text)",
+            &[&component, &app],
+        )
+        .await
+        .map_err(StoreError::postgres)?;
+    let sql: String = row.try_get(0).map_err(StoreError::postgres)?;
+    if !sql.starts_with("GRANT ") || sql.matches(';').count() != 3 {
+        return Err(StoreError::Query { detail: "refusing an unexpected GRANT statement".into() });
+    }
+    tx.batch_execute(&sql).await.map_err(StoreError::postgres)?;
+    tx.commit().await.map_err(StoreError::postgres)?;
+    Ok(())
 }
 
 pub(crate) async fn down(store: &Store, component: &str) -> Result<Option<u32>, StoreError> {
@@ -120,18 +169,23 @@ pub(crate) async fn down(store: &Store, component: &str) -> Result<Option<u32>, 
         return Err(StoreError::Query { detail: format!("unknown component {component}") });
     };
     let mut client = store.client().await?;
-    let tx = client.transaction().await.map_err(StoreError::query)?;
-    tx.batch_execute(LEDGER).await.map_err(StoreError::query)?;
-    tx.execute(LOCK, &[]).await.map_err(StoreError::query)?;
+    let tx = client.transaction().await.map_err(StoreError::postgres)?;
+    role::assume(&tx, LEDGER_OWNER).await?;
+    tx.batch_execute(LEDGER).await.map_err(StoreError::postgres)?;
+    tx.execute(LOCK, &[]).await.map_err(StoreError::postgres)?;
     let current = applied(&tx, component).await?;
     if current == 0 {
+        tx.rollback().await.map_err(StoreError::postgres)?;
         return Ok(None);
     }
     let Some(step) = steps.iter().find(|s| s.version == current) else {
         return Err(StoreError::Migration { component: component.into(), version: current, detail: "applied by a newer CFA4: no down step here".into() });
     };
-    let fail = |e: tokio_postgres::Error| StoreError::Migration { component: component.into(), version: current, detail: e.to_string() };
+    let fail = |e: tokio_postgres::Error| StoreError::Migration { component: component.into(), version: current, detail: crate::postgres_detail(&e) };
+    let owner = format!("cfa4_owner_{component}");
+    role::assume(&tx, &owner).await?;
     tx.batch_execute(step.down).await.map_err(fail)?;
+    role::assume(&tx, LEDGER_OWNER).await?;
     let version = i32::try_from(current).unwrap_or(i32::MAX);
     tx.execute("DELETE FROM cfa4_store.migration WHERE component = $1 AND version = $2", &[&component, &version]).await.map_err(fail)?;
     tx.commit().await.map_err(fail)?;

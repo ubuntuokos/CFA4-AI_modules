@@ -4,8 +4,8 @@ use cfa4_tasks::manager::{Class, GpuRequest, Request};
 use cfa4_tasks::resources::{Current, GpuCurrent, GpuNominal, Nominal};
 use cfa4_tasks::{Manager, MissedStart, Monitor, NewTask, Priority, QueueConfig, QueueError, QueueEvent, Snapshot, StartMode, State};
 
-use crate::testdb::TestDb;
-use crate::{Store, StoreConfig, StoreError};
+use crate::testdb::{self, TestDb};
+use crate::{ErrorCode, INSTALL_HINT, LOGIN_ROLE, Store, StoreConfig, StoreError};
 
 const GIB: u64 = 1 << 30;
 
@@ -52,18 +52,65 @@ fn task(id: &str, vram_gib: u64) -> NewTask {
     }
 }
 
+const ROLE_SQL: &str = "\
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'cfa4_login') THEN
+    CREATE ROLE cfa4_login LOGIN;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'cfa4_owner_tasks') THEN
+    CREATE ROLE cfa4_owner_tasks NOLOGIN;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'cfa4_app_tasks') THEN
+    CREATE ROLE cfa4_app_tasks NOLOGIN;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'cfa4_owner_cfa4_store') THEN
+    CREATE ROLE cfa4_owner_cfa4_store NOLOGIN;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'cfa4_app_cfa4_store') THEN
+    CREATE ROLE cfa4_app_cfa4_store NOLOGIN;
+  END IF;
+END $$;
+GRANT cfa4_owner_tasks TO cfa4_login;
+GRANT cfa4_app_tasks TO cfa4_login;
+GRANT cfa4_owner_cfa4_store TO cfa4_login;
+GRANT cfa4_app_cfa4_store TO cfa4_login;
+GRANT CREATE ON DATABASE postgres TO cfa4_owner_tasks;
+GRANT CREATE ON DATABASE postgres TO cfa4_owner_cfa4_store;
+";
+
+fn skip_or_fail(reason: impl std::fmt::Display) -> Option<(TestDb, Store)> {
+    if testdb::required() {
+        panic!("PostgreSQL 18 test cluster required but not usable: {reason}");
+    }
+    eprintln!("{reason}");
+    None
+}
+
 async fn setup() -> Option<(TestDb, Store)> {
-    let db = TestDb::start()?;
+    let db = match TestDb::start() {
+        testdb::Start::Ready(db) => db,
+        testdb::Start::Skip(reason) => return skip_or_fail(reason),
+    };
+    let admin = match Store::connect(&db.admin_config()).await {
+        Ok(store) => store,
+        Err(e) => return skip_or_fail(format!("cfa4-store tests: cannot connect as the test superuser: {e}")),
+    };
+    let client = match admin.client().await {
+        Ok(client) => client,
+        Err(e) => return skip_or_fail(format!("cfa4-store tests: {e}")),
+    };
+    if let Err(e) = client.batch_execute(ROLE_SQL).await {
+        return skip_or_fail(format!("cfa4-store tests: cannot install the role model: {e}"));
+    }
+    drop(client);
+    drop(admin);
     let store = match Store::connect(&db.config()).await {
-        Ok(s) => s,
-        Err(e) => {
-            eprintln!("cfa4-store tests: cannot connect to the test cluster: {e}; skipped");
-            return None;
-        }
+        Ok(store) => store,
+        Err(e) => return skip_or_fail(format!("cfa4-store tests: cannot connect as {LOGIN_ROLE}: {e}")),
     };
     if let Err(e) = store.migrate().await {
-        eprintln!("cfa4-store tests: migration failed: {e}");
-        return None;
+        return skip_or_fail(format!("cfa4-store tests: migration failed: {e}"));
     }
     Some((db, store))
 }
@@ -77,16 +124,74 @@ async fn count(store: &Store, sql: &str) -> i64 {
 async fn a_missing_server_is_a_handled_error_with_the_install_hint() {
     let config = StoreConfig { host: "/nonexistent/cfa4-socket".into(), connect_timeout_ms: 200, ..StoreConfig::default() };
     match Store::connect(&config).await {
-        Err(StoreError::Unavailable { hint, .. }) => assert!(hint.contains("apt install postgresql")),
+        Err(StoreError::Unavailable { code, hint, .. }) => {
+            assert_eq!(code, ErrorCode::DbServerMissing);
+            assert!(hint.contains("cfa4-db-setup"), "{hint}");
+            assert!(!hint.contains("createuser"), "{hint}");
+            assert!(!hint.contains("createdb"), "{hint}");
+            assert_eq!(hint, INSTALL_HINT);
+        }
         Err(e) => panic!("expected Unavailable, got {e}"),
         Ok(_) => panic!("connected to a socket that does not exist"),
     }
 }
 
 #[tokio::test]
+async fn a_refused_connection_is_unavailable_without_panic() {
+    // Nothing accepts TCP on port 1. That is a stopped listener, not a missing installation.
+    let config = StoreConfig { host: "127.0.0.1".into(), port: 1, connect_timeout_ms: 500, ..StoreConfig::default() };
+    match Store::connect(&config).await {
+        Err(err @ StoreError::Unavailable { .. }) => assert_eq!(err.code(), ErrorCode::DbServerStopped, "{err}"),
+        Err(e) => panic!("expected Unavailable, got {e}"),
+        Ok(_) => panic!("connected to a closed port"),
+    }
+}
+
+#[tokio::test]
+async fn a_stopped_server_is_unavailable_without_panic() {
+    let Some((db, _store)) = setup().await else { return };
+    let config = StoreConfig { connect_timeout_ms: 1_000, ..db.config() };
+    db.stop();
+    match Store::connect(&config).await {
+        Err(StoreError::Unavailable { .. }) => {}
+        Err(e) => panic!("expected Unavailable, got {e}"),
+        Ok(_) => panic!("connected to a server that was stopped"),
+    }
+}
+
+#[tokio::test]
+async fn without_a_database_the_memory_queue_still_runs() {
+    let config = StoreConfig { host: "/nonexistent/cfa4-socket".into(), connect_timeout_ms: 200, ..StoreConfig::default() };
+    let err = match Store::connect(&config).await {
+        Err(err) => err,
+        Ok(_) => panic!("a missing server must not connect"),
+    };
+    assert!(matches!(err, StoreError::Unavailable { .. }));
+    assert!(err.to_string().contains("cfa4-db-setup"));
+
+    let mut queue = cfa4_tasks::Queue::new(cfa4_tasks::QueueConfig::default());
+    queue.submit(task("mem-1", 1), 0).expect("the memory queue does not need PostgreSQL");
+    let mut manager = manager();
+    let events = queue.tick(1, "supervisor", &mut manager, &snap(), &Monitor::default()).expect("memory queue step");
+    let started = events.iter().filter(|e| matches!(e, QueueEvent::Started { .. })).count();
+    assert_eq!(started, 1);
+    assert_eq!(queue.get("mem-1").map(|t| t.state), Some(State::Running));
+}
+
+#[tokio::test]
 async fn migrations_go_up_once_and_back_one_step() {
     let Some((_db, store)) = setup().await else { return };
     assert_eq!(store.migrate().await.unwrap(), vec![], "already up to date");
+    assert_eq!(
+        count(&store, "SELECT CASE WHEN pg_get_userbyid(nspowner) = 'cfa4_owner_tasks' THEN 1 ELSE 0 END::bigint FROM pg_namespace WHERE nspname = 'tasks'")
+            .await,
+        1,
+        "the tasks schema is owned by the schema owner role"
+    );
+    let version: i64 = count(&store, "SELECT current_setting('server_version_num')::bigint").await;
+    if testdb::required() {
+        assert!((180000..190000).contains(&version), "CI requires PostgreSQL 18, server_version_num={version}");
+    }
     assert_eq!(count(&store, "SELECT count(*) FROM tasks.task").await, 0);
     assert_eq!(store.rollback("tasks").await.unwrap(), Some(2));
     assert_eq!(count(&store, "SELECT count(*) FROM pg_indexes WHERE indexname = 'task_open' AND indexdef LIKE '%cancelling%'").await, 0);

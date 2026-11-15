@@ -1,0 +1,66 @@
+name: CFA4 PostgreSQL 18 (PG-1)
+
+# PG-1 exit gates (CFA4-DATA-PG-001 §9). This job compiles cfa4-store and talks to a
+# throw-away PostgreSQL 18 cluster. It is not behind cfa4-full-validation: P15 requires
+# the run to execute on the head commit and not be skipped. The fast non-compiling gate
+# stays in cfa4-gate.yml. A missing server here is a failure (CFA4_PG_REQUIRE=1).
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cfa4-pg-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pg-1:
+    name: PostgreSQL 18 store (PG-1)
+    runs-on: ubuntu-26.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install PostgreSQL 18
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            postgresql-18 postgresql-client-18 postgresql-common
+          test -x /usr/lib/postgresql/18/bin/initdb
+          test -x /usr/bin/pg_createcluster
+          test -x /usr/bin/pg_lsclusters
+          ver="$(/usr/lib/postgresql/18/bin/postgres --version)"
+          echo "$ver"
+          case "$ver" in
+            *" 18."*) ;;
+            *) echo "::error::PG-1 requires PostgreSQL 18, got: $ver"; exit 1 ;;
+          esac
+
+      - name: "PG-1 gates 1-3 and 5: migration, Unavailable, setup twice, DB-less queue"
+        env:
+          CFA4_PG_REQUIRE: "1"
+          CFA4_DB_SETUP: "1"
+          CFA4_PG_BIN: /usr/lib/postgresql/18/bin
+        run: |
+          set -euo pipefail
+          os_user="$(id -un)"
+          export CFA4_OS_USER="$os_user"
+          cargo test -p cfa4-store --locked -- --test-threads=1 --nocapture
+
+      - name: "PG-1 gate 4: cargo xtask layers, store is L5"
+        run: |
+          set -euo pipefail
+          cargo xtask layers
+          grep -F '("store", 5)' xtask/src/main.rs
+
+      - name: "PG-1 gate 5: memory queue without PostgreSQL"
+        run: cargo test -p cfa4-tasks --locked --lib -- --test-threads=8
