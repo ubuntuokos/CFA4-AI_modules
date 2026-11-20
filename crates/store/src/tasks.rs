@@ -169,6 +169,8 @@ impl TaskStore {
         let mut scratch = manager.as_deref().cloned();
         let r = op(&mut queue, scratch.as_mut())?;
         Self::save(&tx, &before, queue.tasks(), &[]).await?;
+        // a change (cancel, resume, an end that frees resources) can let another task start
+        tx.execute("SELECT pg_notify($1, $2)", &[&CHANNEL, &id]).await.map_err(StoreError::query)?;
         tx.commit().await.map_err(StoreError::query)?;
         if let (Some(m), Some(s)) = (manager, scratch) {
             *m = s;

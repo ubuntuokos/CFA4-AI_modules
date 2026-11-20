@@ -40,6 +40,7 @@ pub mod monitor;
 pub mod plan;
 pub mod queue;
 pub mod resources;
+pub mod schedule;
 mod system;
 
 pub use budget::{Budget, BudgetSettings, GpuBudget, GpuExcluded};
