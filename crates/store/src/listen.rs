@@ -10,7 +10,7 @@ use futures_util::StreamExt;
 use tokio::sync::mpsc;
 use tokio_postgres::{AsyncMessage, NoTls};
 
-use crate::{INSTALL_HINT, StoreError};
+use crate::StoreError;
 
 /// Notifications kept until the scheduler reads them (more are folded into one wake-up).
 const BUFFER: usize = 1024;
@@ -42,8 +42,7 @@ impl Drop for Listener {
 
 impl Listener {
     pub(crate) async fn connect(config: &tokio_postgres::Config) -> Result<Listener, StoreError> {
-        let unavailable = |e: tokio_postgres::Error| StoreError::Unavailable { detail: e.to_string(), hint: INSTALL_HINT.into() };
-        let (client, mut connection) = config.connect(NoTls).await.map_err(unavailable)?;
+        let (client, mut connection) = config.connect(NoTls).await.map_err(StoreError::unavailable)?;
         let (tx, rx) = mpsc::channel(BUFFER);
         // the connection only delivers notifications while it is polled
         let task = tokio::spawn(async move {

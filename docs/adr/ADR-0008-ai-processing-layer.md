@@ -213,7 +213,7 @@ A tervezett rétegbesorolás a crate-ek létrehozásakor az `xtask layers` szab�
 | `cfa4-ai-types` | L1 | Közös típusok: képességazonosító, alak (frame/window/clip/generative), jobállapotok, hibakódok |
 | `cfa4-ai-models` | L2 | Modelltár, modellrekordok, SHA-256 ellenőrzés, deduplikáció, verziók |
 | `cfa4-ai-registry` | L2 | Manifestolvasás, sémaellenőrzés, hardver szerinti szűrés, útválasztás |
-| `cfa4-store` | L2 | PostgreSQL-kapcsolatkészlet, migrációk, típusos lekérdezések (a `cargo xtask wasm` nem kapu, a WASM nem CFA4-cél) |
+| `cfa4-store` | L5 | PostgreSQL-kapcsolatkészlet, migrációk, típusos lekérdezések; L5, mert socketes OS-I/O (Unix-socket a PostgreSQL-folyamathoz) |
 | `cfa4-tasks` | L2 | Nem AI-s, közös CFA4-crate (tulajdonosi döntés, 2026-11-07): erőforrás-kezelő (az ACS hardverfelmérése az `accel` crate-re építve, foglalás, futásidejű figyelés), feladatsor, ütemező, tartós jobtár (a `cfa4-store`-on át); felület nélkül |
 | `cfa4-ai-jobs` | L2 | AI-feladatgráf, VRAM-igény, gyorsítótár-kulcs; a `cfa4-tasks` kliense |
 | `cfa4-ai-workers` | L3 | Worker-folyamatok indítása, felügyelete és újraindítása, az IPC kliensoldala |

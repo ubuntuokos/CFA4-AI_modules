@@ -187,8 +187,8 @@ kell teljesítenie. Az időt a hívó adja meg (UTC ezredmásodperc), az ütemez
 
 **PostgreSQL-tár (`cfa4-store`, PG-1 és PG-2).** A meghajtó a `tokio-postgres` a
 `deadpool-postgres` kapcsolatkészlettel (tulajdonosi döntés, 2026-11-11; a BacklotHubbal közös).
-A crate L5-ös, mert egy másik folyamattal beszél socketen át, mint a `cfa4-platform`. A terv
-L2-t írt, de az L0–L4 WASM-ellenőrzés nem tudná lefordítani.
+A crate L5-ös, mert socketes operációsrendszer-I/O-t végez (Unix-socket a PostgreSQL-folyamathoz),
+ugyanúgy, mint a `cfa4-platform`.
 
 - **Kapcsolat:** hiányzó vagy leállt szerverre kezelhető hibát ad, a telepítés módjával együtt
   (`Unavailable`). A vágás, a lejátszás és a mentés nem függ tőle.

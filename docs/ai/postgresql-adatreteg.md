@@ -172,10 +172,10 @@ keverhet.
   2026-11-07) és a `cfa4-ai-jobs` ezen át éri el az adatbázist, más crate közvetlenül nem.
 - Meghajtó: `tokio-postgres` a `deadpool-postgres` kapcsolatkészlettel (MIT/Apache; tulajdonosi
   döntés, 2026-11-11), a BacklotHubbal közösen; `cargo deny` ellenőrzéssel.
-- A `cfa4-store` felület nélküli crate, a megvalósításban L5-ös (mint a `cfa4-platform`, mert socketen
-  át egy másik folyamattal beszél, és a WASM-ellenőrzés az L0–L4 crate-eket fordítja); a rétegtáblába (`cargo xtask layers`) a létrehozásakor
-  kerül be. A `cargo xtask wasm` a CFA4 fő repójában már nem kapu (a WASM nem CFA4-cél), ezért a
-  meghajtó natív függősége nem akadály.
+- A `cfa4-store` felület nélküli crate, a megvalósításban L5-ös, mert socketes operációsrendszer-I/O-t
+  végez (Unix-socket a PostgreSQL-folyamathoz), ugyanúgy, mint a `cfa4-platform`. A rétegtáblába
+  (`cargo xtask layers`) L5-ön szerepel. A `cargo xtask wasm` a CFA4 fő repójában már nem kapu
+  (a WASM nem CFA4-cél); a réteg indoka a socketes OS-I/O, nem a WASM-ellenőrzés.
 - Migráció: egy út minden módban, egy verzió visszafelé, valós méretű adaton tesztelve.
 
 ## 10. Tesztek
@@ -191,7 +191,8 @@ keverhet.
 - Ellenséges bemenet: hibás `jsonb`-paraméter, túlméretes mező, érvénytelen időzóna; hiba, pánik
   nélkül (`AGENTS.md` §0).
 - A tesztek helyi, eldobható PostgreSQL-példánnyal futnak (`pg_ctl` ideiglenes könyvtárban); ha a
-  gépen nincs PostgreSQL, a tesztek ezt jelzik és kimaradnak, a gyors CI-kapu ettől zöld marad.
+  gépen nincs PostgreSQL, helyben jelzik és kimaradnak. A PG-1 CI-job (`cfa4-pg.yml`) PostgreSQL 18-at
+  telepít, és `CFA4_PG_REQUIRE=1` mellett a kimaradás hiba, nem siker.
 
 ## 11. Fázisok és beépítés az AI-rétegbe
 
