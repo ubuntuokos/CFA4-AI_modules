@@ -410,8 +410,8 @@ médiaindexe (PostgreSQL-adatréteg PG-4: `mi` séma, pgvector) az első kép- �
 közé került; a Shotcut-képességterv adta át, lásd lent). A CFA4 Venturi-egyeztetésének
 [V1](https://github.com/ubuntuokos/CinemaFundArchitecture4/blob/main/docs/venturi-parity.md) teendője
 (`vad::silero` a `crates/speech`-ben, `audio.detectSpeech`, `clip.removeSilence`, Whisper-előszűrő) az
-MI-réteg tagja, ezért az F5 kapuban épül, tract-on (Rust) vagy az ONNX-workeren. A V1-B az
-energiaalapú `vad.rs` modelles párja; a „B” jelölést a tulajdonos nem fejtette ki, ezt így értelmezzük. Az elfogadási
+MI-réteg tagja, ezért az F5 kapuban épül, tract-on (Rust) vagy az ONNX-workeren. A V1-B a V1 modelles fele; a V1-A (energiaalapú, nem MI) a
+CinemaFundArchitecture4 #1482 PR-jében van (`CFA4-V1-SILENCE-REMOVAL-001`), és a V1-B arra épül. Az elfogadási
 feltételek a
 [CFA4-SHOTCUT-CAPABILITY-ADAPTATION-001](https://github.com/ubuntuokos/CinemaFundArchitecture4/blob/main/docs/plans/CFA4-SHOTCUT-CAPABILITY-ADAPTATION-001.md)
 5.2 pontjából jönnek: régióelőnézet és marker, szerkeszthető kijelölés törlés előtt, kötegelt
