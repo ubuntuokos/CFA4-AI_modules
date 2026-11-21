@@ -406,6 +406,22 @@ médiaindexe (PostgreSQL-adatréteg PG-4: `mi` séma, pgvector) az első kép- �
 **F5 – candle.** Átirat és szövegalapú vágás a meglévő `transcript.generate` funkcióval
 (K2, G19), az átiratok kereshetővé tétele a Media Intelligence indexében, beszédszintézis (`cfa4-tts`), hangfunkciók.
 
+**V1-B – Beszédérzékelés Silero VAD-del** (tulajdonosi döntés, 2026-11-21: az elkészítendő alkalmazások
+közé került; a Shotcut-képességterv adta át, lásd lent). A CFA4 Venturi-egyeztetésének
+[V1](https://github.com/ubuntuokos/CinemaFundArchitecture4/blob/main/docs/venturi-parity.md) teendője
+(`vad::silero` a `crates/speech`-ben, `audio.detectSpeech`, `clip.removeSilence`, Whisper-előszűrő) az
+MI-réteg tagja, ezért az F5 kapuban épül, tract-on (Rust) vagy az ONNX-workeren. A V1-B az
+energiaalapú `vad.rs` modelles párja; a „B” jelölést a tulajdonos nem fejtette ki, ezt így értelmezzük. Az elfogadási
+feltételek a
+[CFA4-SHOTCUT-CAPABILITY-ADAPTATION-001](https://github.com/ubuntuokos/CinemaFundArchitecture4/blob/main/docs/plans/CFA4-SHOTCUT-CAPABILITY-ADAPTATION-001.md)
+5.2 pontjából jönnek: régióelőnézet és marker, szerkeszthető kijelölés törlés előtt, kötegelt
+elemzés, opcionális ripple és nem romboló mód, valamint a `v1_silence_removal_acceptance` teszt. A
+modellt a CFA4 **nem terjeszti és nem ágyazza a binárisba** (a V1 eredeti „binárisba ágyazva”
+szövege emiatt módosul): a felhasználó az első használatkor, a licenc (MIT) megmutatása és egyszeri
+elfogadása után maga tölti le a Silero VAD ONNX-modellt a forrásából, a közös modelltárba; hash-ellenőrzés
+és `.attribution` a megszokott módon. Saját tanítású modell nincs. Függőség: ugyanaz az ONNX/tract
+verem, nem külön CUDA (a modell kicsi, CPU-n is fut).
+
 **F6 – PyTorch és LLM.** A közös PyTorch-worker és a generatív családok (M1 videódiffúzió és a
 többi) a VRAM-szintek szerint, a helyi LLM-es funkciók. A helyi LLM méretét (kis vagy nagy modell)
 kérésenként egy kis ONNX-es szövegbeágyazó és pontozó választja, nem LLM-prompt; ez a meglévő
