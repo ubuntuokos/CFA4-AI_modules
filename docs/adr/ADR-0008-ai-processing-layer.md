@@ -4,7 +4,7 @@
 **Állapot:** ELFOGADVA (tulajdonosi jóváhagyás, 2026-10-30); KÓD MÉG NINCS  
 **Kiadás:** HOLD
 
-> **Utolsó átnézés:** 2026-11-08 (8. pont: nincs fizetős rész, a zárt workerek, a licenckulcs és a 2K fölötti vízjel kikerült; 2026-11-07: 9. pont: RAM-minimum 16 GB, ajánlott 32 GB; tartós jobtár: PostgreSQL, [PostgreSQL-adatréteg](../ai/postgresql-adatreteg.md); 2. pont: a súly és a tanítóadat licence a felhasználó felelőssége; 2026-11-02: F3: angol felirat-időzítés; 2026-11-01: a 6. pont, az ONNX nem kötelező; 2026-10-31: a 2. pont kivétele a zárt workerekre) · **Változás:** major (CFA4-AI-PLAN-001 és a CFA3/FA3 elődtervek
+> **Utolsó átnézés:** 2026-11-22 (10. és 11. pont: végrehajtási modell, színkezelés, gyorsítótárkulcs, idő, ComfyUI-szerű kezelhetőség és kezelt ComfyUI-worker; a terv jóváhagyva és véglegesítve; 2026-11-08: 8. pont: nincs fizetős rész, a zárt workerek, a licenckulcs és a 2K fölötti vízjel kikerült; 2026-11-07: 9. pont: RAM-minimum 16 GB, ajánlott 32 GB; tartós jobtár: PostgreSQL, [PostgreSQL-adatréteg](../ai/postgresql-adatreteg.md); 2. pont: a súly és a tanítóadat licence a felhasználó felelőssége; 2026-11-02: F3: angol felirat-időzítés; 2026-11-01: a 6. pont, az ONNX nem kötelező; 2026-10-31: a 2. pont kivétele a zárt workerekre) · **Változás:** major (CFA4-AI-PLAN-001 és a CFA3/FA3 elődtervek
 > beépítése: F0–F6 kapuk, ONNX-es első kör, modellkezelő, erőforrás-kezelési szabályok, tartós
 > jobtár, bővített jobállapotok, szétbontott licencmezők) · **Részletes terv:**
 > [CFA4 AI tervdokumentum](https://claude.ai/artifact/MLd6UfHG1uPBdJ16B2JZBh) ·
@@ -514,3 +514,14 @@ a kaput a futtató határozza meg: ONNX → F3/F4, candle → F5, PyTorch és he
   hozzá tartozó metaadat (EU AI-rendelet, 50. cikk: mélyhamisítás jelölése).
 - **SeamlessM4T v2:** a licencszabály szerint (2. pont) nem blokkol; választható modell marad,
   amelyet a felhasználó tölt le. Az alapértelmezett szövegfordító a MADLAD-400 (Apache-2.0).
+
+## Lezárt kérdések (tulajdonosi döntések, 2026-11-22)
+
+- **A kritikai értékelés javaslatai:** a „Túlméretezett” egyszerűsítések és a „Hiányzik” pótlások
+  elfogadva (10. pont); a tulajdonos a tervet jóváhagyta és véglegesítette.
+- **ComfyUI:** saját node-gráf ComfyUI-szerű kezeléssel, és a CFA4 által, egyszeri jóváhagyás után
+  telepített és karbantartott ComfyUI-worker, hogy a felhasználónak ne kelljen külön alkalmazást
+  telepítenie és ne tudja félrekonfigurálni (11. pont).
+- **Kereskedelmi korlátok:** nincs kereskedelmi változat, ezért a kereskedelmi miatt kitalált
+  korlátok mind törölve (8. pont). A `watermarked` jelző (AI-módosított jelölés) és a modellek
+  licencfigyelmeztetése marad.
