@@ -427,6 +427,8 @@ többi) a VRAM-szintek szerint, a helyi LLM-es funkciók. A helyi LLM méretét 
 kérésenként egy kis ONNX-es szövegbeágyazó és pontozó választja, nem LLM-prompt; ez a meglévő
 ONNX-workeren fut (ötlet: [weave-os/router](https://github.com/weave-os/router), Apache-2.0, csak a módszer).
 
+**Az AI-réteg lezárásának külön feltétele: V1-B** (István, 2026-11-21, a CFA4 `CFA4-V1-SILENCE-REMOVAL-001` terv 12. pontja). Az AI-réteg addig nem tekinthető lezártnak, amíg a V1-B (Silero VAD) nincs kész; a V1-B az AI-réteg üzembe helyezése után indul, külön indítási engedéllyel. Kész, ha: a `detector: "silero"` kiválasztható és ugyanazt a régióképző lépést használja, mint az energiaalapú V1-A; a modellt a felhasználó tölti le a licenc elfogadása után (nincs modellfájl a repóban vagy a binárisban); a VAD-határok ±1 ablakon (32 ms) belül vannak CPU-n; a `v1_silence_removal_acceptance` mindhárom ellenőrzése a `silero` észlelővel is zöld; a Qt6 párbeszéd a „Speech model” értéket is kínálja; a Whisper-előszűrő külön tételként kész vagy a tulajdonos kiveszi.
+
 **Saját tanítású modellek** csak a CFA4 alkalmazásban lesznek, külön tervben:
 [CFA4-AI-MODEL-TRAINING-001](https://github.com/ubuntuokos/CinemaFundArchitecture4/blob/main/docs/plans/CFA4-AI-MODEL-TRAINING-001.md)
 (tervezet, implementáció nincs engedélyezve; tulajdonosi döntések 2026-11-07). Ez a réteg csak
