@@ -114,6 +114,8 @@ pontok az egyes elemek szabályai.
 
 ### 2. Modellkezelő
 
+A modellkezelő részletes terve (véglegesítve 1.0, jóváhagyta István, 2026-11-22): [CFA4-MODEL-MANAGER-001](../ai/CFA4-MODEL-MANAGER-001.md).
+
 A CFA4 nem szállít modellt, és nincs automatikus letöltés. Modell csak a felhasználó kifejezett
 műveletével kerül a gépre: kézi telepítéssel vagy a közös letöltővel ([Kdenlive-terv](../kdenlive-parity.md)
 K18), jóváhagyással. A modellkezelő szabályai:
@@ -406,10 +408,28 @@ médiaindexe (PostgreSQL-adatréteg PG-4: `mi` séma, pgvector) az első kép- �
 **F5 – candle.** Átirat és szövegalapú vágás a meglévő `transcript.generate` funkcióval
 (K2, G19), az átiratok kereshetővé tétele a Media Intelligence indexében, beszédszintézis (`cfa4-tts`), hangfunkciók.
 
+**V1-B – Beszédérzékelés Silero VAD-del** (tulajdonosi döntés, 2026-11-21: az elkészítendő alkalmazások
+közé került; a Shotcut-képességterv adta át, lásd lent). A CFA4 Venturi-egyeztetésének
+[V1](https://github.com/ubuntuokos/CinemaFundArchitecture4/blob/main/docs/venturi-parity.md) teendője
+(`vad::silero` a `crates/speech`-ben, `audio.detectSpeech`, `clip.removeSilence`, Whisper-előszűrő) az
+MI-réteg tagja, ezért az F5 kapuban épül, tract-on (Rust) vagy az ONNX-workeren. A V1-B a V1 modelles fele; a V1-A (energiaalapú, nem MI) a
+CinemaFundArchitecture4 #1482 PR-jében van (`CFA4-V1-SILENCE-REMOVAL-001`), és a V1-B arra épül. Az elfogadási
+feltételek a
+[CFA4-SHOTCUT-CAPABILITY-ADAPTATION-001](https://github.com/ubuntuokos/CinemaFundArchitecture4/blob/main/docs/plans/CFA4-SHOTCUT-CAPABILITY-ADAPTATION-001.md)
+5.2 pontjából jönnek: régióelőnézet és marker, szerkeszthető kijelölés törlés előtt, kötegelt
+elemzés, opcionális ripple és nem romboló mód, valamint a `v1_silence_removal_acceptance` teszt. A
+modellt a CFA4 **nem terjeszti és nem ágyazza a binárisba** (a V1 eredeti „binárisba ágyazva”
+szövege emiatt módosul): a felhasználó az első használatkor, a licenc (MIT) megmutatása és egyszeri
+elfogadása után maga tölti le a Silero VAD ONNX-modellt a forrásából, a közös modelltárba; hash-ellenőrzés
+és `.attribution` a megszokott módon. Saját tanítású modell nincs. Függőség: ugyanaz az ONNX/tract
+verem, nem külön CUDA (a modell kicsi, CPU-n is fut).
+
 **F6 – PyTorch és LLM.** A közös PyTorch-worker és a generatív családok (M1 videódiffúzió és a
 többi) a VRAM-szintek szerint, a helyi LLM-es funkciók. A helyi LLM méretét (kis vagy nagy modell)
 kérésenként egy kis ONNX-es szövegbeágyazó és pontozó választja, nem LLM-prompt; ez a meglévő
 ONNX-workeren fut (ötlet: [weave-os/router](https://github.com/weave-os/router), Apache-2.0, csak a módszer).
+
+**Az AI-réteg lezárásának külön feltétele: V1-B** (István, 2026-11-21, a CFA4 `CFA4-V1-SILENCE-REMOVAL-001` terv 12. pontja). Az AI-réteg addig nem tekinthető lezártnak, amíg a V1-B (Silero VAD) nincs kész; a V1-B az AI-réteg üzembe helyezése után indul, külön indítási engedéllyel. Kész, ha: a `detector: "silero"` kiválasztható és ugyanazt a régióképző lépést használja, mint az energiaalapú V1-A; a modellt a felhasználó tölti le a licenc elfogadása után (nincs modellfájl a repóban vagy a binárisban); a VAD-határok ±1 ablakon (32 ms) belül vannak CPU-n; a `v1_silence_removal_acceptance` mindhárom ellenőrzése a `silero` észlelővel is zöld; a Qt6 párbeszéd a „Speech model” értéket is kínálja; a Whisper-előszűrő külön tételként kész vagy a tulajdonos kiveszi.
 
 **Saját tanítású modellek** csak a CFA4 alkalmazásban lesznek, külön tervben:
 [CFA4-AI-MODEL-TRAINING-001](https://github.com/ubuntuokos/CinemaFundArchitecture4/blob/main/docs/plans/CFA4-AI-MODEL-TRAINING-001.md)
