@@ -155,6 +155,39 @@ VRAM és 16 GB RAM alsó határ** (tulajdonosi döntés) érvényes marad: alatt
 választja automatikusan a legnagyobb modellt, és hiányzó modellt nem telepít; a hiányzó modellről a felület a hivatalos
 forrást és a tárhelyigényt mutatja.
 
+## 6a. llmfit: a modellkezelő kötelező funkciója (István, 2026-11-22)
+
+**Döntés (István):** az [llmfit](https://github.com/AlexsJones/llmfit) a modellkezelő **kötelező funkciója**. Ez azt jelenti: a
+Compatibility Engine minden nyelvi (LLM) modellre az llmfit ítéletét is megadja, és ez a funkció nem kapcsolható ki és nem
+helyettesíthető.
+
+**Amit az llmfit-ről ellenőriztem** (a `main` 26450cc, 2026-11-18, v1.1.20): licenc **MIT**; Rust; a `llmfit-core` önálló
+könyvtár (hardverfelismerés, `ModelFit::analyze`, `estimate_model_plan`, `HardwareProfile`, szimulált hardver, tokenek/másodperc
+becslés, kvantálás-választás: GGUF, AWQ, GPTQ, EXL2). Az adatbázisa **LLM-központú** (van kis ONNX-lista is, a videó-, hang- és
+képmodelleket nem fedi). A magban `unsafe` csak tesztben és megjegyzésben van. **Hálózati felülete:** a `bench`, `providers`, `update`
+és `share` modul HTTP-t használ (`ureq`), a `share` és a benchmark-megosztás eredményeket küld a projektnek, a `providers` helyi
+szolgáltatókat (Ollama, llama.cpp stb.) kérdez. Nem vizsgáltam: a teljes forrást soronként, a `llmfit-web` és `llmfit-desktop` részt.
+
+**Javaslat a beépítésre (D10, elfogadásra vár):**
+1. **Felhasználás könyvtárként** (`llmfit-core`, rögzített verzió, `cargo deny` zöld, a licenc a `docs/licensing.md` nyilvántartásában),
+   nem külső programként és nem átírva. Így az ítélet ugyanaz, mint az upstreamé, és a frissítés egy verziólépés.
+2. **Csak a számító részt hívjuk:** modelladatbázis, `ModelFit::analyze`, `estimate_model_plan`, `HardwareProfile`. A `bench`, `providers`,
+   `update` és `share` modult a CFA4 **soha nem hívja**; ezt egy CI-teszt ellenőrzi (a tiltott modulok nem hivatkozottak), mert a
+   hálózati és megosztó funkciók ütköznének az offline-first és a „semmi automatikus” szabállyal.
+3. **Egyetlen hardverigazság:** a `SystemSpecs` bemenetet a CFA4 hardverfelmérése (`accel`, NVML, ACS) tölti, nem az llmfit saját
+   felismerése; az llmfit saját felismerése csak összevetésre használható (eltérés esetén naplózott figyelmeztetés).
+4. **Modelladatbázis frissítése:** csak a felhasználó kifejezett katalógusfrissítésére, a CFA4 saját letöltőjén (`cfa4-fetch`) át; az llmfit
+   saját hálózati frissítője nem fut.
+5. **Hatókör:** a kötelező ítélet a nyelvi modellekre (Text & LLM, Embeddings, ahol az llmfit ismeri) érvényes. Videó-, hang- és képmodellekre
+   az ACS `paths[]` adja a kompatibilitást, az llmfit-oszlop „nem alkalmazható”. Ismeretlen modellnél az ítélet „ismeretlen”, nem kitalált.
+6. **A CFA4 szabályai változatlanok:** a 12 GB VRAM és 16 GB RAM alsó határ érvényes akkor is, ha az llmfit kisebb gépen „elfér” ítéletet
+   adna; az llmfit pontszáma nem választ modellt a felhasználó helyett, és hiányzó modellt nem telepít.
+7. **Függőségi kockázat:** új külső függőség, amelyet a CFA4 nem ellenőriz; verzióváltás előtt a kimenetet ismert hardverprofilokon (golden)
+   össze kell vetni, és a `cargo deny` zöld kell. Ha az llmfit megszűnik vagy a licence változik, a rögzített verzió marad használható.
+
+Új elfogadási feltétel: **AC-27** minden LLM-modell adatlapján és kompatibilitás-nézetében látszik az llmfit ítélete (illeszkedés,
+becsült memória, becsült sebesség) a CFA4 hardverfelméréséből; a tiltott hálózati modulok nem hivatkozottak; offline is működik.
+
 ## 7. Eltérések a már döntött szabályoktól (eldöntve 2026-11-22: a javaslatok érvényesek)
 
 | # | A megbízás szövege | A döntött szabály | Javaslat |
@@ -199,6 +232,7 @@ Nem futtatott tesztet nem jelölök sikeresnek, és részleges megvalósítást 
 | AC-04, 07, 08 | importteszt generált kis modellekkel: jó, hibás hash, részleges, hamis formátum; ellenőrzés nélkül aktiválás elutasítva | MM-F3 |
 | AC-05, 06 | kezelt letöltés generált helyi HTTPS-forrással: megszakítás, újrapróbálás, folytatás | MM-F3 |
 | AC-09, 22 | kompatibilitási címkék ismert hardverprofilokra, az ACS tervezőjével | MM-F1/F5 |
+| AC-27 | llmfit-ítélet LLM-modellekre ismert hardverprofilokon (golden), offline futás, CI-teszt: a `bench`/`providers`/`update`/`share` modul nem hivatkozott | MM-F1/F4 |
 | AC-10, 11, 17–19 | két képesség ugyanazt a modellt használja egy példányból; hash szerinti deduplikáció | MM-F2/F5 |
 | AC-12, 13, 24 | frissítési és törlési teszt: csendes felülírás nincs, megosztott modell nem törölhető, az inkompatibilis modul a régi revízión marad | MM-F6 |
 | AC-23 | forrásállapot-teszt: megszűnt modellnél megtartás vagy eltávolítás választható, automatikus törlés nincs | MM-F6 |
