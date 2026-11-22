@@ -322,6 +322,53 @@ fogyasztja a sémát. A jobállapotok és a manifest v3 licencmezői az SDK-ban 
   512 GB-os RAM-ja elfedné a memórianyomásból eredő hibákat. A burkoló szabályait a
   `scripts/ci/test-run-minspec.sh` ellenőrzi GPU nélkül, a gyors CI-kapuban.
 
+### 10. Végrehajtási modell, színkezelés, gyorsítótár, idő, távoli futtatás
+
+A kritikai értékelés (2026-11-22) kilenc hiányát a tulajdonos elfogadta; az alábbiak pótolják
+azokat. A már meglévő szabályok (folyamatelkülönítés, megszakítás és előrehaladás, modelltöltés és
+licenc, csak Linux) a 7., 2., 8. és 9. pontban vannak, itt nem ismétlődnek.
+
+**Klip- és képkockaszintű futtatás.** A manifest `scope` mezője (`frame`, `window`, `clip`,
+`generative`) dönti el, hol fut a node. A klipszintű elemzés (követés, optikai flow, mélység,
+maszksorozat, igazítás) egyszer fut, és **eszközt (asset) állít elő**: a render ezt csak olvassa,
+nem futtat modellt képkockánként. A render így determinisztikus és gyors, az elemzés pedig
+megszakítható és újrafelhasználható. Az időbeli konzisztencia a node tulajdonsága (`window`),
+az optikai flow és a követés közönséges képesség, nem külön réteg.
+
+**Adattípus és színkezelés.** A modellek többnyire 8 bites sRGB-t várnak, a szerkesztő lineáris
+lebegőpontosban dolgozik. A konverziót a médiahíd végzi, kifejezetten, a port `color` és `format`
+mezője alapján (`srgb`, `linear-srgb`, `rec709`, `rec2020-pq`, …; `rgb8`, `rgb16f`, `rgba32f`, …).
+A worker sosem találgat: amit a port nem deklarál, azt a híd elutasítja. A HDR-tartalom a
+modell tartományán kívül eső értékeknél a manifest szerint vagy csonkolódik, vagy a node nem
+érhető el rajta, és a felület ezt megmondja; csendes csonkolás nincs.
+
+**Gyorsítótárkulcs és érvénytelenítés.** A kulcs tartalomalapú: a bemenet tartalmának hash-e
+(képkockánként vagy klipre), a modell hash-e és revíziója a manifest `[[weights]]` részéből, a
+paraméterek kanonikus alakja, a worker és a protokoll verziója, valamint a pontosság (`fp32`,
+`fp16`). Bármelyik változik, új kulcs lesz, a régi bejegyzés kiürítésre jelölt; időbélyeg vagy
+útvonal nem része a kulcsnak. Az index a `cache` sémában van (4. pont), a tartalom a tartalom
+szerint címzett tárolóban.
+
+**Idő.** Minden időpont `Tick` (254 016 000 000/s), nem lebegőpontos másodperc. Változó
+képkockasebességű forrásnál a médiahíd a forrás időbélyegeit adja át, a gyorsítótár a `Tick`-et
+indexeli, nem a képkocka sorszámát. A hang és a kép szinkronját a híd őrzi; az elemzési eszköz
+a forrás időtengelyén készül, a render képezi le a sorozatra.
+
+**Távoli futtató.** A worker-protokoll hálózatfüggetlen (7. pont: üzenetek és megosztott
+memóriára hivatkozó pufferek), ezért később távoli worker is csatlakoztatható egy átviteli
+réteggel, a helyi Unix-csatorna cseréjével. Ez ebben az ADR-ben nem feladat; ha kell, saját
+ADR-t kap (lásd az Elvetett alternatívák közt a felhős AI-t).
+
+**Elfogadott egyszerűsítések (2026-11-22).**
+
+- Öt komponens, tiszta határokkal; a nyolc elem (fent) ezek szerepeit jelenti, nem külön
+  szolgáltatásokat.
+- Az MVP: ONNX Runtime és Python-worker. A TensorRT az ORT TensorRT-szolgáltatóján át, a Candle
+  később és opcionálisan jön.
+- Funkciónkénti aranytesztek és futásidejű alapellenőrzés (NaN, üres maszk, hossz), nem külön
+  általános minőségi réteg.
+- Egyszerű előbeállítások (előnézet, normál, végleges) és egyetlen GPU az első körben.
+
 ## Elvetett alternatívák
 
 - **ComfyUI mint futtatómotor:** sok egymásnak ellentmondó függőséget hoz, és nem
