@@ -189,6 +189,40 @@ vagy alkalmazás, ezért a 1. pont szerint könyvtárként épül be:
 Új elfogadási feltétel: **AC-27** minden LLM-modell adatlapján és kompatibilitás-nézetében látszik az llmfit ítélete (illeszkedés,
 becsült memória, becsült sebesség) a CFA4 hardverfelméréséből; a tiltott hálózati modulok nem hivatkozottak; offline is működik.
 
+## 6b. Biztonsági vizsgálat letöltéskor és importkor: modelscan (István, 2026-11-22)
+
+**Kérés (István):** a modell letöltéséhez épüljön be a [ProtectAI modelscan](https://github.com/protectai/modelscan). (A megkapott link
+csonkolt volt, „modelscan-t”; a `protectai/modelscan` projektre értelmeztem. Ha másra gondoltál, szólj.)
+
+**Amit a modelscanről ellenőriztem** (`main` 61fcec9, 2026-02-18): licenc **Apache-2.0** (a GPL-3.0-or-later CFA4-gyel
+összeegyeztethető, nyilvántartási sor kell a `docs/licensing.md` §5-be); **Python** (3.10–3.12), parancssori program; **statikusan elemzi** a
+modellfájlt (nem tölti be), ezért maga a vizsgálat nem futtat modellkódot. **Amit vizsgál:** a Pickle-alapú formátumokat (PyTorch
+`torch.save`, sklearn, XGBoost, joblib, dill, cloudpickle), a Keras H5 és az újabb Keras formátumot, és a TensorFlow SavedModel-t; ezek
+tartalmazhatnak betöltéskor lefutó kódot. **Amit nem vizsgál:** a `safetensors`, ONNX és GGUF fájlokat (ezekre a program „nincs támogatott
+fájl” kilépési kódot ad), ezért ezeknél a CFA4 saját formátum-ellenőrzése marad (7. pont, importlépések). A vizsgálat nem bizonyítja, hogy a
+fájl ártalmatlan; csak ismert veszélyes műveleteket jelez, ezért a „nincs találat” címke nem jelent jóváhagyást. Utolsó upstream commit: 2026-02,
+ezért a karbantartás üteme külön kockázat.
+
+**Beépítés (javaslat, a döntés D11):**
+1. **Az importfolyamat új lépése** a formátumfelismerés és a hash-ellenőrzés után, a **staging** területen, **a promóció előtt**:
+   `scan`. Eredmény: `clean` (nincs találat), `issues` (súlyosság szerint: kritikus, magas, közepes, alacsony), `unsupported`
+   (a formátumot a modelscan nem fedi), `error`. Az eredmény az ellenőrzési rekord része (`ai.verification`), a modell adatlapján látszik.
+2. **Külön folyamatban fut**, a `cfa4-fetch`-hez hasonló zárt környezetben (nincs hálózat, csak a vizsgált fájl olvasható, nincs program
+   indítás), rögzített verzióval és hash-sel. A CFA4 főfolyamatába nem kerül Python.
+3. **A modelscan telepítése nem automatikus.** Egyszeri felhasználói jóváhagyás után telepíti a CFA4 egy külön, rögzített (uv) környezetbe,
+   ugyanazzal a mechanizmussal, mint a többi választható komponenst (hash-ellenőrzött, a CFA4 generálta beállítás, javítóparancs); a
+   jóváhagyás előtt a Pickle/H5/SavedModel fájlok importja **nem engedélyezett**, a többi formátumé igen.
+4. **Kötelező, ahol alkalmazható:** minden Pickle-alapú, H5 és SavedModel fájl vizsgálaton megy át az aktiválás előtt; ellenőrizetlen ilyen
+   fájl nem aktiválható. A `safetensors`, ONNX és GGUF fájlokra a CFA4 saját szerkezeti ellenőrzése (fejléc, méretek, ONNX külső adat útja) fut.
+5. **Találat esetén:** a modell **karanténba** kerül, nem aktiválható; a felület megmutatja a találatot és a kockázatot (lásd D11).
+6. **Mikor fut:** letöltés vagy import után, újra frissítéskor és a felhasználó kérésére; futás közben nem, és a CFA4 nem tölt le semmit vizsgálat
+   céljából.
+7. **Ami nem változik:** a licenc továbbra sem blokkol (D1); a vizsgálat biztonsági, nem jogi kapu.
+
+Új elfogadási feltétel: **AC-28** Pickle-alapú fájl vizsgálat nélkül nem aktiválható; ártalmatlan és szándékosan veszélyes mintafájlon (generált, a
+CFA4 nem tölt le valódi támadó mintát) a várt `clean` és `issues` eredmény, a találat karanténba visz; a vizsgálat hálózat nélkül fut; ha a
+modelscan nincs telepítve, a Pickle/H5/SavedModel import tiltott, a többi működik.
+
 ## 7. Eltérések a már döntött szabályoktól (eldöntve 2026-11-22: a javaslatok érvényesek)
 
 | # | A megbízás szövege | A döntött szabály | Javaslat |
@@ -231,6 +265,7 @@ Nem futtatott tesztet nem jelölök sikeresnek, és részleges megvalósítást 
 | AC-03, 21 | teszt: modulnyitás, ajánlás, kompatibilitás-vizsgálat és katalógusfrissítés **nem** indít hálózati kérést (hálózatmentes tesztkörnyezet, a letöltő meghívása számlálva) | MM-F3 |
 | AC-26 | hiányzó modellnél javaslatkártya jelenik meg, hálózati kérés és letöltés nélkül; megszűnt modellnél helyettesítő modelleket ajánl (a telepítettek elöl); a javaslat nem indít semmit | MM-F3/F5 |
 | AC-04, 07, 08 | importteszt generált kis modellekkel: jó, hibás hash, részleges, hamis formátum; ellenőrzés nélkül aktiválás elutasítva | MM-F3 |
+| AC-28 | vizsgálati teszt generált ártalmatlan és szándékosan veszélyes mintafájlokon (nincs valódi támadó minta, nincs letöltés); zárt, hálózat nélküli futás; hiányzó modelscannél a Pickle-import tiltott | MM-F3 |
 | AC-05, 06 | kezelt letöltés generált helyi HTTPS-forrással: megszakítás, újrapróbálás, folytatás | MM-F3 |
 | AC-09, 22 | kompatibilitási címkék ismert hardverprofilokra, az ACS tervezőjével | MM-F1/F5 |
 | AC-27 | llmfit-ítélet LLM-modellekre ismert hardverprofilokon (golden), offline futás, CI-teszt: a `bench`/`providers`/`update`/`share` modul nem hivatkozott | MM-F1/F4 |
