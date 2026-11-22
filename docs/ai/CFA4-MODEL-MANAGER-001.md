@@ -1,6 +1,6 @@
 # CFA4-MODEL-MANAGER-001: az egységes modellkezelő és -letöltő, F0-audit és adaptáció
 
-> **Állapot:** a 7. pont döntéseit (D1–D8) **a tulajdonos a javaslatok szerint elfogadta (István, 2026-11-22)**; a megvalósítás indítása még külön engedélyt kér · **Készült:** 2026-11-22 · **Nyelv:** magyar
+> **Állapot:** a 7. pont döntéseit (D1–D8) **a tulajdonos a javaslatok szerint elfogadta (István, 2026-11-22)**; a CFA3-összevetésből jött **D9 (a, b) jóváhagyásra vár**; a megvalósítás indítása külön engedélyt kér · **Készült:** 2026-11-22 · **Nyelv:** magyar
 > **Nem indít el semmit:** a megvalósítás az F0 kapu (Qt6 kész, egui kint, [ADR 0008](../adr/ADR-0008-ai-processing-layer.md))
 > és a tulajdonos jóváhagyása után kezdődik. Ez a dokumentum a megbízás (CFA4-MODEL-MANAGER-001, 2026-11-22)
 > **F0 – Architecture & Audit** szakasza és az abból következő, CFA4-hez igazított terv.
@@ -15,16 +15,15 @@
   kompatibilitási címkék, a Qt6 felület hét lapja.
 - **Eltérés a már döntött szabályoktól** (3. pont): négy helyen a megbízás szigorúbb vagy mást ír, mint a
   tulajdonos 2026-11-07-i döntése. Ezeket nem írom át magamtól, a 7. pontban kérek döntést.
-- **Nem tudtam elvégezni:** a CFA3 modellkezelő forrását nem láttam (a `CFA3-CinenemFoundArchitecture3` repó a
-  munkamenet hatókörén kívül van), ezért az összevetés a már átvett összegzésre épül (ADR 0008 „elődtervekből”
-  pont, a 15 P0 invariáns). Ha a CFA3 dokumentum új elemet tartalmaz, a tulajdonos vagy az a szál pótolja.
+- **CFA3-összevetés** (2026-11-22, a tulajdonos megadta a repót): a 2. pont után külön táblázatban (2a). Három hiányt találtam, amelyek a tervből
+  kimaradtak; ezeket a D9 pontban javaslom (még nem döntött).
 
 ## 1. Mit vizsgáltam
 
-ADR 0008 (2., 5., 6., 7. pont, F1–F2 kapu), `docs/ai/postgresql-adatreteg.md`, `docs/ai/modellvalasztas-091.md`,
+CFA3 `docs/plans/accepted/CFA3-AI-VIDEO-TOOLS-V2-FINAL.md` (6–8., 20.3 pont) és `docs/architecture/AI-VIDEO-TOOLS-CFA3-INTEGRATION.md` (a CFA3 repó többi részét nem néztem át), ADR 0008 (2., 5., 6., 7. pont, F1–F2 kapu), `docs/ai/postgresql-adatreteg.md`, `docs/ai/modellvalasztas-091.md`,
 `docs/ai/acs-adaptiv-eroforras.md`, a CFA4-SDK `manifest.schema.json` (6. verzió) és `host.schema.json`
 (jobállapotok), a CFA4 `apps/cfa4-fetch` (CFA4-SECURITY-001 D5), a CFA4-AI-MODEL-TRAINING-001 modellre vonatkozó
-pontjai (3. és a nyilvántartás-hivatkozás). **Nem vizsgáltam:** a CFA3 repót (fent), a `plan/` mappát (gép-lokális),
+pontjai (3. és a nyilvántartás-hivatkozás). **Nem vizsgáltam:** a CFA3 repó modellkezelésen kívüli részeit, a `plan/` mappát (gép-lokális),
 és nem futtattam semmit; ez dokumentumaudit, kódot nem érint.
 
 ## 2. Összevetés: követelmény → meglévő → döntés
@@ -47,6 +46,34 @@ pontjai (3. és a nyilvántartás-hivatkozás). **Nem vizsgáltam:** a CFA3 rep�
 | 14 | AI-modulok közös használata | ADR 0008: minden képesség és worker a közös tárból olvas | **Kész elv**; a workerek nem tölthetnek és nem törölhetnek (az SDK-protokollban is rögzítendő) |
 | 15 | Offline-first | helyi-első alapelv | **Kész**; a 5. pont felsorolja az offline és online műveleteket |
 | 16 | PostgreSQL | `ai` séma (PG-3), tokio-postgres + deadpool | **Bővítés** a megbízás 17 entitására, de a meglévő táblákra építve (3.2) |
+
+## 2a. Összevetés a CFA3 modellkezelővel (6–8. fejezet)
+
+| CFA3 elv | CFA4-MODEL-MANAGER-001 | Döntés |
+|---|---|---|
+| 6.1 kizárólagos modellkezelés, modul nem készít sajátot | 12. pont, AC-10, AC-17–19 | átvéve |
+| 6.2 modell nélküli telepítés | ADR 0008, „a CFA4 nem szállít modellt” | átvéve |
+| 6.3 **hiányzó modellt a Model Manager automatikusan beszerzi** a generátor indításakor | AC-03, AC-21: soha nincs automatikus letöltés | **eltérés, szándékos**: csak a felhasználó indítja; a hiányzó modellnél a felület a forrást és a tárhelyigényt mutatja |
+| 6.4 azonos modell ismételt letöltése tilos | deduplikáció hash szerint (5. pont) | átvéve |
+| 6.5 több kérés egyetlen közös letöltést kap | egy letöltési feladat, a többi kérés ahhoz kapcsolódik | átvéve (a `cfa4-tasks` feladatsor azonosító szerint összevon) |
+| 6.6 azonosság csak tartalom szerint | 3.2 | átvéve |
+| 7.1 frissítés, 8. lépés: a kompatibilis alkalmazások hivatkozásait a rendszer átállítja | 5. pont: frissítés csak jóváhagyással | **eltérés**: az átállás csak a felhasználó aktiválása után, **modulonként** (D9/b) |
+| 7.2 kompatibilitásvédelem: inkompatibilis frissítésnél a működő verzió megmarad, használatban lévő fájl nem íródik felül | 5. pont: régi revízió megmarad | **bővítés** modulonkénti rögzítéssel (D9/b) |
+| 7.3 sikertelen frissítés nem sérti a működőt | 5. pont, 20. pont | átvéve |
+| 8. megszűnt/nem karbantartott modell: **megtartás vagy eltávolítás**, a forrás állapotát külön kezelni (átmeneti hiba, tartós elérhetetlenség, hivatalosan megszűnt, archivált, visszavont kiadás) | csak `retired` állapot | **hiány** (D9/a) |
+| 20.3 elfogadási tesztek | AC-01…22 | lefedve; „megszűnt modellnél választás” új AC (D9/a) |
+| Model Router, Temporal, Host Resource Broker | `cfa4-ai-registry`/ACS tervező, `cfa4-tasks`, nincs Temporal | CFA4-ben már másként megoldva, nem veszem át |
+
+**D9 (kiegészítés a CFA3-ból, jóváhagyásra vár):**
+a) **Forrásállapot és megszűnt modellek:** a modellforrás állapota külön mező: `ok`, `temporarily_unreachable`, `permanently_unreachable`,
+   `discontinued`, `archived`, `withdrawn`. Átmeneti hiba nem jelent megszűnést; az állapotot ellenőrzött információ
+   alapján lehet átállítani. Megszűnt modellnél a helyi példányt a CFA4 soha nem törli automatikusan: a felhasználó
+   **megtartja** (marad a tárban, használható, a megszűnt állapot látszik) vagy **eltávolítja** (a függőségek és a
+   következmények bemutatása után, megerősítéssel). Új elfogadási feltétel: **AC-23** megszűnt modellnél a felhasználó
+   választhat megtartás és eltávolítás között; teszt: generált forrásállapotok.
+b) **Modulonkénti revízió-rögzítés:** a `ai.model_use` kapcsolat revíziót is rögzít. Frissítés után egy modul csak a felhasználó
+   aktiválásakor áll át az új revízióra; ha az új revízió egy modullal inkompatibilis, az a modul a régi, működő revízión
+   marad, és a használatban lévő fájl nem íródik felül. Új elfogadási feltétel: **AC-24**.
 
 ## 3. Adatmodell
 
@@ -158,7 +185,8 @@ Nem futtatott tesztet nem jelölök sikeresnek, és részleges megvalósítást 
 | AC-05, 06 | kezelt letöltés generált helyi HTTPS-forrással: megszakítás, újrapróbálás, folytatás | MM-F3 |
 | AC-09, 22 | kompatibilitási címkék ismert hardverprofilokra, az ACS tervezőjével | MM-F1/F5 |
 | AC-10, 11, 17–19 | két képesség ugyanazt a modellt használja egy példányból; hash szerinti deduplikáció | MM-F2/F5 |
-| AC-12, 13 | frissítési és törlési teszt: csendes felülírás nincs, megosztott modell nem törölhető | MM-F6 |
+| AC-12, 13, 24 | frissítési és törlési teszt: csendes felülírás nincs, megosztott modell nem törölhető, az inkompatibilis modul a régi revízión marad | MM-F6 |
+| AC-23 | forrásállapot-teszt: megszűnt modellnél megtartás vagy eltávolítás választható, automatikus törlés nincs | MM-F6 |
 | AC-14 | offline teszt: telepített modellek kezelése hálózat nélkül | MM-F7 |
 | AC-15 | cache törlése után a store változatlan | MM-F2 |
 | AC-16 | Qt6 GUI-teszt (`python/tests/`), képernyőkép a referenciagépen | MM-F4 |
@@ -173,7 +201,7 @@ FilmCraft projekt módosítása; aktiválás ellenőrzés nélkül; jóváhagyá
 
 ## 11. Mit nem tudtam ellenőrizni
 
-1. A CFA3 modellkezelő forrása (hatókörön kívüli repó); a CFA3-ból átvett elemeket az ADR 0008 összegzése alapján vettem.
+1. A CFA3 repóból csak az AI Video Tools terv 6–8. és 20.3 pontját és az integrációs összefoglalót olvastam; a repó többi részét (Model Router, Host Resource Broker, a canonical nyilvántartások) nem. A CFA3-ban nincs modellkezelő kód, csak a terv.
 2. A CFA4 könyvtárpolitikája modellre: a repóban csak más alkalmazásokra vonatkozó XDG-szabályokat találtam.
 3. A `cfa4-fetch` folytatási képessége (Range kérés): a kódban nem találtam; a „folytatás ahol támogatott” ezért új
    munka a letöltőben, nem meglévő képesség.
