@@ -41,7 +41,6 @@ use args::{Cli, Launch};
 use cfa4_engine::Session;
 use cfa4_engine::autosave::{AutosaveConfig, default_data_dir};
 use cfa4_ui_egui::Cfa4App;
-use chrono::TimeZone;
 use serde_json::json;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -453,7 +452,9 @@ fn register_hardware_decoders() -> cfa4_platform::Availability {
 
 /// Local UTC offset at a unix time (auto-save file names and recovery times use local time).
 fn local_offset(unix: i64) -> i32 {
-    chrono::Local.timestamp_opt(unix, 0).single().map(|d| d.offset().local_minus_utc()).unwrap_or(0)
+    jiff::Timestamp::from_second(unix)
+        .map(|t| jiff::tz::TimeZone::system().to_offset(t).seconds())
+        .unwrap_or(0)
 }
 
 /// Driven by an agent (`--control`): don't activate the app on launch, so the user's keyboard
