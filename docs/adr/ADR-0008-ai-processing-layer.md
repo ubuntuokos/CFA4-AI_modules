@@ -160,6 +160,11 @@ K18), jóváhagyással. A modellkezelő szabályai:
   ahhoz, ami az eredményt változtatja: kisebb pontosság, kisebb felbontás, másik futtató vagy
   modell. Minden lépés a jobnaplóba kerül.
 - **Stabil GPU-azonosítás:** UUID vagy PCI-cím szerint, nem a CUDA sorszáma szerint.
+- **Eszközazonosító az elejétől** (tulajdonosi döntés, 2026-11-22): a `load` és a `run` üzenet
+  mindig tartalmaz eszközazonosítót (`device`: `"cpu"` vagy GPU-index; protokoll 3. változat,
+  `caps.devices`), és a VRAM-könyvelés **GPU-nként** vezet keretet. Egy kártyás gépen ez egyetlen
+  elem. A több GPU támogatása ettől kezdve csak ütemezési szabály (melyik feladat melyik
+  kártyára), nem áttérés; maga a több GPU lehetőség, nem alapkövetelmény, és későbbi kapuban jön.
 - **A kijelzőt hajtó GPU** alapból nem kap AI-feladatot, ha van másik alkalmas kártya. Egykártyás
   gépen a felhasználó engedélyezheti.
 - **Atomi foglalás:** egy feladat az összes szükséges erőforrást egyszerre kapja meg, vagy semmit.
@@ -315,7 +320,8 @@ fogyasztja a sémát. A jobállapotok és a manifest v3 licencmezői az SDK-ban 
   felbontásnak nincs felső határa, azt csak a kártya VRAM-ja szabja meg. A 16 GB-os minimumgépen minden
   funkciónak le kell futnia, lassabban is, összeomlás és a rendszer lefagyása nélkül.
 - **Nagyobb gépek:** a nagyobb VRAM nagyobb modelleket és több funkciót nyit meg, a több GPU
-  pedig lehetőség, nem követelmény.
+  pedig lehetőség, nem követelmény (a 3. pont eszközazonosítója és GPU-nkénti könyvelése miatt
+  később csak ütemezési szabály).
 - **Gyártók:** első körben NVIDIA, utána 12 GB-os AMD és Intel kártyák az ONNX úton.
 - **Minimumtesztek:** a [`scripts/dev/run-minspec.sh`](../../scripts/dev/run-minspec.sh)
   alatt futnak, két profillal: `CFA4_PROFILE=ajanlott` (alap, 32 GB RAM) és `CFA4_PROFILE=minimum`
