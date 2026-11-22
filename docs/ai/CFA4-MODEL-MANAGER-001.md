@@ -1,9 +1,10 @@
 # CFA4-MODEL-MANAGER-001: az egységes modellkezelő és -letöltő, F0-audit és adaptáció
 
-> **Állapot:** a 7. pont döntéseit (D1–D8) **a tulajdonos a javaslatok szerint elfogadta (István, 2026-11-22)**; a CFA3-összevetésből jött **D9 (a, b) is elfogadva (István, 2026-11-22)**; a modelscan-találat kezelése (D11) is elfogadva; az llmfit beépítése (6a pont, D10) **a CFA4 része, nem külön alkalmazás (István, 2026-11-22)**; a megvalósítás indítása külön engedélyt kér · **Készült:** 2026-11-22 · **Nyelv:** magyar
-> **Nem indít el semmit:** a megvalósítás az F0 kapu (Qt6 kész, egui kint, [ADR 0008](../adr/ADR-0008-ai-processing-layer.md))
-> és a tulajdonos jóváhagyása után kezdődik. Ez a dokumentum a megbízás (CFA4-MODEL-MANAGER-001, 2026-11-22)
-> **F0 – Architecture & Audit** szakasza és az abból következő, CFA4-hez igazított terv.
+> **Állapot:** **véglegesítve, 1.0** · **jóváhagyta: István, 2026-11-22** (D1–D11, lásd a 6a, 6b, 7. pont és a 2a pont D9-e) · **Készült:** 2026-11-22 · **Nyelv:** magyar
+> **Indítás:** a jóváhagyás a **tervet** véglegesíti, **nem indít megvalósítást**. A megvalósítás az F0 kapu (Qt6 kész, egui kint,
+> [ADR 0008](../adr/ADR-0008-ai-processing-layer.md)) és külön indítási engedély után kezdődik. Ez a dokumentum a megbízás
+> (CFA4-MODEL-MANAGER-001, 2026-11-22) **F0 – Architecture & Audit** szakasza és az abból következő, CFA4-hez igazított terv.
+> A „megbízás N. pontja” a tulajdonos eredeti szövegének számozása; a „N. pont” ennek a dokumentumnak a számozása.
 
 ## 0. Röviden
 
@@ -13,8 +14,8 @@
 - **Új** a megbízásból: a katalógus (keresés, szűrés, adatlap), az importfolyamat és a karantén, a
   tárolóterületek szétválasztása (store, cache, staging, quarantine), a frissítés és az eltávolítás szabályai, a
   kompatibilitási címkék, a Qt6 felület hét lapja.
-- **Eltérés a már döntött szabályoktól** (3. pont): négy helyen a megbízás szigorúbb vagy mást ír, mint a
-  tulajdonos 2026-11-07-i döntése. Ezeket nem írom át magamtól, a 7. pontban kérek döntést.
+- **Eltérés a már döntött szabályoktól:** négy helyen a megbízás szigorúbb vagy mást ír, mint a tulajdonos 2026-11-07-i döntése; a 7. pont
+  mutatja és rögzíti a tulajdonos döntését (D1–D4).
 - **CFA3-összevetés** (2026-11-22, a tulajdonos megadta a repót): a 2. pont után külön táblázatban (2a). Két hiányt találtam, amelyek a tervből
   kimaradtak; ezeket a D9 pont rögzíti (elfogadva).
 
@@ -51,7 +52,7 @@ pontjai (3. és a nyilvántartás-hivatkozás). **Nem vizsgáltam:** a CFA3 rep�
 
 | CFA3 elv | CFA4-MODEL-MANAGER-001 | Döntés |
 |---|---|---|
-| 6.1 kizárólagos modellkezelés, modul nem készít sajátot | 12. pont, AC-10, AC-17–19 | átvéve |
+| 6.1 kizárólagos modellkezelés, modul nem készít sajátot | megbízás 12. pont, AC-10, AC-17–19 | átvéve |
 | 6.2 modell nélküli telepítés | ADR 0008, „a CFA4 nem szállít modellt” | átvéve |
 | 6.3 **hiányzó modellt a Model Manager automatikusan beszerzi** a generátor indításakor | AC-03, AC-21: soha nincs automatikus letöltés; AC-26: javaslat igen | **eltérés, szándékos** (István, 2026-11-22): nem tölt le, de javaslatot tesz a modellre, és ha a modell már nem létezik, helyettesítőt javasol |
 | 6.4 azonos modell ismételt letöltése tilos | deduplikáció hash szerint (5. pont) | átvéve |
@@ -61,7 +62,7 @@ pontjai (3. és a nyilvántartás-hivatkozás). **Nem vizsgáltam:** a CFA3 rep�
 | 7.2 kompatibilitásvédelem: inkompatibilis frissítésnél a működő verzió megmarad, használatban lévő fájl nem íródik felül | 5. pont: régi revízió megmarad | **bővítés** modulonkénti rögzítéssel (D9/b) |
 | 7.3 sikertelen frissítés nem sérti a működőt | 5. pont, 20. pont | átvéve |
 | 8. megszűnt/nem karbantartott modell: **megtartás vagy eltávolítás**, a forrás állapotát külön kezelni (átmeneti hiba, tartós elérhetetlenség, hivatalosan megszűnt, archivált, visszavont kiadás) | csak `retired` állapot | **hiány** (D9/a) |
-| 20.3 elfogadási tesztek | AC-01…22 | lefedve; „megszűnt modellnél választás” új AC (D9/a) |
+| 20.3 elfogadási tesztek | AC-01…28 | lefedve; „megszűnt modellnél választás” új AC (D9/a) |
 | Model Router, Temporal, Host Resource Broker | `cfa4-ai-registry`/ACS tervező, `cfa4-tasks`, nincs Temporal | CFA4-ben már másként megoldva, nem veszem át |
 
 **D9 (kiegészítés a CFA3-ból, elfogadva, István, 2026-11-22):**
@@ -247,7 +248,7 @@ előtagok mellett).
 
 | Fázis | Tartalom | Kapu | Függ |
 |---|---|---|---|
-| MM-F0 | ez az audit | a terv leképezve, nincs párhuzamos alrendszer | kész, jóváhagyásra vár |
+| MM-F0 | ez az audit | a terv leképezve, nincs párhuzamos alrendszer | kész, jóváhagyva |
 | MM-F1 | Registry és katalógus: azonosítók, revízió, artifact, forrás, licenc, képesség, adatlap | a katalógus és a nyilvántartás elválik; hibás bemenetre hiba, pánik nélkül | AI-F1, F0 kapu |
 | MM-F2 | Store, staging, karantén, deduplikáció, tárhelykezelés | közös modell egyszeri példányban; a cache törlése nem érinti a storet | MM-F1, PG-3 |
 | MM-F3 | Beszerzés és import: hivatalos forrás, kezelt letöltés (`cfa4-fetch`), feladatsor, megszakítás, újrapróbálás, folytatás ahol a forrás támogatja | biztonságos, felhasználó által indított beszerzés | MM-F2, ACS-4 |
@@ -259,7 +260,7 @@ előtagok mellett).
 Minden fázis kilépési bizonyítéka: CI-napló, a futtatott tesztek kimenete, és (UI-nál) a GUI-automatizálás naplója.
 Nem futtatott tesztet nem jelölök sikeresnek, és részleges megvalósítást nem nevezek késznek.
 
-## 9. Az elfogadási feltételek (AC-01…AC-22) leképezése
+## 9. Az elfogadási feltételek (AC-01…AC-28) leképezése
 
 | AC | Mivel igazolható | Fázis |
 |---|---|---|
@@ -294,3 +295,7 @@ FilmCraft projekt módosítása; aktiválás ellenőrzés nélkül; jóváhagyá
 3. A `cfa4-fetch` folytatási képessége (Range kérés): a kódban nem találtam; a „folytatás ahol támogatott” ezért új
    munka a letöltőben, nem meglévő képesség.
 4. Nem futtattam semmit, nincs kód- vagy tesztváltozás.
+
+## 12. Változások
+
+- 2026-11-22, 1.0: első változat F0-audittal; D1–D8 (7. pont), D9 (CFA3-összevetés, 2a), a tár helye a felhasználóé (AC-25), javaslat hiányzó vagy megszűnt modellnél (AC-26), llmfit mint kötelező funkció a CFA4 részeként (6a, D10, AC-27), modelscan a letöltési és importfolyamatban (6b, D11, AC-28); a tulajdonos jóváhagyta és véglegesítette.

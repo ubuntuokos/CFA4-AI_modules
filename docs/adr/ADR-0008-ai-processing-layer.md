@@ -114,7 +114,7 @@ pontok az egyes elemek szabályai.
 
 ### 2. Modellkezelő
 
-A modellkezelő részletes terve (tervezet, a D1–D8 döntések elfogadva 2026-11-22): [CFA4-MODEL-MANAGER-001](../ai/CFA4-MODEL-MANAGER-001.md).
+A modellkezelő részletes terve (véglegesítve 1.0, jóváhagyta István, 2026-11-22): [CFA4-MODEL-MANAGER-001](../ai/CFA4-MODEL-MANAGER-001.md).
 
 A CFA4 nem szállít modellt, és nincs automatikus letöltés. Modell csak a felhasználó kifejezett
 műveletével kerül a gépre: kézi telepítéssel vagy a közös letöltővel ([Kdenlive-terv](../kdenlive-parity.md)
