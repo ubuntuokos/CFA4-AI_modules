@@ -1,6 +1,6 @@
 # CFA4-MODEL-MANAGER-001: az egységes modellkezelő és -letöltő, F0-audit és adaptáció
 
-> **Állapot:** a 7. pont döntéseit (D1–D8) **a tulajdonos a javaslatok szerint elfogadta (István, 2026-11-22)**; a CFA3-összevetésből jött **D9 (a, b) jóváhagyásra vár**; a megvalósítás indítása külön engedélyt kér · **Készült:** 2026-11-22 · **Nyelv:** magyar
+> **Állapot:** a 7. pont döntéseit (D1–D8) **a tulajdonos a javaslatok szerint elfogadta (István, 2026-11-22)**; a CFA3-összevetésből jött **D9 (a, b) is elfogadva (István, 2026-11-22)**; a megvalósítás indítása külön engedélyt kér · **Készült:** 2026-11-22 · **Nyelv:** magyar
 > **Nem indít el semmit:** a megvalósítás az F0 kapu (Qt6 kész, egui kint, [ADR 0008](../adr/ADR-0008-ai-processing-layer.md))
 > és a tulajdonos jóváhagyása után kezdődik. Ez a dokumentum a megbízás (CFA4-MODEL-MANAGER-001, 2026-11-22)
 > **F0 – Architecture & Audit** szakasza és az abból következő, CFA4-hez igazított terv.
@@ -15,8 +15,8 @@
   kompatibilitási címkék, a Qt6 felület hét lapja.
 - **Eltérés a már döntött szabályoktól** (3. pont): négy helyen a megbízás szigorúbb vagy mást ír, mint a
   tulajdonos 2026-11-07-i döntése. Ezeket nem írom át magamtól, a 7. pontban kérek döntést.
-- **CFA3-összevetés** (2026-11-22, a tulajdonos megadta a repót): a 2. pont után külön táblázatban (2a). Három hiányt találtam, amelyek a tervből
-  kimaradtak; ezeket a D9 pontban javaslom (még nem döntött).
+- **CFA3-összevetés** (2026-11-22, a tulajdonos megadta a repót): a 2. pont után külön táblázatban (2a). Két hiányt találtam, amelyek a tervből
+  kimaradtak; ezeket a D9 pont rögzíti (elfogadva).
 
 ## 1. Mit vizsgáltam
 
@@ -64,7 +64,7 @@ pontjai (3. és a nyilvántartás-hivatkozás). **Nem vizsgáltam:** a CFA3 rep�
 | 20.3 elfogadási tesztek | AC-01…22 | lefedve; „megszűnt modellnél választás” új AC (D9/a) |
 | Model Router, Temporal, Host Resource Broker | `cfa4-ai-registry`/ACS tervező, `cfa4-tasks`, nincs Temporal | CFA4-ben már másként megoldva, nem veszem át |
 
-**D9 (kiegészítés a CFA3-ból, jóváhagyásra vár):**
+**D9 (kiegészítés a CFA3-ból, elfogadva, István, 2026-11-22):**
 a) **Forrásállapot és megszűnt modellek:** a modellforrás állapota külön mező: `ok`, `temporarily_unreachable`, `permanently_unreachable`,
    `discontinued`, `archived`, `withdrawn`. Átmeneti hiba nem jelent megszűnést; az állapotot ellenőrzött információ
    alapján lehet átállítani. Megszűnt modellnél a helyi példányt a CFA4 soha nem törli automatikusan: a felhasználó
