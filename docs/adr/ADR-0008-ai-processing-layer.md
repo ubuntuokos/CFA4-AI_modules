@@ -369,9 +369,40 @@ ADR-t kap (lásd az Elvetett alternatívák közt a felhős AI-t).
   általános minőségi réteg.
 - Egyszerű előbeállítások (előnézet, normál, végleges) és egyetlen GPU az első körben.
 
+### 11. ComfyUI-szerű kezelhetőség és a CFA4 által kezelt ComfyUI-worker
+
+A tulajdonos 2026-11-22-én döntött: a ComfyUI ma már alig kihagyható, ezért a CFA4 AI-rétegének
+kezelhetősége nagy mértékben egyezzen a ComfyUI-éval, és a felhasználónak ne kelljen külön
+alkalmazást telepítenie.
+
+- **Saját node-gráf.** A manifest típusos portjaiból (`frame`, `mask`, `audio`, `flow`, …) node
+  lesz; a gráf JSON-ban menthető, megosztható és verziózható. Új node = manifest + worker,
+  közösségi csomagként is. A gráfot a feladattervező (3. elem) hajtja végre, a 10. pont szerinti
+  klip- és képkockaszintű szabályokkal.
+- **ComfyUI mint worker, a CFA4 kezeli.** A ComfyUI a protokollon át, külön folyamatként fut,
+  ugyanúgy, mint bármely worker; a gráfok közé ComfyUI-workflow importálható (API-formátum),
+  amelynek node-jait a worker képességként jelenti.
+- **Telepítés jóváhagyással.** A CFA4 a felhasználó egyszeri jóváhagyása után maga telepíti a
+  ComfyUI-t a saját, felügyelt könyvtárába (`uv` által rögzített környezet, rögzített
+  ComfyUI-verzió és -csomagsor, a közös CUDA 12.x-hez illesztve). A jóváhagyó ablak mutatja a
+  forrást, a verziót, a méretet és a licencet (ComfyUI: GPL-3.0). A CFA4 nem terjeszti a
+  ComfyUI-t, a letöltés a hivatalos forrásból, hash-ellenőrzéssel történik.
+- **Félrekonfigurálás kizárva.** A beállítást a CFA4 állítja elő és tartja karban, a felhasználó
+  nem szerkeszti: a modellútvonalak a közös modelltárra mutatnak, a hallgatózás csak a
+  helyi hurokcímen, véletlen porton és tokennel történik, a VRAM-ot az erőforrás-kezelő osztja.
+  Állapotellenőrzés, javítás és újratelepítés parancs (`ai.comfy.repair`) van; eltérést a CFA4
+  visszaállítja.
+- **Egyedi node-ok.** Csak a CFA4 által rögzített, hash-ellenőrzött listáról telepíthetők;
+  tetszőleges node telepítése külön, figyelmeztetett lépés, a felhasználó felelősségére.
+- **Modellek.** Az általános szabály él: a CFA4 modellt nem terjeszt, a felhasználó tölti le, a
+  licencfeltételek elfogadása után.
+- **Nyitott részlet:** a ComfyUI HTTP/WebSocket-kapcsolata eltér a 7. pont Unix-csatornájától;
+  egy illesztő worker fordítja le, és kivételként helyi hurokcímet használ. Ezt az illesztő
+  kapuban (F-szakasz) kell lezárni.
+
 ## Elvetett alternatívák
 
-- **ComfyUI mint futtatómotor:** sok egymásnak ellentmondó függőséget hoz, és nem
+- **ComfyUI mint a CFA4 futtatómotorja** (a 11. pont szerinti kezelt worker nem ez): sok egymásnak ellentmondó függőséget hoz, és nem
   ütemezhető a CFA4 parancsmotorján keresztül.
 - **Modellenkénti Python-környezet vagy CUDA-verzió:** ez a „38 féle CUDA” helyzet.
 - **AI-hívás közvetlenül a felületből:** megkerülné a parancsmotort, a visszavonást és a naplót.
@@ -466,7 +497,7 @@ tanítási feladat a közös feladatsorban fut (`tasks` séma, új `train` séma
 az F6 közös PyTorch-környezetét bővíti, és az alsó határ (12 GB VRAM, 16 GB RAM) a tanításra is
 érvényes. A tanítás kapui (TR-F0…TR-F10) az F1, F2 és F6 kapura épülnek.
 
-**Az első körön kívül** (saját döntéssel, későbbi kapuban): ComfyUI-kompatibilitás, több GPU, AMD és Intel, TensorRT, CUDA IPC, osztott memória
+**Az első körön kívül** (saját döntéssel, későbbi kapuban): a ComfyUI-worker és -workflow-import (11. pont, a döntés megvan, a kapu később), több GPU, AMD és Intel, TensorRT, CUDA IPC, osztott memória
 bekapcsolása, felhős futtatás.
 
 A [besorolási táblák](../ai/README.md) „Fázis” oszlopa még a régi havi sorszámokat tartalmazza;
