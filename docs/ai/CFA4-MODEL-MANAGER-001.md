@@ -1,6 +1,6 @@
 # CFA4-MODEL-MANAGER-001: az egységes modellkezelő és -letöltő, F0-audit és adaptáció
 
-> **Állapot:** a 7. pont döntéseit (D1–D8) **a tulajdonos a javaslatok szerint elfogadta (István, 2026-11-22)**; a CFA3-összevetésből jött **D9 (a, b) is elfogadva (István, 2026-11-22)**; az llmfit beépítése (6a pont, D10) **a CFA4 része, nem külön alkalmazás (István, 2026-11-22)**; a megvalósítás indítása külön engedélyt kér · **Készült:** 2026-11-22 · **Nyelv:** magyar
+> **Állapot:** a 7. pont döntéseit (D1–D8) **a tulajdonos a javaslatok szerint elfogadta (István, 2026-11-22)**; a CFA3-összevetésből jött **D9 (a, b) is elfogadva (István, 2026-11-22)**; a modelscan-találat kezelése (D11) is elfogadva; az llmfit beépítése (6a pont, D10) **a CFA4 része, nem külön alkalmazás (István, 2026-11-22)**; a megvalósítás indítása külön engedélyt kér · **Készült:** 2026-11-22 · **Nyelv:** magyar
 > **Nem indít el semmit:** a megvalósítás az F0 kapu (Qt6 kész, egui kint, [ADR 0008](../adr/ADR-0008-ai-processing-layer.md))
 > és a tulajdonos jóváhagyása után kezdődik. Ez a dokumentum a megbízás (CFA4-MODEL-MANAGER-001, 2026-11-22)
 > **F0 – Architecture & Audit** szakasza és az abból következő, CFA4-hez igazított terv.
@@ -203,7 +203,7 @@ fájl” kilépési kódot ad), ezért ezeknél a CFA4 saját formátum-ellenőr
 fájl ártalmatlan; csak ismert veszélyes műveleteket jelez, ezért a „nincs találat” címke nem jelent jóváhagyást. Utolsó upstream commit: 2026-02,
 ezért a karbantartás üteme külön kockázat.
 
-**Beépítés (javaslat, a döntés D11):**
+**Beépítés (D11 elfogadva: István, 2026-11-22; a javaslat szerint):**
 1. **Az importfolyamat új lépése** a formátumfelismerés és a hash-ellenőrzés után, a **staging** területen, **a promóció előtt**:
    `scan`. Eredmény: `clean` (nincs találat), `issues` (súlyosság szerint: kritikus, magas, közepes, alacsony), `unsupported`
    (a formátumot a modelscan nem fedi), `error`. Az eredmény az ellenőrzési rekord része (`ai.verification`), a modell adatlapján látszik.
@@ -214,7 +214,9 @@ ezért a karbantartás üteme külön kockázat.
    jóváhagyás előtt a Pickle/H5/SavedModel fájlok importja **nem engedélyezett**, a többi formátumé igen.
 4. **Kötelező, ahol alkalmazható:** minden Pickle-alapú, H5 és SavedModel fájl vizsgálaton megy át az aktiválás előtt; ellenőrizetlen ilyen
    fájl nem aktiválható. A `safetensors`, ONNX és GGUF fájlokra a CFA4 saját szerkezeti ellenőrzése (fejléc, méretek, ONNX külső adat útja) fut.
-5. **Találat esetén:** a modell **karanténba** kerül, nem aktiválható; a felület megmutatja a találatot és a kockázatot (lásd D11).
+5. **Találat esetén (D11):** a modell **karanténba** kerül, nem aktiválható; a felület megmutatja a találatot, a súlyosságot és a kockázatot. A felhasználó
+   **modellenként és fájl-hash-enként, kifejezett megerősítéssel felülírhatja** (hamis riasztás esetén is); a felülírás az ellenőrzési rekordba kerül
+   (ki, mikor, melyik találat), a modell adatlapján látszik, és csak arra a fájlra érvényes. Más fájlra, új revízióra vagy új hash-re nem öröklődik.
 6. **Mikor fut:** letöltés vagy import után, újra frissítéskor és a felhasználó kérésére; futás közben nem, és a CFA4 nem tölt le semmit vizsgálat
    céljából.
 7. **Ami nem változik:** a licenc továbbra sem blokkol (D1); a vizsgálat biztonsági, nem jogi kapu.
