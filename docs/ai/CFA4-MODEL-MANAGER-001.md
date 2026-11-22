@@ -1,6 +1,6 @@
 # CFA4-MODEL-MANAGER-001: az egységes modellkezelő és -letöltő, F0-audit és adaptáció
 
-> **Állapot:** tervezet, **tulajdonosi jóváhagyásra vár** · **Készült:** 2026-11-22 · **Nyelv:** magyar
+> **Állapot:** a 7. pont döntéseit (D1–D8) **a tulajdonos a javaslatok szerint elfogadta (István, 2026-11-22)**; a megvalósítás indítása még külön engedélyt kér · **Készült:** 2026-11-22 · **Nyelv:** magyar
 > **Nem indít el semmit:** a megvalósítás az F0 kapu (Qt6 kész, egui kint, [ADR 0008](../adr/ADR-0008-ai-processing-layer.md))
 > és a tulajdonos jóváhagyása után kezdődik. Ez a dokumentum a megbízás (CFA4-MODEL-MANAGER-001, 2026-11-22)
 > **F0 – Architecture & Audit** szakasza és az abból következő, CFA4-hez igazított terv.
@@ -114,7 +114,7 @@ VRAM és 16 GB RAM alsó határ** (tulajdonosi döntés) érvényes marad: alatt
 választja automatikusan a legnagyobb modellt, és hiányzó modellt nem telepít; a hiányzó modellről a felület a hivatalos
 forrást és a tárhelyigényt mutatja.
 
-## 7. Eltérések a már döntött szabályoktól (a tulajdonos dönt)
+## 7. Eltérések a már döntött szabályoktól (eldöntve 2026-11-22: a javaslatok érvényesek)
 
 | # | A megbízás szövege | A döntött szabály | Javaslat |
 |---|---|---|---|
