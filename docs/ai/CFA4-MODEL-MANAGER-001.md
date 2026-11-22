@@ -36,7 +36,7 @@ pontjai (3. és a nyilvántartás-hivatkozás). **Nem vizsgáltam:** a CFA3 rep�
 | 4 | Download Queue | `cfa4-tasks` (ACS) feladatsor, a feladattípusok között „modellbetöltés” | **Nem új sor**: a letöltés a közös feladatsor egy feladattípusa; a „Downloads” lap a Task Manager nézete (ACS-5) |
 | 5 | Integritás | SHA-256, rögzített revízió, „latest” tilos | **Kész szabály**; kiegészül méret-, formátum- és manifest-ellenőrzéssel, és a karanténnal |
 | 6 | Shared Store, deduplikáció | „közös modelltár”, SHA-256 szerinti deduplikáció, egyetlen közös letöltés | **Kész szabály**; fizikai azonosság csak hash alapján (megbízás: fájlnév nem elég) |
-| 7 | Store, cache, staging, karantén | cache van, a staging/karantén nincs leírva | **Új**: négy terület, XDG-könyvtárak (5. pont) |
+| 7 | Store, cache, staging, karantén | cache van, a staging/karantén nincs leírva | **Új**: négy terület; a tár helyét a felhasználó adja meg (5. pont, tulajdonosi döntés 2026-11-22) |
 | 8 | Kompatibilitás | ACS: hardverfelmérés, végrehajtási terv, `Decision` (Run/Wait/NeedsApproval/Unavailable) | **Integráció**: a Compatibility Engine az ACS tervezőjének nézete, nem új motor |
 | 9 | Függőségek, használati kapcsolatok | PG `ai.model_use` | **Kész**; kiegészül a törlés előtti ellenőrzéssel |
 | 10 | Provenance | manifest: forrás URL, revízió, hash | **Bővítés** forrásmegbízhatósággal és ellenőrzési rekorddal |
@@ -108,12 +108,19 @@ Fájlnévre vagy útra nem épül azonosság; az azonosság (modell, revízió, 
 
 ## 5. Tárolás, import, életciklus
 
-- **Négy terület, XDG szerint és a `cfa4` névtérben** (békés együttélés: saját könyvtárak, nem a Hugging Face vagy
-  más upstream program gyorsítótára, nincs közös port, konfiguráció vagy csomag):
-  `$XDG_DATA_HOME/cfa4/models/` (tartós store), `$XDG_CACHE_HOME/cfa4/models/` (runtime cache),
-  `$XDG_DATA_HOME/cfa4/models/.staging/`, `…/.quarantine/`. A cache törlése a storet soha nem érinti. Több store és
-  áthelyezés a felhasználó kifejezett parancsára; a végleges útvonalakat a CFA4 könyvtárpolitikájához kell igazítani
-  (a repóban ma nincs külön modellre szóló rész, ezt a F2 kapuban rögzítem).
+- **A tárolási helyet a felhasználó adja meg** (István, 2026-11-22: ő tudja, melyik meghajtóján van elég hely). Az első
+  modellművelet (import vagy letöltés) előtt a CFA4 megkérdezi a modelltár helyét; addig nincs letöltés és nincs
+  alapértelmezett, csendben használt útvonal. A választóban meghajtónként látszik a szabad hely, az írhatóság és a
+  fájlrendszer, és a kért modell becsült mérete; az XDG-útvonal (`$XDG_DATA_HOME/cfa4/models/`) csak **javaslat**, amelyet
+  a felhasználó elfogadhat vagy felülírhat. Több tár megadható, és a felhasználó modellenként választja, melyikre kerüljön; a
+  hely utólag a felhasználó kifejezett parancsával áthelyezhető. A választott helyet a CFA4 ellenőrzi (létezik, írható, elég
+  szabad hely a kért modellhez és a staginghez), és nem hoz létre könyvtárat a megadott gyökéren kívül.
+- **Négy terület a `cfa4` névtérben** (békés együttélés: saját könyvtárak, nem a Hugging Face vagy más upstream program
+  gyorsítótára, nincs közös port, konfiguráció vagy csomag): tartós store, staging és karantén a **választott gyökér alatt**
+  (`<gyökér>/cfa4-models/`, `.staging/`, `.quarantine/`), így az előléptetés ugyanazon a fájlrendszeren egy átnevezés, nem
+  másolás; a runtime cache `$XDG_CACHE_HOME/cfa4/models/` (ez ideiglenes, a felhasználó saját helye nem kell hozzá). A cache
+  törlése a storet soha nem érinti. Ha egy tár meghajtója nincs csatolva, az abban lévő modellek `unavailable` jelzést kapnak,
+  de a nyilvántartásból nem törlődnek, és a CFA4 nem tölti le őket máshová.
 - **Beszerzés:** (A) hivatalos oldal megnyitása és a felhasználó saját letöltése, utána import; (B) kezelt letöltés a
   `cfa4-fetch`-csel, **csak a felhasználó kifejezett indítására**: staging, méret és SHA-256, a licenc megmutatása és
   egyszeri elfogadása, ellenőrzés, majd előléptetés a storeba. Automatikus letöltés **soha**: nem modulnyitáskor, nem
@@ -189,6 +196,7 @@ Nem futtatott tesztet nem jelölök sikeresnek, és részleges megvalósítást 
 | AC-23 | forrásállapot-teszt: megszűnt modellnél megtartás vagy eltávolítás választható, automatikus törlés nincs | MM-F6 |
 | AC-14 | offline teszt: telepített modellek kezelése hálózat nélkül | MM-F7 |
 | AC-15 | cache törlése után a store változatlan | MM-F2 |
+| AC-25 | a tár helyét a felhasználó adja meg: választás nélkül nincs letöltés és import; meghajtónként szabad hely látszik; elégtelen helyet a CFA4 elutasít; több tár; az áthelyezés csak kifejezett paranccsal | MM-F2 |
 | AC-16 | Qt6 GUI-teszt (`python/tests/`), képernyőkép a referenciagépen | MM-F4 |
 
 A licenc- és hardverfüggő tesztek a `run-minspec.sh` alatt futnak, a referenciakártyán; valós letöltést a fejlesztés nem végez.
