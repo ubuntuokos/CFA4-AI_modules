@@ -13,6 +13,7 @@ workspace = true
 cfa4-accel = { workspace = true }
 serde = { workspace = true }
 log = { workspace = true }
+jiff = "0.2.43"
 
 [dev-dependencies]
 serde_json = { workspace = true }

@@ -25,7 +25,8 @@
 //! - **Versions:** every change bumps the task's version; a change the user asks for names the
 //!   version it saw, and a stale one is refused ([`QueueError::Stale`]).
 //! - **Missed starts** (the machine was off at the scheduled time): run late, move to the next
-//!   slot the caller computes in the task's time zone, or ask the user ([`MissedStart`]).
+//!   slot (the same local time in the task's IANA time zone, [`crate::schedule`]), or ask the
+//!   user ([`MissedStart`]).
 
 use serde::{Deserialize, Serialize};
 
@@ -66,7 +67,8 @@ pub enum StartMode {
 }
 
 impl StartMode {
-    fn at(self) -> Option<UtcMs> {
+    /// The scheduled start time, if any.
+    pub fn at(self) -> Option<UtcMs> {
         match self {
             StartMode::At { at } | StartMode::AtWithResources { at } => Some(at),
             StartMode::Now | StartMode::WhenResources => None,
@@ -85,7 +87,8 @@ impl StartMode {
 pub enum MissedStart {
     /// Start as soon as possible.
     RunLate,
-    /// Move to the next slot (the caller computes it in the task's IANA time zone).
+    /// Move to the next slot: the same local time on the next day it is still ahead, in the
+    /// task's IANA time zone.
     NextSlot,
     /// Wait for the user.
     AskUser,
@@ -147,6 +150,15 @@ pub struct Transition {
     pub reason: String,
 }
 
+/// What a `blocked` task waits for from the user.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase", tag = "kind")]
+pub enum Awaiting {
+    /// The one-time acceptance of the model's terms: per implementation and weights hash. The CFA4
+    /// does not distribute the model, so this warning is the user's own check (ADR 0008 §2).
+    LicenseAcceptance { model: String, weights_sha256: String },
+}
+
 /// What the client submits.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -160,6 +172,15 @@ pub struct NewTask {
     pub missed: MissedStart,
     /// It saves checkpoints and can continue from the last one.
     pub resumable: bool,
+    /// The IANA time zone its start time was chosen in (`Europe/Budapest`); a missed start moves
+    /// to the next slot there ([`crate::schedule::next_slot`]). `None`: UTC.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub time_zone: Option<String>,
+    /// Tasks with the same key use the same resident model (for example the weights hash): of two
+    /// equally ranked tasks the one that matches the model already loaded goes first, so the model
+    /// is loaded once for the batch (ACS-8, [`QueueConfig::starvation_ms`] bounds the preference).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub batch_key: Option<String>,
 }
 
 /// A task in the queue.
@@ -172,6 +193,13 @@ pub struct Task {
     pub start: StartMode,
     pub missed: MissedStart,
     pub resumable: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub time_zone: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub batch_key: Option<String>,
+    /// Set while the task is `blocked` on something only the user can give, not on resources.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub awaiting: Option<Awaiting>,
     pub state: State,
     pub version: u64,
     pub submitted_at: UtcMs,
@@ -259,12 +287,13 @@ pub enum QueueEvent {
         id: String,
         denied: Denied,
     },
-    /// A scheduled start was missed; with [`MissedStart::NextSlot`] the caller sets the new time
-    /// with [`Queue::reschedule`].
+    /// A scheduled start was missed; with [`MissedStart::NextSlot`] it moved to `next_at`.
     Missed {
         id: String,
         scheduled_at: UtcMs,
         action: MissedStart,
+        /// With [`MissedStart::NextSlot`]: the new start time (stays `scheduled`).
+        next_at: Option<UtcMs>,
     },
     /// The lease lapsed: resumed from the checkpoint (queued) or failed.
     LeaseLost {
@@ -279,9 +308,13 @@ pub enum QueueEvent {
 pub struct Queue {
     config: QueueConfig,
     tasks: Vec<Task>,
+    /// The `batch_key` of the task started last: the model that is loaded now.
+    #[serde(default)]
+    resident: Option<String>,
 }
 
-fn class_rank(class: Class) -> u8 {
+/// Start order of the classes (lower goes first): interactive, final render, background, speculative.
+pub fn class_rank(class: Class) -> u8 {
     match class {
         Class::Interactive => 0,
         Class::FinalRender => 1,
@@ -343,13 +376,13 @@ impl Task {
 
 impl Queue {
     pub fn new(config: QueueConfig) -> Self {
-        Queue { config, tasks: Vec::new() }
+        Queue { config, tasks: Vec::new(), resident: None }
     }
 
     /// A queue over tasks loaded from a store (the store runs one operation on them and writes
     /// back what changed).
     pub fn from_tasks(config: QueueConfig, tasks: Vec<Task>) -> Self {
-        Queue { config, tasks }
+        Queue { config, tasks, resident: None }
     }
 
     pub fn into_tasks(self) -> Vec<Task> {
@@ -381,6 +414,9 @@ impl Queue {
         if self.get(&new.id).is_some() {
             return Err(QueueError::DuplicateId { id: new.id });
         }
+        if let Some(zone) = &new.time_zone {
+            crate::schedule::check_zone(zone).map_err(|e| QueueError::Invalid { reason: format!("time zone: {e:?}") })?;
+        }
         let scheduled = new.start.at().is_some();
         let task = Task {
             id: new.id,
@@ -389,6 +425,9 @@ impl Queue {
             start: new.start,
             missed: new.missed,
             resumable: new.resumable,
+            time_zone: new.time_zone,
+            batch_key: new.batch_key,
+            awaiting: None,
             state: if scheduled { State::Scheduled } else { State::Queued },
             version: 1,
             submitted_at: now,
@@ -456,26 +495,59 @@ impl Queue {
                 let _ = t.set_state(State::Queued, now, Actor::Scheduler, "start time reached");
                 continue;
             }
-            events.push(QueueEvent::Missed { id: t.id.clone(), scheduled_at: at, action: t.missed });
-            match t.missed {
+            let next_at = match t.missed {
                 MissedStart::RunLate => {
                     let _ = t.set_state(State::Queued, now, Actor::Scheduler, "missed start, running late");
+                    None
                 }
-                // stays scheduled until the caller sets the next slot or the user decides
-                MissedStart::NextSlot | MissedStart::AskUser => {
+                // the same local time on the next day it is still ahead, in the task's time zone
+                MissedStart::NextSlot => match crate::schedule::next_slot(at, t.time_zone.as_deref().unwrap_or("UTC"), now) {
+                    Ok(next) => {
+                        t.start = match t.start {
+                            StartMode::AtWithResources { .. } => StartMode::AtWithResources { at: next },
+                            _ => StartMode::At { at: next },
+                        };
+                        t.version = t.version.saturating_add(1);
+                        Some(next)
+                    }
+                    // no zone to compute it in: the user decides
+                    Err(_) => {
+                        let _ = t.set_state(State::Paused, now, Actor::Scheduler, "missed start, next slot unknown");
+                        None
+                    }
+                },
+                MissedStart::AskUser => {
                     let _ = t.set_state(State::Paused, now, Actor::Scheduler, "missed start");
+                    None
                 }
-            }
+            };
+            events.push(QueueEvent::Missed { id: t.id.clone(), scheduled_at: at, action: t.missed, next_at });
         }
     }
 
     /// Ready tasks in start order.
-    fn order(&self) -> Vec<usize> {
+    fn order(&self, now: UtcMs) -> Vec<usize> {
         let mut ready: Vec<usize> =
             (0..self.tasks.len()).filter(|&i| self.tasks.get(i).is_some_and(|t| matches!(t.state, State::Queued | State::Waiting))).collect();
+        let starvation = self.config.starvation_ms;
+        // among equals the task that matches the resident model goes first, unless an older one
+        // has already waited too long (a model is not kept hot at the cost of starving others)
+        let waited_too_long = |t: &Task| t.ready_since.is_some_and(|s| now.saturating_sub(s) >= starvation);
+        // `false` sorts first: matches the resident model and no starved rival of the same rank
+        let behind_resident = |t: &Task| -> bool {
+            let matches = t.batch_key.is_some() && t.batch_key == self.resident;
+            let rival_starved = self.tasks.iter().any(|o| {
+                matches!(o.state, State::Queued | State::Waiting)
+                    && o.id != t.id
+                    && o.request.class == t.request.class
+                    && o.priority == t.priority
+                    && waited_too_long(o)
+            });
+            !matches || rival_starved
+        };
         ready.sort_by_key(|&i| {
             let t = self.tasks.get(i);
-            (t.map(|t| class_rank(t.request.class)), t.map(|t| std::cmp::Reverse(t.priority)), t.map(|t| t.submitted_at), i)
+            (t.map(|t| class_rank(t.request.class)), t.map(|t| std::cmp::Reverse(t.priority)), t.map(behind_resident), t.map(|t| t.submitted_at), i)
         });
         ready
     }
@@ -483,7 +555,8 @@ impl Queue {
     fn launch(&mut self, now: UtcMs, owner: &str, manager: &mut Manager, snap: &Snapshot, monitor: &Monitor, events: &mut Vec<QueueEvent>) {
         let starvation = self.config.starvation_ms;
         let lease = self.config.lease_ms;
-        for i in self.order() {
+        let mut resident = self.resident.clone();
+        for i in self.order(now) {
             let Some(t) = self.tasks.get_mut(i) else {
                 continue;
             };
@@ -501,6 +574,9 @@ impl Queue {
                     t.lease_until = Some(now.saturating_add(lease));
                     t.wait_reasons.clear();
                     events.push(QueueEvent::Started { id: t.id.clone(), gpu_node: grant.gpu_node, resumed_from });
+                    if t.batch_key.is_some() {
+                        resident = t.batch_key.clone();
+                    }
                 }
                 Err(Denied::Wait { reasons }) => {
                     let first_wait = t.state != State::Waiting;
@@ -523,6 +599,43 @@ impl Queue {
                 }
             }
         }
+        self.resident = resident;
+    }
+
+    /// The model loaded now (the `batch_key` of the task started last).
+    pub fn resident(&self) -> Option<&str> {
+        self.resident.as_deref()
+    }
+
+    /// The model is gone from memory (unloaded, or the worker ended): no task is preferred for it.
+    pub fn clear_resident(&mut self) {
+        self.resident = None;
+    }
+
+    /// Block a task until the user has accepted the model's terms (per implementation and weights
+    /// hash). The one-time acceptance itself is stored by the caller; a task whose acceptance is
+    /// already on record never gets here.
+    pub fn await_license(&mut self, id: &str, expected_version: u64, model: &str, weights_sha256: &str, now: UtcMs) -> Result<(), QueueError> {
+        check_text("model", model)?;
+        check_text("weights_sha256", weights_sha256)?;
+        let t = self.get_mut(id)?;
+        t.check_version(expected_version)?;
+        t.set_state(State::Blocked, now, Actor::Scheduler, "license acceptance needed")?;
+        t.awaiting = Some(Awaiting::LicenseAcceptance { model: model.to_owned(), weights_sha256: weights_sha256.to_owned() });
+        t.blocked_by = None;
+        Ok(())
+    }
+
+    /// The user accepted the terms: the task is queued again, behind nothing it did not wait for.
+    pub fn accept_license(&mut self, id: &str, expected_version: u64, now: UtcMs) -> Result<(), QueueError> {
+        let t = self.get_mut(id)?;
+        t.check_version(expected_version)?;
+        if !matches!(t.awaiting, Some(Awaiting::LicenseAcceptance { .. })) {
+            return Err(QueueError::Invalid { reason: "the task does not wait for a license acceptance".into() });
+        }
+        t.set_state(State::Queued, now, Actor::User, "license accepted")?;
+        t.awaiting = None;
+        Ok(())
     }
 
     /// The supervisor renews the lease of a running task.
@@ -644,6 +757,7 @@ impl Queue {
         t.set_state(State::Queued, now, Actor::User, "new path")?;
         t.request = request;
         t.blocked_by = None;
+        t.awaiting = None;
         Ok(())
     }
 
@@ -708,6 +822,8 @@ mod tests {
             start,
             missed: MissedStart::RunLate,
             resumable: true,
+            time_zone: None,
+            batch_key: None,
         }
     }
 
@@ -729,6 +845,64 @@ mod tests {
         assert!(matches!(e.first(), Some(QueueEvent::Started { id, .. }) if id == "p0"), "{e:?}");
         assert_eq!((state(&q, "p0"), state(&q, "p1-high"), state(&q, "p1-low")), (Some(State::Running), Some(State::Running), Some(State::Waiting)));
         assert!(matches!(e.last(), Some(QueueEvent::Waiting { notify: true, .. })), "started now: the user is told");
+    }
+
+    fn keyed(id: &str, key: &str, vram_gib: u64) -> NewTask {
+        NewTask { batch_key: Some(key.into()), ..task(id, Class::Background, Priority::Normal, vram_gib, StartMode::Now) }
+    }
+
+    #[test]
+    fn tasks_of_the_resident_model_go_first_but_never_starve_an_older_one() {
+        let s = snap();
+        let mon = Monitor::default();
+        // the large task takes all VRAM, so only one task runs at a time and the order is visible
+        let mut m = manager(&s);
+        let mut q = Queue::default();
+        q.submit(keyed("a1", "model-a", 8), 1).unwrap();
+        q.tick(2, "sup", &mut m, &s, &mon).unwrap();
+        assert_eq!(q.resident(), Some("model-a"));
+        q.submit(keyed("b1", "model-b", 8), 3).unwrap();
+        q.submit(keyed("a2", "model-a", 8), 4).unwrap();
+        q.finish("a1", "sup", State::Succeeded, 5, "done", &mut m).unwrap();
+        q.tick(6, "sup", &mut m, &s, &mon).unwrap();
+        assert_eq!((state(&q, "a2"), state(&q, "b1")), (Some(State::Running), Some(State::Waiting)), "the loaded model is reused: one load for the batch");
+        // after the starvation limit the older task of another model is not passed again
+        let mut m = manager(&s);
+        let mut q = Queue::default();
+        q.submit(keyed("a1", "model-a", 8), 1).unwrap();
+        q.tick(2, "sup", &mut m, &s, &mon).unwrap();
+        q.submit(keyed("b1", "model-b", 8), 3).unwrap();
+        let late = 3 + QueueConfig::default().starvation_ms + 1;
+        q.submit(keyed("a2", "model-a", 8), late).unwrap();
+        q.finish("a1", "sup", State::Succeeded, late, "done", &mut m).unwrap();
+        q.tick(late + 1, "sup", &mut m, &s, &mon).unwrap();
+        assert_eq!((state(&q, "b1"), state(&q, "a2")), (Some(State::Running), Some(State::Waiting)), "b1 waited too long");
+        q.clear_resident();
+        assert_eq!(q.resident(), None);
+    }
+
+    #[test]
+    fn a_task_waits_in_blocked_until_the_license_is_accepted() {
+        let mut q = Queue::default();
+        q.submit(keyed("lic", "model-x", 4), 1).unwrap();
+        let v = q.get("lic").map(|t| t.version).unwrap_or(0);
+        assert!(q.accept_license("lic", v, 2).is_err(), "nothing was awaited");
+        q.await_license("lic", v, "model-x", "ab12", 2).unwrap();
+        let t = q.get("lic").unwrap();
+        assert_eq!(t.state, State::Blocked);
+        assert_eq!(t.awaiting, Some(Awaiting::LicenseAcceptance { model: "model-x".into(), weights_sha256: "ab12".into() }));
+        // blocked tasks are never started, whatever the resources
+        let s = snap();
+        let mut m = manager(&s);
+        q.tick(3, "sup", &mut m, &s, &Monitor::default()).unwrap();
+        assert_eq!(state(&q, "lic"), Some(State::Blocked));
+        let v = q.get("lic").map(|t| t.version).unwrap_or(0);
+        assert!(matches!(q.accept_license("lic", v.saturating_add(9), 4), Err(QueueError::Stale { .. })));
+        q.accept_license("lic", v, 4).unwrap();
+        assert_eq!((state(&q, "lic"), q.get("lic").and_then(|t| t.awaiting.clone())), (Some(State::Queued), None));
+        q.tick(5, "sup", &mut m, &s, &Monitor::default()).unwrap();
+        assert_eq!(state(&q, "lic"), Some(State::Running));
+        assert!(q.await_license("lic", 1, "", "x", 6).is_err(), "hostile input is refused");
     }
 
     #[test]
@@ -819,11 +993,18 @@ mod tests {
         // the machine was off from minute 1 to minute 60
         let e = q.tick(60 * MIN, "sup", &mut m, &s, &mon).unwrap();
         assert_eq!(state(&q, "late"), Some(State::Running), "run late");
-        assert_eq!((state(&q, "slot"), state(&q, "ask")), (Some(State::Paused), Some(State::Paused)));
-        assert!(e.contains(&QueueEvent::Missed { id: "slot".into(), scheduled_at: 10 * MIN, action: MissedStart::NextSlot }));
+        // the next slot: the same time of day tomorrow (no zone given: UTC), still scheduled
+        assert_eq!((state(&q, "slot"), state(&q, "ask")), (Some(State::Scheduled), Some(State::Paused)));
+        let next = 24 * 60 * MIN + 10 * MIN;
+        assert!(e.contains(&QueueEvent::Missed { id: "slot".into(), scheduled_at: 10 * MIN, action: MissedStart::NextSlot, next_at: Some(next) }), "{e:?}");
+        assert_eq!(q.get("slot").map(|t| t.start), Some(StartMode::At { at: next }));
+        // the user can still move it
         let v = q.get("slot").map_or(0, |t| t.version);
-        q.reschedule("slot", v, 24 * 60 * MIN, 60 * MIN).unwrap();
+        q.reschedule("slot", v, 2 * next, 60 * MIN).unwrap();
         assert_eq!(state(&q, "slot"), Some(State::Scheduled));
+        // an unknown zone is refused when the task is submitted
+        let bad = NewTask { time_zone: Some("Nowhere/Atlantis".into()), ..task("tz", Class::Background, Priority::Normal, 0, StartMode::Now) };
+        assert!(matches!(q.submit(bad, 0), Err(QueueError::Invalid { .. })));
         // on time (within the grace)
         q.tick(102 * MIN, "sup", &mut m, &s, &mon).unwrap();
         assert_eq!(state(&q, "night"), Some(State::Running));

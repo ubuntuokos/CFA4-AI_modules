@@ -136,6 +136,7 @@ K18), jóváhagyással. A modellkezelő szabályai:
   projektben erősebb figyelmeztetést ad, de nem tilt. A `code` és a `dependencies` rész
   ismeretlen értéke továbbra is blokkol, mert azokat a worker kiadója szállítja. Részletek:
   [#91 modellválasztás](../ai/modellvalasztas-091.md) 1.1 pont, CFA4-sdk `docs/protocol.md` 5. pont.
+  A `blocked` állapotot és az elfogadás újrasorolását a feladatsor is így kezeli ([ACS-terv](../ai/acs-adaptiv-eroforras.md) 11. pont, 1.).
 - **Biztonságos formátum:** az első körben csak `.onnx` és `.safetensors`. Pickle-alapú formátum
   (`.pt`, `.bin`, `.ckpt`) csak a PyTorch-kapuban, külön szabállyal jöhet.
 - **Frissítés:** az új verzió mellé kerül, ellenőrzés után lesz aktív. Sikertelen frissítés nem
@@ -164,6 +165,10 @@ K18), jóváhagyással. A modellkezelő szabályai:
   gépen a felhasználó engedélyezheti.
 - **Atomi foglalás:** egy feladat az összes szükséges erőforrást egyszerre kapja meg, vagy semmit.
   Részleges foglalással nem várakozhat („tartok és várok”), így nem alakulhat ki holtpont.
+- **Modellmegtartás és kötegelés** (az ACS-ből átvéve): a betöltött modellt a worker megtartja, az
+  azonos modellű, egyformán rangsorolt feladatok egymás után futnak, hogy a modell egyszer
+  töltődjön be; ez nem éheztethet. Hiány esetén a legrégebben használt tétlen modell ürül először.
+  Részletek: [ACS-terv](../ai/acs-adaptiv-eroforras.md) 11. pont, 4.
 
 ### 4. Feladatok és jobállapotok
 
@@ -172,7 +177,7 @@ projektet: az eredmény új asset vagy javaslat, amelyet a felhasználó előné
 Alkalmazás parancs tesz az idővonalra. Az Alkalmazás előtt a motor ellenőrzi, hogy a projekt
 verziója azonos-e azzal, amelyre a javaslat készült. Ha közben változott, a javaslatot újra kell
 számolni vagy a felhasználónak jóvá kell hagynia. Az Alkalmazás egyetlen visszavonható lépés
-(Undo/Redo).
+(Undo/Redo). A feladatsor ehhez nem nyúl ([ACS-terv](../ai/acs-adaptiv-eroforras.md) 11. pont, 2.).
 
 **Jobállapotok:**
 
@@ -214,7 +219,7 @@ A tervezett rétegbesorolás a crate-ek létrehozásakor az `xtask layers` szab�
 | `cfa4-ai-models` | L2 | Modelltár, modellrekordok, SHA-256 ellenőrzés, deduplikáció, verziók |
 | `cfa4-ai-registry` | L2 | Manifestolvasás, sémaellenőrzés, hardver szerinti szűrés, útválasztás |
 | `cfa4-store` | L5 | PostgreSQL-kapcsolatkészlet, migrációk, típusos lekérdezések; L5, mert socketes OS-I/O (Unix-socket a PostgreSQL-folyamathoz) |
-| `cfa4-tasks` | L2 | Nem AI-s, közös CFA4-crate (tulajdonosi döntés, 2026-11-07): erőforrás-kezelő (az ACS hardverfelmérése az `accel` crate-re építve, foglalás, futásidejű figyelés), feladatsor, ütemező, tartós jobtár (a `cfa4-store`-on át); felület nélkül |
+| `cfa4-tasks` | L2 | Nem AI-s, közös CFA4-crate (tulajdonosi döntés, 2026-11-07): erőforrás-kezelő (az ACS hardverfelmérése az `accel` crate-re építve az AI-repóban, a CFA4 főágban a `cfa4-route` felmérésére, foglalás, futásidejű figyelés), feladatsor, ütemező, tartós jobtár (a `cfa4-store`-on át); felület nélkül |
 | `cfa4-ai-jobs` | L2 | AI-feladatgráf, VRAM-igény, gyorsítótár-kulcs; a `cfa4-tasks` kliense |
 | `cfa4-ai-workers` | L3 | Worker-folyamatok indítása, felügyelete és újraindítása, az IPC kliensoldala |
 | `ai.*` parancsok | L4 | A `crates/engine` parancsregiszterében, nem a `ui-egui`-ban |
@@ -366,7 +371,7 @@ alatt is folytatható, mert nem érinti a felületet:
   döntés, 2026-11-07). A Kimi K3 (kimi-k3-in-c, Apache-2.0, C99) fogalmait Rustban írjuk meg ebbe
   a közös infrastruktúrába; C-kód a CFA4 folyamatába nem kerül. Külön workerként, helyi LLM-hez
   csak későbbi, külön döntéssel jöhet. Terv és állapot:
-  [ACS-terv](../ai/acs-adaptiv-eroforras.md); az ACS-1 és az ACS-2 kész (2026-11-09), az ACS-3 kész (2026-11-10).
+  [ACS-terv](../ai/acs-adaptiv-eroforras.md); az ACS-1…ACS-4 kész (2026-11-09…12), az ACS-5 panelje és motorja kész, az ACS-6 és az ACS-7 folyamatban; az ACS-8 (2026-11-22) a lenti négy átvezetést hozza az ACS-be.
 
 *Kilépés:* az egui nincs a buildben, a Qt 6 shell a valódi motorral dolgozik.
 
