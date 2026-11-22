@@ -12,6 +12,12 @@
 - **Nem vehető át:** GPL-2.0-only kód (pl. HandBrake), AGPL, nem szabad licencű vagy ismeretlen
   licencű kód, és bármely zárt program (Adobe Premiere, DaVinci Resolve) kódja vagy eszközei.
   Ezeknek a képességét saját kóddal vagy külső programként hívva kell megvalósítani.
+- **AGPL választható workerként (tulajdonosi döntés, 2026-11-22; feloldja az általános
+  AGPL-tilalmat):** AGPL-3.0 licencű kód és modell (pl. Ultralytics YOLO) csak külön letöltött,
+  választható workerként futhat, saját, homokozóba zárt folyamatban, a nem kereskedelmi workerek
+  mintájára (ADR 0008 §8). A CFA4 folyamatába nem töltődik be, a CFA4 kódjába nem másolható és nem
+  portolható, nem lehet alapértelmezés; a licence a jegyzékben szerepel, a forrása vele együtt
+  elérhető (AGPL-3.0 13. pont), és a felület megnevezi a licencet.
 - **Nincs fizetős rész** (a tulajdonos döntése, 2026-11-08; felváltja a korábbi „ingyenes alap,
   fizetős kiegészítők” modellt): a CFA4 minden része ingyenes és szabadon terjeszthető. Nincs
   fizetős kiegészítő vagy worker, fizetős LTS-ág vagy csomag, licenckulcs, vízjel, próbaidő vagy
@@ -72,7 +78,7 @@ Not allowed:
 | Source | Why | Alternative |
 |---|---|---|
 | GPL-2.0-only (e.g. HandBrake, parts of the Linux kernel) | incompatible with GPL-3.0 | call the program as an external process, or reimplement |
-| AGPL-3.0 | network-use obligations we do not want on the whole product | reimplement |
+| AGPL-3.0, in CFA4's own code or process | network-use obligations we do not want on the whole product | reimplement; or run it as an optional AGPL worker in its own process (owner decision 2026-11-22, ADR 0008 §8) |
 | GPL code linked with GPL-incompatible libraries | cannot be distributed | — |
 | Proprietary software (Adobe Premiere, DaVinci Resolve, …) | no licence | reimplement the behaviour from public documentation and observation; never copy code, icons, presets, LUTs or fonts |
 | Unknown / no licence | all rights reserved | ask the author or leave it out |

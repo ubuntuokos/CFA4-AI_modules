@@ -276,7 +276,16 @@ fogyasztja a sémát. A jobállapotok és a manifest v3 licencmezői az SDK-ban 
 
 ### 8. Licenc; nincs fizetős rész
 
-- Az alapprogram és minden itteni crate GPL-3.0-or-later. AGPL és GPL-2.0-only kód nem kerülhet be.
+- Az alapprogram és minden itteni crate GPL-3.0-or-later. AGPL és GPL-2.0-only kód nem kerülhet be
+  az alapprogramba és a crate-ekbe.
+- **AGPL-3.0 választható workerként** (tulajdonosi döntés, 2026-11-22; feloldja az általános
+  AGPL-tilalmat, mert 2026-11-08 óta nincs fizetős vagy zárt rész): AGPL-es kód és modell (pl.
+  Ultralytics YOLO) ugyanúgy futhat, mint a lenti nem kereskedelmi kód: külön letöltött, külön,
+  homokozós folyamatban futó, választható workerként, soha nem alapértelmezésként, soha nem a CFA4
+  folyamatában és nem átmásolva a CFA4 kódjába. A jegyzék `code`/`dependencies` mezője rögzíti az
+  AGPL-t, a worker forrása vele együtt elérhető (AGPL-3.0 13. pont), és a felület megnevezi a
+  licencet. Egy AGPL-es worker mellé is kell gyártófüggetlen, nyílt licencű alapértelmezés, ahol a
+  funkció alapfunkció.
 - **A licenc négy külön mező** a manifestben (v3), mindegyik SPDX-azonosítóval és a kereskedelmi
   használat jelzésével: `code` (a worker kódja), `dependencies` (a futtató és a könyvtárak),
   `weights` (a modell súlyai), `dataset` (a tanítóadat, ha ismert). Egyetlen „kereskedelmi” igen/nem

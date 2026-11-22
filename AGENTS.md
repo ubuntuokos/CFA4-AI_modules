@@ -22,7 +22,12 @@ attribution and original copyright/licence requirements remain in force.
     check every file header, keep the original copyright/licence headers and add a row to the
     reused-code register (docs/licensing.md §5) in the same commit.
   - NEVER reuse GPL-2.0-only (e.g. HandBrake), AGPL, unlicensed or proprietary code (Adobe,
-    DaVinci Resolve). Reimplement the capability or call the program as an external process.
+    DaVinci Resolve) in CFA4's own code. Reimplement the capability or call the program as an external process.
+  - **AGPL-3.0 as an optional worker** (owner decision 2026-11-22, lifts the blanket AGPL ban):
+    AGPL-3.0 code and models (e.g. Ultralytics YOLO) may run only as a separately downloaded,
+    optional worker in its own sandboxed process, like non-commercial workers (ADR 0008 §8); never in
+    the CFA4 process, never copied or ported into CFA4's code, never a default; licence recorded,
+    source offered with it (AGPL-3.0 §13). Details: `docs/licensing.md` §3.
   - Dependencies must pass `cargo deny check licenses` (`deny.toml`).
   - **No paid or commercial part** (owner decision 2026-11-08): never add paid extras, editions or
     workers, licence keys, trials, usage or resolution limits, watermarks or paid support tiers.
@@ -163,7 +168,8 @@ reproduce an image (for example, point lists traced from someone else's icon).
 - ffmpeg/ffprobe may be used only as external test oracles and fixture generators. They are never
   linked, bundled or shipped.
 - Dependencies must use GPL-3.0-compatible licences, as listed in `deny.toml`
-  (`cargo deny check licenses`). GPL-2.0-only and AGPL dependencies are not allowed.
+  (`cargo deny check licenses`). GPL-2.0-only and AGPL dependencies are not allowed (an optional AGPL
+  worker is a separate program, not a dependency; owner decision 2026-11-22).
 
 ## 3. Engineering rules
 
