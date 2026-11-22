@@ -1,6 +1,6 @@
 # CFA4-MODEL-MANAGER-001: az egységes modellkezelő és -letöltő, F0-audit és adaptáció
 
-> **Állapot:** a 7. pont döntéseit (D1–D8) **a tulajdonos a javaslatok szerint elfogadta (István, 2026-11-22)**; a CFA3-összevetésből jött **D9 (a, b) is elfogadva (István, 2026-11-22)**; a megvalósítás indítása külön engedélyt kér · **Készült:** 2026-11-22 · **Nyelv:** magyar
+> **Állapot:** a 7. pont döntéseit (D1–D8) **a tulajdonos a javaslatok szerint elfogadta (István, 2026-11-22)**; a CFA3-összevetésből jött **D9 (a, b) is elfogadva (István, 2026-11-22)**; az llmfit beépítése (6a pont, D10) **a CFA4 része, nem külön alkalmazás (István, 2026-11-22)**; a megvalósítás indítása külön engedélyt kér · **Készült:** 2026-11-22 · **Nyelv:** magyar
 > **Nem indít el semmit:** a megvalósítás az F0 kapu (Qt6 kész, egui kint, [ADR 0008](../adr/ADR-0008-ai-processing-layer.md))
 > és a tulajdonos jóváhagyása után kezdődik. Ez a dokumentum a megbízás (CFA4-MODEL-MANAGER-001, 2026-11-22)
 > **F0 – Architecture & Audit** szakasza és az abból következő, CFA4-hez igazított terv.
@@ -168,7 +168,8 @@ képmodelleket nem fedi). A magban `unsafe` csak tesztben és megjegyzésben van
 és `share` modul HTTP-t használ (`ureq`), a `share` és a benchmark-megosztás eredményeket küld a projektnek, a `providers` helyi
 szolgáltatókat (Ollama, llama.cpp stb.) kérdez. Nem vizsgáltam: a teljes forrást soronként, a `llmfit-web` és `llmfit-desktop` részt.
 
-**Javaslat a beépítésre (D10, elfogadásra vár):**
+**Beépítés (D10, elfogadva: István, 2026-11-22 — „a CFA4 része legyen, ne külön alkalmazás”):** az llmfit a CFA4 része, nem külön program
+vagy alkalmazás, ezért a 1. pont szerint könyvtárként épül be:
 1. **Felhasználás könyvtárként** (`llmfit-core`, rögzített verzió, `cargo deny` zöld, a licenc a `docs/licensing.md` nyilvántartásában),
    nem külső programként és nem átírva. Így az ítélet ugyanaz, mint az upstreamé, és a frissítés egy verziólépés.
 2. **Csak a számító részt hívjuk:** modelladatbázis, `ModelFit::analyze`, `estimate_model_plan`, `HardwareProfile`. A `bench`, `providers`,
