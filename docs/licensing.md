@@ -16,7 +16,8 @@
   AGPL-tilalmat):** AGPL-3.0 licencű kód és modell (pl. Ultralytics YOLO) csak külön letöltött,
   választható workerként futhat, saját, homokozóba zárt folyamatban, a nem kereskedelmi workerek
   mintájára (ADR 0008 §8). A CFA4 folyamatába nem töltődik be, a CFA4 kódjába nem másolható és nem
-  portolható, nem lehet alapértelmezés; a licence a jegyzékben szerepel, a forrása vele együtt
+  portolható, nem lehet alapértelmezés; a licence a jegyzékben szerepel; a worker, valamint minden AGPL-es modell- vagy
+  adatkészlet-komponens megfelelő forrása vele együtt
   elérhető (AGPL-3.0 13. pont), és a felület megnevezi a licencet.
 - **Nincs fizetős rész** (a tulajdonos döntése, 2026-11-08; felváltja a korábbi „ingyenes alap,
   fizetős kiegészítők” modellt): a CFA4 minden része ingyenes és szabadon terjeszthető. Nincs

@@ -27,7 +27,8 @@ attribution and original copyright/licence requirements remain in force.
     AGPL-3.0 code and models (e.g. Ultralytics YOLO) may run only as a separately downloaded,
     optional worker in its own sandboxed process, like non-commercial workers (ADR 0008 §8); never in
     the CFA4 process, never copied or ported into CFA4's code, never a default; licence recorded,
-    source offered with it (AGPL-3.0 §13). Details: `docs/licensing.md` §3.
+    its source, and the corresponding source of each AGPL-licensed model or dataset
+    component, offered with it (AGPL-3.0 §13). Details: `docs/licensing.md` §3.
   - Dependencies must pass `cargo deny check licenses` (`deny.toml`).
   - **No paid or commercial part** (owner decision 2026-11-08): never add paid extras, editions or
     workers, licence keys, trials, usage or resolution limits, watermarks or paid support tiers.

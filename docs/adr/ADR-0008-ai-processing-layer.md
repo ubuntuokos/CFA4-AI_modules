@@ -285,7 +285,8 @@ fogyasztja a sémát. A jobállapotok és a manifest v3 licencmezői az SDK-ban 
   folyamatában és nem átmásolva a CFA4 kódjába. Az AGPL-t a jegyzék annál a komponensnél rögzíti,
   amelyre vonatkozik (lásd a négy licencmezőt alább): AGPL-es kódnál `code`, AGPL-es könyvtárnál
   `dependencies`, AGPL-es modellsúlynál `weights` (pl. MIT-licencű worker AGPL-es súllyal: `code`
-  és `dependencies` = MIT, `weights` = AGPL-3.0). Az AGPL-es kód forrása vele együtt elérhető (AGPL-3.0 13. pont), és a felület megnevezi a
+  és `dependencies` = MIT, `weights` = AGPL-3.0). Az AGPL-es kód, valamint minden AGPL-es modell- vagy adatkészlet-komponens
+  megfelelő forrása vele együtt elérhető (AGPL-3.0 13. pont), és a felület megnevezi a
   licencet. Egy AGPL-es worker mellé is kell gyártófüggetlen, nyílt licencű alapértelmezés, ahol a
   funkció alapfunkció.
 - **A licenc négy külön mező** a manifestben (v3), mindegyik SPDX-azonosítóval és a kereskedelmi
