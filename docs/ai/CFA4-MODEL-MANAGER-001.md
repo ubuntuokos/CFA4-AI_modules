@@ -53,7 +53,7 @@ pontjai (3. és a nyilvántartás-hivatkozás). **Nem vizsgáltam:** a CFA3 rep�
 |---|---|---|
 | 6.1 kizárólagos modellkezelés, modul nem készít sajátot | 12. pont, AC-10, AC-17–19 | átvéve |
 | 6.2 modell nélküli telepítés | ADR 0008, „a CFA4 nem szállít modellt” | átvéve |
-| 6.3 **hiányzó modellt a Model Manager automatikusan beszerzi** a generátor indításakor | AC-03, AC-21: soha nincs automatikus letöltés | **eltérés, szándékos**: csak a felhasználó indítja; a hiányzó modellnél a felület a forrást és a tárhelyigényt mutatja |
+| 6.3 **hiányzó modellt a Model Manager automatikusan beszerzi** a generátor indításakor | AC-03, AC-21: soha nincs automatikus letöltés; AC-26: javaslat igen | **eltérés, szándékos** (István, 2026-11-22): nem tölt le, de javaslatot tesz a modellre, és ha a modell már nem létezik, helyettesítőt javasol |
 | 6.4 azonos modell ismételt letöltése tilos | deduplikáció hash szerint (5. pont) | átvéve |
 | 6.5 több kérés egyetlen közös letöltést kap | egy letöltési feladat, a többi kérés ahhoz kapcsolódik | átvéve (a `cfa4-tasks` feladatsor azonosító szerint összevon) |
 | 6.6 azonosság csak tartalom szerint | 3.2 | átvéve |
@@ -126,6 +126,13 @@ Fájlnévre vagy útra nem épül azonosság; az azonosság (modell, revízió, 
   egyszeri elfogadása, ellenőrzés, majd előléptetés a storeba. Automatikus letöltés **soha**: nem modulnyitáskor, nem
   ajánláskor, nem kompatibilitás-vizsgálatkor, nem katalógusfrissítéskor, és nem fejlesztés vagy teszt közben (a tesztek
   helyi, generált modellekkel futnak).
+- **Javaslattétel hiányzó vagy már nem létező modellnél** (István, 2026-11-22): ha egy generátor vagy képesség modellje hiányzik, a CFA4
+  **nem tölti le magától**, de **javaslatot tesz**: javaslatkártya a modellről (név, hivatalos forrás, méret, tárhelyigény,
+  kompatibilitás, licenc), amelyen a letöltés vagy az import gombját a felhasználó nyomja meg. Ugyanígy javaslatot tesz, ha a
+  szükséges modell **már nem létezik** (a forrás megszűnt, archivált vagy visszavont; lásd D9/a): ilyenkor a kártya azt mondja
+  meg, hogy a modell nem érhető el, és **helyettesítő modelleket ajánl** ugyanahhoz a képességhez (először a már telepítettek, utána
+  a katalógusból a kompatibilisek, kompatibilitás és méret szerint). A javaslat csak megjelenik; semmit nem indít, nem tölt le,
+  és nem választ a felhasználó helyett.
 - **Importlépések:** azonosítás, valódi formátum (a kiterjesztés nem elég; pickle nem fogadható el), metaadat, méret,
   hash, forrás és licenc, kompatibilitás, majd felvétel vagy karantén. Részleges, sérült vagy ellenőrizetlen modell nem
   aktiválható; a sikertelen letöltés a meglévő telepítést nem érinti.
@@ -188,6 +195,7 @@ Nem futtatott tesztet nem jelölök sikeresnek, és részleges megvalósítást 
 |---|---|---|
 | AC-01, 02, 20 | registry- és katalógusteszt: azonosság, forrás, licenc, revízió, artifact nyomon követhető | MM-F1 |
 | AC-03, 21 | teszt: modulnyitás, ajánlás, kompatibilitás-vizsgálat és katalógusfrissítés **nem** indít hálózati kérést (hálózatmentes tesztkörnyezet, a letöltő meghívása számlálva) | MM-F3 |
+| AC-26 | hiányzó modellnél javaslatkártya jelenik meg, hálózati kérés és letöltés nélkül; megszűnt modellnél helyettesítő modelleket ajánl (a telepítettek elöl); a javaslat nem indít semmit | MM-F3/F5 |
 | AC-04, 07, 08 | importteszt generált kis modellekkel: jó, hibás hash, részleges, hamis formátum; ellenőrzés nélkül aktiválás elutasítva | MM-F3 |
 | AC-05, 06 | kezelt letöltés generált helyi HTTPS-forrással: megszakítás, újrapróbálás, folytatás | MM-F3 |
 | AC-09, 22 | kompatibilitási címkék ismert hardverprofilokra, az ACS tervezőjével | MM-F1/F5 |
