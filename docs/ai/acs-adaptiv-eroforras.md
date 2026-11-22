@@ -44,6 +44,7 @@ Alkalmazás, modell-előkészítés, licencelfogadás).
 | ACS-5 | Értesítés és Qt 6 feladatkezelő: előzetes tájékoztatás, becsült idő, késés, döntési lehetőség | A felhasználó indítás előtt és közben is megfelelő információt kap | Folyamatban (10. pont): a Qt 6 feladatkezelő panel kész (CFA4 #1172); a motor ad előzetes tájékoztatást (`tasks.check`), időzíthető exportsort és döntést a lekésett indításról (`tasks.decide`). Hiányzik: az ACS-crate-ek a CFA4 főágában |
 | ACS-6 | Modulok bekötése: AI-videó és -hang, Media Intelligence, render és kodekek (az `export` jobja kliens lesz, nem cserélődik le) | A modulok a közös infrastruktúrát használják | Folyamatban: az exportsor és a motor háttérfeladatai már a közös soron mennek (8. pont) |
 | ACS-7 | Integrációs és stabilitási próbák: hardverkonfigurációk, háttérterhelés, hosszú feladatok, újraindítás, memóriahiány, eredményhelyesség (CPU és GPU arany kimenettel) | A funkciók elérhetők maradnak, ahol van biztonságos út | Folyamatban: a sor stabilitási próbája kész, két hibát talált és javított (9. pont) |
+| ACS-8 | Átvezetések az AI-tervből: licencelfogadás, projektverzió-ellenőrzés, vízjel és export utáni lépés, modellmegtartás és kötegelés | Amit az AI-terv már tud, az ACS-ben is megvan, és nincs két szabály ugyanarra | Folyamatban (11. pont): a sor szabályai kész, a felületi és worker-oldali részek az AI-workerekkel jönnek |
 
 ## 4. ACS-1: ami elkészült
 
@@ -397,3 +398,59 @@ nem indult feladatra jó. Az exportsor leállítása a még el nem indult időz�
 
 - **ACS-crate-ek a CFA4 főágában.** Amíg nincsenek ott, a főág motorja nem ad `tasks.list`-et,
   `tasks.check`-et, `waitingFor`-t és „Waiting: …” állapotot.
+
+## 11. ACS-8: átvezetések az AI-tervből
+
+Az összevetés (5. pont) négy olyan szabályt talált, amelyet az AI-terv (ADR 0008) már tud, az ACS
+viszont nem. Tulajdonosi döntés, 2026-11-22: ezek megtartandók, és az ACS-be kerülnek, hogy ne
+legyen két szabály ugyanarra. Ahol a szabály a sorhoz tartozik, kész; ami workert vagy felületet
+igényel, azzal jön.
+
+**1. Licencelfogadás egyszer, modellenként és súlyhash-enként.**
+
+- A CFA4 modellt nem terjeszt: a felhasználó tölti le, és a felület a letöltés előtt megmutatja
+  a négy licencrészt (kód, függőségek, súly, tanítóadat). A felhasználónak implementációnként és
+  súlyhash-enként egyszer el kell fogadnia a figyelmeztetést (ADR 0008 2. pont).
+- A sorban: a feladat `blocked` állapotba kerül, és az `awaiting` mező `licenseAcceptance`-t
+  mond a modell azonosítójával és a súly SHA-256-jával (`Queue::await_license`). A feladat
+  semmilyen erőforrás mellett nem indul, amíg el nincs fogadva. Az elfogadás
+  (`Queue::accept_license`) újra sorba teszi; elavult verzióra nem megy.
+- Az elfogadás rekordja az `ai` sémába kerül (PG-terv); aki már elfogadta, annak a feladat el sem
+  éri a `blocked` állapotot. A `code` és a `dependencies` ismeretlen licence továbbra is blokkol
+  (`route_decision`), a súly és a tanítóadat ismeretlen licence nem.
+- Állapot: a sor szabálya kész és tesztelt; a felületi párbeszéd és a tartós rekord az AI-workerekkel jön.
+
+**2. Projektverzió-ellenőrzés az Alkalmazás előtt.**
+
+- Az AI nem írja közvetlenül a projektet: az eredmény új asset vagy javaslat. Az Alkalmazás előtt
+  a motor ellenőrzi, hogy a projekt verziója azonos-e azzal, amelyre a javaslat készült. Ha
+  változott, a javaslatot újra kell számolni, vagy a felhasználónak jóvá kell hagynia.
+- Az Alkalmazás egyetlen visszavonható lépés. A feladatsor ehhez nem nyúl: az ellenőrzés a motor
+  Alkalmazás parancsának feladata, a sor csak a feladat eredményét őrzi.
+- Állapot: a szabály rögzítve; megvalósítása az első AI-workerrel jön.
+
+**3. Vízjel és export utáni lépés.**
+
+- A CFA4-nek nincs fizetős része és nincs vízjele (SDK 3. protokoll). Más kiadók zárt workerei
+  viszont kérhetnek vízjelet vagy export utáni lépést, a host-jelentés `watermarked` mezője ezt
+  mutatja.
+- Az export utáni lépés (például a minőségellenőrzés vagy a vízjel) az exportsor eleme marad: ugyanaz
+  a `FinalRender` feladat tartja a foglalást, amíg a lépés is le nem fut, és a felszabadítás az
+  utolsó lépés után történik, nem a kódolás után. Külön foglalás a lépésnek nincs, így nincs
+  „tartok és várok”.
+- Állapot: az exportsorban az ellenőrzés kész (a főágban a QC az export után fut); a vízjel az első
+  workert váró rész.
+
+**4. Modellmegtartás és kötegelés.**
+
+- A sorban: a feladat `batch_key`-t kaphat (például a súly hash-e). Két egyformán rangsorolt
+  feladat közül (azonos osztály és prioritás) az megy előre, amelyik a most betöltött modellt
+  használja (`Queue::resident`), így a modell egyszer töltődik be a kötegre. A kötegelés nem
+  éheztethet: ha egy másik modellű, azonos rangú feladat már `starvation_ms`-nál tovább várt,
+  az elsőbbség megszűnik. A render előkészítése is kötegelhető ugyanígy.
+- Modellmegtartás LRU-val: a worker által betöltve tartott modell tétlenül is foglal VRAM-ot és
+  RAM-ot. Az erőforrás-kezelő hiány esetén először a legrégebben használt tétlen modellt
+  ürítteti ki, és csak ha ez nem elég, vár vagy lép az OOM-létrán (a „nincs néma visszalépés”
+  szabály változatlan). `Queue::clear_resident` jelzi, hogy a modell kikerült a memóriából.
+- Állapot: a kötegelés kész és tesztelt; az LRU-ürítés a workerekkel jön, mert a tétlen modell
+  tartása a worker dolga.
