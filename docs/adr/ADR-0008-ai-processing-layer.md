@@ -4,7 +4,7 @@
 **Állapot:** ELFOGADVA (tulajdonosi jóváhagyás, 2026-10-30); KÓD MÉG NINCS  
 **Kiadás:** HOLD
 
-> **Utolsó átnézés:** 2026-11-08 (8. pont: nincs fizetős rész, a zárt workerek, a licenckulcs és a 2K fölötti vízjel kikerült; 2026-11-07: 9. pont: RAM-minimum 16 GB, ajánlott 32 GB; tartós jobtár: PostgreSQL, [PostgreSQL-adatréteg](../ai/postgresql-adatreteg.md); 2. pont: a súly és a tanítóadat licence a felhasználó felelőssége; 2026-11-02: F3: angol felirat-időzítés; 2026-11-01: a 6. pont, az ONNX nem kötelező; 2026-10-31: a 2. pont kivétele a zárt workerekre) · **Változás:** major (CFA4-AI-PLAN-001 és a CFA3/FA3 elődtervek
+> **Utolsó átnézés:** 2026-11-22 (10. és 11. pont: végrehajtási modell, színkezelés, gyorsítótárkulcs, idő, ComfyUI-szerű kezelhetőség és kezelt ComfyUI-worker; a terv jóváhagyva és véglegesítve; 2026-11-08: 8. pont: nincs fizetős rész, a zárt workerek, a licenckulcs és a 2K fölötti vízjel kikerült; 2026-11-07: 9. pont: RAM-minimum 16 GB, ajánlott 32 GB; tartós jobtár: PostgreSQL, [PostgreSQL-adatréteg](../ai/postgresql-adatreteg.md); 2. pont: a súly és a tanítóadat licence a felhasználó felelőssége; 2026-11-02: F3: angol felirat-időzítés; 2026-11-01: a 6. pont, az ONNX nem kötelező; 2026-10-31: a 2. pont kivétele a zárt workerekre) · **Változás:** major (CFA4-AI-PLAN-001 és a CFA3/FA3 elődtervek
 > beépítése: F0–F6 kapuk, ONNX-es első kör, modellkezelő, erőforrás-kezelési szabályok, tartós
 > jobtár, bővített jobállapotok, szétbontott licencmezők) · **Részletes terv:**
 > [CFA4 AI tervdokumentum](https://claude.ai/artifact/MLd6UfHG1uPBdJ16B2JZBh) ·
@@ -160,6 +160,11 @@ K18), jóváhagyással. A modellkezelő szabályai:
   ahhoz, ami az eredményt változtatja: kisebb pontosság, kisebb felbontás, másik futtató vagy
   modell. Minden lépés a jobnaplóba kerül.
 - **Stabil GPU-azonosítás:** UUID vagy PCI-cím szerint, nem a CUDA sorszáma szerint.
+- **Eszközazonosító az elejétől** (tulajdonosi döntés, 2026-11-22): a `load` és a `run` üzenet
+  mindig tartalmaz eszközazonosítót (`device`: `"cpu"` vagy GPU-index; protokoll 3. változat,
+  `caps.devices`), és a VRAM-könyvelés **GPU-nként** vezet keretet. Egy kártyás gépen ez egyetlen
+  elem. A több GPU támogatása ettől kezdve csak ütemezési szabály (melyik feladat melyik
+  kártyára), nem áttérés; maga a több GPU lehetőség, nem alapkövetelmény, és későbbi kapuban jön.
 - **A kijelzőt hajtó GPU** alapból nem kap AI-feladatot, ha van másik alkalmas kártya. Egykártyás
   gépen a felhasználó engedélyezheti.
 - **Atomi foglalás:** egy feladat az összes szükséges erőforrást egyszerre kapja meg, vagy semmit.
@@ -310,11 +315,13 @@ fogyasztja a sémát. A jobállapotok és a manifest v3 licencmezői az SDK-ban 
   **legalább 16 GB RAM, ajánlott 32 GB**, 8 mag AVX2-vel, 150 GB NVMe. 12 GB-nál kisebb GPU-val és
   16 GB RAM alatt helyi AI-val nem lehet rendesen dolgozni (a tulajdonos tapasztalata), ezért ez az
   alsó határ: alatta az AI-funkciók nem támogatottak, a CFA4 többi része fut. 8 GB-os profil nincs.
-- **Teljesítményígéret:** minden ingyenes funkciónak 2K-ban (DCI 2K, 2048×1080) működnie kell az
-  ajánlott (32 GB-os) gépen (tulajdonosi döntés, 2026-10-30). A 16 GB-os minimumgépen minden
+- **Teljesítményígéret:** minden funkciónak 2K-ban (DCI 2K, 2048×1080) működnie kell az
+  ajánlott (32 GB-os) gépen (tulajdonosi döntés, 2026-10-30). Ez teljesítménycél, nem korlát: a
+  felbontásnak nincs felső határa, azt csak a kártya VRAM-ja szabja meg. A 16 GB-os minimumgépen minden
   funkciónak le kell futnia, lassabban is, összeomlás és a rendszer lefagyása nélkül.
 - **Nagyobb gépek:** a nagyobb VRAM nagyobb modelleket és több funkciót nyit meg, a több GPU
-  pedig lehetőség, nem követelmény.
+  pedig lehetőség, nem követelmény (a 3. pont eszközazonosítója és GPU-nkénti könyvelése miatt
+  később csak ütemezési szabály).
 - **Gyártók:** első körben NVIDIA, utána 12 GB-os AMD és Intel kártyák az ONNX úton.
 - **Minimumtesztek:** a [`scripts/dev/run-minspec.sh`](../../scripts/dev/run-minspec.sh)
   alatt futnak, két profillal: `CFA4_PROFILE=ajanlott` (alap, 32 GB RAM) és `CFA4_PROFILE=minimum`
@@ -322,9 +329,87 @@ fogyasztja a sémát. A jobállapotok és a manifest v3 licencmezői az SDK-ban 
   512 GB-os RAM-ja elfedné a memórianyomásból eredő hibákat. A burkoló szabályait a
   `scripts/ci/test-run-minspec.sh` ellenőrzi GPU nélkül, a gyors CI-kapuban.
 
+### 10. Végrehajtási modell, színkezelés, gyorsítótár, idő, távoli futtatás
+
+A kritikai értékelés (2026-11-22) kilenc hiányát a tulajdonos elfogadta; az alábbiak pótolják
+azokat. A már meglévő szabályok (folyamatelkülönítés, megszakítás és előrehaladás, modelltöltés és
+licenc, csak Linux) a 7., 2., 8. és 9. pontban vannak, itt nem ismétlődnek.
+
+**Klip- és képkockaszintű futtatás.** A manifest `scope` mezője (`frame`, `window`, `clip`,
+`generative`) dönti el, hol fut a node. A klipszintű elemzés (követés, optikai flow, mélység,
+maszksorozat, igazítás) egyszer fut, és **eszközt (asset) állít elő**: a render ezt csak olvassa,
+nem futtat modellt képkockánként. A render így determinisztikus és gyors, az elemzés pedig
+megszakítható és újrafelhasználható. Az időbeli konzisztencia a node tulajdonsága (`window`),
+az optikai flow és a követés közönséges képesség, nem külön réteg.
+
+**Adattípus és színkezelés.** A modellek többnyire 8 bites sRGB-t várnak, a szerkesztő lineáris
+lebegőpontosban dolgozik. A konverziót a médiahíd végzi, kifejezetten, a port `color` és `format`
+mezője alapján (`srgb`, `linear-srgb`, `rec709`, `rec2020-pq`, …; `rgb8`, `rgb16f`, `rgba32f`, …).
+A worker sosem találgat: amit a port nem deklarál, azt a híd elutasítja. A HDR-tartalom a
+modell tartományán kívül eső értékeknél a manifest szerint vagy csonkolódik, vagy a node nem
+érhető el rajta, és a felület ezt megmondja; csendes csonkolás nincs.
+
+**Gyorsítótárkulcs és érvénytelenítés.** A kulcs tartalomalapú: a bemenet tartalmának hash-e
+(képkockánként vagy klipre), a modell hash-e és revíziója a manifest `[[weights]]` részéből, a
+paraméterek kanonikus alakja, a worker és a protokoll verziója, valamint a pontosság (`fp32`,
+`fp16`). Bármelyik változik, új kulcs lesz, a régi bejegyzés kiürítésre jelölt; időbélyeg vagy
+útvonal nem része a kulcsnak. Az index a `cache` sémában van (4. pont), a tartalom a tartalom
+szerint címzett tárolóban.
+
+**Idő.** Minden időpont `Tick` (254 016 000 000/s), nem lebegőpontos másodperc. Változó
+képkockasebességű forrásnál a médiahíd a forrás időbélyegeit adja át, a gyorsítótár a `Tick`-et
+indexeli, nem a képkocka sorszámát. A hang és a kép szinkronját a híd őrzi; az elemzési eszköz
+a forrás időtengelyén készül, a render képezi le a sorozatra.
+
+**Távoli futtató.** A worker-protokoll hálózatfüggetlen (7. pont: üzenetek és megosztott
+memóriára hivatkozó pufferek), ezért később távoli worker is csatlakoztatható egy átviteli
+réteggel, a helyi Unix-csatorna cseréjével. Ez ebben az ADR-ben nem feladat; ha kell, saját
+ADR-t kap (lásd az Elvetett alternatívák közt a felhős AI-t).
+
+**Elfogadott egyszerűsítések (2026-11-22).**
+
+- Öt komponens, tiszta határokkal; a nyolc elem (fent) ezek szerepeit jelenti, nem külön
+  szolgáltatásokat.
+- Az MVP: ONNX Runtime és Python-worker. A TensorRT az ORT TensorRT-szolgáltatóján át, a Candle
+  később és opcionálisan jön.
+- Funkciónkénti aranytesztek és futásidejű alapellenőrzés (NaN, üres maszk, hossz), nem külön
+  általános minőségi réteg.
+- Egyszerű előbeállítások (előnézet, normál, végleges) és egyetlen GPU az első körben.
+
+### 11. ComfyUI-szerű kezelhetőség és a CFA4 által kezelt ComfyUI-worker
+
+A tulajdonos 2026-11-22-én döntött: a ComfyUI ma már alig kihagyható, ezért a CFA4 AI-rétegének
+kezelhetősége nagy mértékben egyezzen a ComfyUI-éval, és a felhasználónak ne kelljen külön
+alkalmazást telepítenie.
+
+- **Saját node-gráf.** A manifest típusos portjaiból (`frame`, `mask`, `audio`, `flow`, …) node
+  lesz; a gráf JSON-ban menthető, megosztható és verziózható. Új node = manifest + worker,
+  közösségi csomagként is. A gráfot a feladattervező (3. elem) hajtja végre, a 10. pont szerinti
+  klip- és képkockaszintű szabályokkal.
+- **ComfyUI mint worker, a CFA4 kezeli.** A ComfyUI a protokollon át, külön folyamatként fut,
+  ugyanúgy, mint bármely worker; a gráfok közé ComfyUI-workflow importálható (API-formátum),
+  amelynek node-jait a worker képességként jelenti.
+- **Telepítés jóváhagyással.** A CFA4 a felhasználó egyszeri jóváhagyása után maga telepíti a
+  ComfyUI-t a saját, felügyelt könyvtárába (`uv` által rögzített környezet, rögzített
+  ComfyUI-verzió és -csomagsor, a közös CUDA 12.x-hez illesztve). A jóváhagyó ablak mutatja a
+  forrást, a verziót, a méretet és a licencet (ComfyUI: GPL-3.0). A CFA4 nem terjeszti a
+  ComfyUI-t, a letöltés a hivatalos forrásból, hash-ellenőrzéssel történik.
+- **Félrekonfigurálás kizárva.** A beállítást a CFA4 állítja elő és tartja karban, a felhasználó
+  nem szerkeszti: a modellútvonalak a közös modelltárra mutatnak, a hallgatózás csak a
+  helyi hurokcímen, véletlen porton és tokennel történik, a VRAM-ot az erőforrás-kezelő osztja.
+  Állapotellenőrzés, javítás és újratelepítés parancs (`ai.comfy.repair`) van; eltérést a CFA4
+  visszaállítja.
+- **Egyedi node-ok.** Csak a CFA4 által rögzített, hash-ellenőrzött listáról telepíthetők;
+  tetszőleges node telepítése külön, figyelmeztetett lépés, a felhasználó felelősségére.
+- **Modellek.** Az általános szabály él: a CFA4 modellt nem terjeszt, a felhasználó tölti le, a
+  licencfeltételek elfogadása után.
+- **Nyitott részlet:** a ComfyUI HTTP/WebSocket-kapcsolata eltér a 7. pont Unix-csatornájától;
+  egy illesztő worker fordítja le, és kivételként helyi hurokcímet használ. Ezt az illesztő
+  kapuban (F-szakasz) kell lezárni.
+
 ## Elvetett alternatívák
 
-- **ComfyUI mint futtatómotor:** sok egymásnak ellentmondó függőséget hoz, és nem
+- **ComfyUI mint a CFA4 futtatómotorja** (a 11. pont szerinti kezelt worker nem ez): sok egymásnak ellentmondó függőséget hoz, és nem
   ütemezhető a CFA4 parancsmotorján keresztül.
 - **Modellenkénti Python-környezet vagy CUDA-verzió:** ez a „38 féle CUDA” helyzet.
 - **AI-hívás közvetlenül a felületből:** megkerülné a parancsmotort, a visszavonást és a naplót.
@@ -419,7 +504,7 @@ tanítási feladat a közös feladatsorban fut (`tasks` séma, új `train` séma
 az F6 közös PyTorch-környezetét bővíti, és az alsó határ (12 GB VRAM, 16 GB RAM) a tanításra is
 érvényes. A tanítás kapui (TR-F0…TR-F10) az F1, F2 és F6 kapura épülnek.
 
-**Az első körön kívül** (saját döntéssel, későbbi kapuban): ComfyUI-kompatibilitás, több GPU, AMD és Intel, TensorRT, CUDA IPC, osztott memória
+**Az első körön kívül** (saját döntéssel, későbbi kapuban): a ComfyUI-worker és -workflow-import (11. pont, a döntés megvan, a kapu később), több GPU, AMD és Intel, TensorRT, CUDA IPC, osztott memória
 bekapcsolása, felhős futtatás.
 
 A [besorolási táblák](../ai/README.md) „Fázis” oszlopa még a régi havi sorszámokat tartalmazza;
@@ -435,3 +520,14 @@ a kaput a futtató határozza meg: ONNX → F3/F4, candle → F5, PyTorch és he
   hozzá tartozó metaadat (EU AI-rendelet, 50. cikk: mélyhamisítás jelölése).
 - **SeamlessM4T v2:** a licencszabály szerint (2. pont) nem blokkol; választható modell marad,
   amelyet a felhasználó tölt le. Az alapértelmezett szövegfordító a MADLAD-400 (Apache-2.0).
+
+## Lezárt kérdések (tulajdonosi döntések, 2026-11-22)
+
+- **A kritikai értékelés javaslatai:** a „Túlméretezett” egyszerűsítések és a „Hiányzik” pótlások
+  elfogadva (10. pont); a tulajdonos a tervet jóváhagyta és véglegesítette.
+- **ComfyUI:** saját node-gráf ComfyUI-szerű kezeléssel, és a CFA4 által, egyszeri jóváhagyás után
+  telepített és karbantartott ComfyUI-worker, hogy a felhasználónak ne kelljen külön alkalmazást
+  telepítenie és ne tudja félrekonfigurálni (11. pont).
+- **Kereskedelmi korlátok:** nincs kereskedelmi változat, ezért a kereskedelmi miatt kitalált
+  korlátok mind törölve (8. pont). A `watermarked` jelző (AI-módosított jelölés) és a modellek
+  licencfigyelmeztetése marad.
