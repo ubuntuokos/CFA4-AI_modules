@@ -310,8 +310,9 @@ fogyasztja a sémát. A jobállapotok és a manifest v3 licencmezői az SDK-ban 
   **legalább 16 GB RAM, ajánlott 32 GB**, 8 mag AVX2-vel, 150 GB NVMe. 12 GB-nál kisebb GPU-val és
   16 GB RAM alatt helyi AI-val nem lehet rendesen dolgozni (a tulajdonos tapasztalata), ezért ez az
   alsó határ: alatta az AI-funkciók nem támogatottak, a CFA4 többi része fut. 8 GB-os profil nincs.
-- **Teljesítményígéret:** minden ingyenes funkciónak 2K-ban (DCI 2K, 2048×1080) működnie kell az
-  ajánlott (32 GB-os) gépen (tulajdonosi döntés, 2026-10-30). A 16 GB-os minimumgépen minden
+- **Teljesítményígéret:** minden funkciónak 2K-ban (DCI 2K, 2048×1080) működnie kell az
+  ajánlott (32 GB-os) gépen (tulajdonosi döntés, 2026-10-30). Ez teljesítménycél, nem korlát: a
+  felbontásnak nincs felső határa, azt csak a kártya VRAM-ja szabja meg. A 16 GB-os minimumgépen minden
   funkciónak le kell futnia, lassabban is, összeomlás és a rendszer lefagyása nélkül.
 - **Nagyobb gépek:** a nagyobb VRAM nagyobb modelleket és több funkciót nyit meg, a több GPU
   pedig lehetőség, nem követelmény.
