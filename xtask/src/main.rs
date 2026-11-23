@@ -77,6 +77,7 @@ const LAYERS: &[(&str, u8)] = &[
     ("tts-text", 2),
     ("conlang", 2),
     ("tasks", 2),
+    ("ai-models", 2),
     ("interchange", 2),
     ("render", 3),
     ("gpu", 3),
