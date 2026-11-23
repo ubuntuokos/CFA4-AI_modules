@@ -10,4 +10,3 @@ task type that calls `cfa4-fetch` only on the user's explicit command.
 MM-F2 (first part): `location` — the user-chosen store (no silent default, free-space and writable checks, XDG only as a suggestion), `cfa4-models/`, `.staging/`, `.quarantine/` under the chosen root, hash-checked promotion by rename, one copy per hash, quarantine that never overwrites.
 
 Next: PostgreSQL `ai.model*` tables (PG-3), explicit move of a store, per-model store choice; MM-F3 import, scan (modelscan, D11) and managed download; llmfit verdicts (D10, AC-27).
-`ai.model*` tables); MM-F3 import, scan (modelscan, D11) and managed download; llmfit verdicts (D10, AC-27).
