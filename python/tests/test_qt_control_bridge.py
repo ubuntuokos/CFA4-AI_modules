@@ -4,6 +4,7 @@ import json
 import subprocess
 import unittest
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 from cfa4_devtools.qt_app import locate_engine
@@ -11,7 +12,7 @@ from cfa4_devtools.qt_control_bridge import LocalBridgeError, bridge_read
 
 
 class LocalQtBridgeContract(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         from tempfile import TemporaryDirectory
 
         self.directory = TemporaryDirectory(prefix="cfa4-f8-")
@@ -20,13 +21,13 @@ class LocalQtBridgeContract(unittest.TestCase):
         self.cli.write_text("#!/bin/sh\nexit 0\n")
         self.cli.chmod(0o755)
 
-    def test_only_allowlisted_read_only_commands(self):
+    def test_only_allowlisted_read_only_commands(self) -> None:
         with self.assertRaisesRegex(LocalBridgeError, "unapproved"):
             bridge_read(self.cli, 8132, "file.exportMedia", {})
         with self.assertRaisesRegex(LocalBridgeError, "unapproved"):
             bridge_read(self.cli, 8132, "file.import", {})
 
-    def test_subprocess_uses_loopback_and_typed_json(self):
+    def test_subprocess_uses_loopback_and_typed_json(self) -> None:
         answer = subprocess.CompletedProcess([], 0, json.dumps({"decode": {}}).encode(), b"")
         with patch("cfa4_devtools.qt_control_bridge.subprocess.run", return_value=answer) as p:
             result = bridge_read(self.cli, 8132, "perf.stats", {"flag": True})
@@ -37,18 +38,19 @@ class LocalQtBridgeContract(unittest.TestCase):
         self.assertNotIn("shell", kwargs)
         self.assertLessEqual(kwargs["timeout"], 30)
 
-    def test_invalid_ports_and_timeout_fail(self):
-        for port in (0, 65536, True, "8132"):
+    def test_invalid_ports_and_timeout_fail(self) -> None:
+        ports: tuple[Any, ...] = (0, 65536, True, "8132")
+        for port in ports:
             with self.subTest(port=port), self.assertRaises(LocalBridgeError):
                 bridge_read(self.cli, port, "perf.stats")
         with self.assertRaises(LocalBridgeError):
             bridge_read(self.cli, 8132, "perf.stats", timeout=999)
 
-    def test_invalid_json_params_fail_before_subprocess(self):
+    def test_invalid_json_params_fail_before_subprocess(self) -> None:
         with self.assertRaisesRegex(LocalBridgeError, "JSON"):
             bridge_read(self.cli, 8132, "perf.stats", {"not-json": object()})
 
-    def test_failure_is_not_a_successful_response(self):
+    def test_failure_is_not_a_successful_response(self) -> None:
         with (
             patch(
                 "cfa4_devtools.qt_control_bridge.subprocess.run",
@@ -58,7 +60,7 @@ class LocalQtBridgeContract(unittest.TestCase):
         ):
             bridge_read(self.cli, 8132, "perf.stats")
 
-    def test_invalid_return_shape_and_reported_error_fail(self):
+    def test_invalid_return_shape_and_reported_error_fail(self) -> None:
         for body in (b"[]", b"{", b'{"error":"denied"}'):
             with (
                 self.subTest(body=body),
@@ -70,7 +72,7 @@ class LocalQtBridgeContract(unittest.TestCase):
             ):
                 bridge_read(self.cli, 8132, "sequence.inspect")
 
-    def test_timeout_is_reported_not_suppressed(self):
+    def test_timeout_is_reported_not_suppressed(self) -> None:
         with (
             patch(
                 "cfa4_devtools.qt_control_bridge.subprocess.run",
@@ -80,8 +82,8 @@ class LocalQtBridgeContract(unittest.TestCase):
         ):
             bridge_read(self.cli, 8132, "perf.stats", timeout=3)
 
-    def test_local_engine_locator_prefers_cfa4_executable(self):
-        def where(name):
+    def test_local_engine_locator_prefers_cfa4_executable(self) -> None:
+        def where(name: str) -> str | None:
             return "/usr/bin/cfa4-cli" if name == "cfa4-cli" else None
 
         with patch("cfa4_devtools.qt_app.shutil.which", side_effect=where):

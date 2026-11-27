@@ -5,47 +5,50 @@ from __future__ import annotations
 import json
 import unittest
 from copy import deepcopy
+from typing import Any
 
 from cfa4_devtools import release_gate
 
 
 class ReleaseDecisionTests(unittest.TestCase):
+    inventory: dict[str, Any]
+
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
         cls.inventory = json.loads(release_gate.DEFAULT.read_text(encoding="utf-8"))
 
-    def test_current_held_inventory_is_valid(self):
+    def test_current_held_inventory_is_valid(self) -> None:
         result = release_gate.evaluate(self.inventory)
         self.assertEqual(result["decision"], "HOLD")
         self.assertIn("real_four_format_build", result["open_gates"])
         self.assertIn("licensing_brand_attribution_sbom", result["open_gates"])
         self.assertIn("full_qt6_nle_parity", result["open_gates"])
 
-    def test_does_not_accept_false_go_decision(self):
+    def test_does_not_accept_false_go_decision(self) -> None:
         data = deepcopy(self.inventory)
         data["verdict"] = "GO"
         with self.assertRaisesRegex(release_gate.ReleaseGateError, "inconsistent"):
             release_gate.evaluate(data)
 
-    def test_does_not_accept_missing_required_gate(self):
+    def test_does_not_accept_missing_required_gate(self) -> None:
         data = deepcopy(self.inventory)
         data["gates"].pop()
         with self.assertRaisesRegex(release_gate.ReleaseGateError, "missing or duplicated"):
             release_gate.evaluate(data)
 
-    def test_does_not_accept_unsupported_format(self):
+    def test_does_not_accept_unsupported_format(self) -> None:
         data = deepcopy(self.inventory)
         data["artifact_formats"] = ["deb", "rpm", "flatpak", "tar.gz"]
         with self.assertRaisesRegex(release_gate.ReleaseGateError, "four formats"):
             release_gate.evaluate(data)
 
-    def test_does_not_accept_non_cfa4_repository(self):
+    def test_does_not_accept_non_cfa4_repository(self) -> None:
         data = deepcopy(self.inventory)
         data["repository"] = "example/upstream"
         with self.assertRaisesRegex(release_gate.ReleaseGateError, "repository"):
             release_gate.evaluate(data)
 
-    def test_passed_gates_alone_do_not_authorize_publication(self):
+    def test_passed_gates_alone_do_not_authorize_publication(self) -> None:
         data = deepcopy(self.inventory)
         for gate in data["gates"]:
             gate["status"] = "PASS"
@@ -56,13 +59,13 @@ class ReleaseDecisionTests(unittest.TestCase):
         with self.assertRaisesRegex(release_gate.ReleaseGateError, "cannot be auto-authorized"):
             release_gate.evaluate(data)
 
-    def test_duplicate_gates_are_rejected(self):
+    def test_duplicate_gates_are_rejected(self) -> None:
         data = deepcopy(self.inventory)
         data["gates"][1]["id"] = data["gates"][0]["id"]
         with self.assertRaisesRegex(release_gate.ReleaseGateError, "duplicate"):
             release_gate.evaluate(data)
 
-    def test_non_string_gate_id_is_a_gate_error_not_a_crash(self):
+    def test_non_string_gate_id_is_a_gate_error_not_a_crash(self) -> None:
         # Before the id check, a numeric id reached sorted() on a mixed str/int set
         # and raised TypeError, which main() does not catch.
         data = deepcopy(self.inventory)

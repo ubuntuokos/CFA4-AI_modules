@@ -28,6 +28,7 @@ import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 SCHEMA = "cfa4-runtime-deps/1"
 MAX_BINARY_BYTES = 1 << 30
@@ -120,8 +121,8 @@ def package_for(path: str) -> dict[str, str] | None:
     return None
 
 
-def audit_binary(path: Path) -> dict:
-    entry: dict = {"path": str(path)}
+def audit_binary(path: Path) -> dict[str, Any]:
+    entry: dict[str, Any] = {"path": str(path)}
     if not path.is_file():
         entry["error"] = "missing"
         return entry
@@ -164,7 +165,7 @@ def read_os_release(path: Path = Path("/etc/os-release")) -> dict[str, str]:
     return values
 
 
-def host_info() -> dict:
+def host_info() -> dict[str, Any]:
     os_release = read_os_release()
     like = os_release.get("ID_LIKE", "").split()
     ubuntu = os_release.get("ID") == "ubuntu" or "ubuntu" in like
@@ -177,7 +178,7 @@ def host_info() -> dict:
     }
 
 
-def summarize(binaries: list[dict]) -> dict:
+def summarize(binaries: list[dict[str, Any]]) -> dict[str, Any]:
     symbols: dict[str, str] = {}
     packages: dict[str, str] = {}
     dlopen: set[str] = set()
@@ -198,7 +199,7 @@ def summarize(binaries: list[dict]) -> dict:
     }
 
 
-def to_markdown(report: dict) -> str:
+def to_markdown(report: dict[str, Any]) -> str:
     host = report["host"]
     lines = [
         "# CFA4 runtime dependencies (measured)",

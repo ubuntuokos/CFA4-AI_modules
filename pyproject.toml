@@ -32,6 +32,7 @@ testpaths = ["python/tests"]
 
 [tool.mypy]
 python_version = "3.12"
+strict = true
 files = ["python/cfa4_devtools", "python/tests"]
 mypy_path = "python"
 explicit_package_bases = true

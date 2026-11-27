@@ -6,6 +6,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT = ROOT / "docs/audit/f9-release-readiness.json"
@@ -36,7 +37,7 @@ class ReleaseGateError(ValueError):
     pass
 
 
-def evaluate(data: dict) -> dict:
+def evaluate(data: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise ReleaseGateError("release inventory must be a JSON object")
     for field, expected in (
@@ -52,7 +53,7 @@ def evaluate(data: dict) -> dict:
     items = data.get("gates")
     if not isinstance(items, list) or len(items) != len(REQUIRED):
         raise ReleaseGateError("missing or duplicated required release gates")
-    by_id: dict[str, dict] = {}
+    by_id: dict[str, dict[str, Any]] = {}
     for item in items:
         if not isinstance(item, dict):
             raise ReleaseGateError("malformed release gate")

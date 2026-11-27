@@ -2,17 +2,18 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 from cfa4_devtools.license_inventory import build_inventory, main, review_reasons
 
 
-def _metadata() -> dict:
+def _metadata() -> dict[str, Any]:
     def pkg(
         name: str,
         license: str | None,
         source: str | None = "registry+https://github.com/rust-lang/crates.io-index",
         links: str | None = None,
-    ) -> dict:
+    ) -> dict[str, Any]:
         return {
             "id": f"{name}-id",
             "name": name,
